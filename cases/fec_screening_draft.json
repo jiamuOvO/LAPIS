@@ -1,0 +1,26 @@
+{
+  "kind": "research_request_draft",
+  "design_proposal": "fec_design_proposal.md",
+  "origin": "demo",
+  "review_status": "awaiting_researcher",
+  "task_type": "screening",
+  "purpose": "比较两种电解液条件下 Li+ 自扩散系数，并记录溶剂化观察值",
+  "material_system": "EC/DMC–LiPF6",
+  "candidates": [
+    {"id": "baseline", "fec": "不含 FEC"},
+    {"id": "fec_1wt", "fec": "1 wt% FEC（计算基准待确认）"}
+  ],
+  "temperature": {"value": 298, "unit": "K", "source": "user_plan"},
+  "observable": {"name": "Li+ 自扩散系数", "unit": null},
+  "open_questions": [
+    "1 wt% 的计算基准",
+    "EC 与 DMC 的组分比例",
+    "LiPF6 盐浓度",
+    "具体模型及力场与其适用性",
+    "采样方案和独立重复数",
+    "轨迹质量与收敛判据",
+    "溶剂化观察值的明确定义与分析方法"
+  ],
+  "execution_allowed": false,
+  "scientific_result": null
+}
