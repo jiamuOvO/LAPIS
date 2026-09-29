@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+from uuid import uuid4
 
 import instructor
 import psycopg
@@ -83,6 +84,7 @@ def main():
     turn.add_argument("task_id")
     turn.add_argument("text")
     turn.add_argument("--actor", default="researcher")
+    turn.add_argument("--operation-id", help="重试时复用同一标识，避免重复记录同一轮输入")
     show = sub.add_parser("show")
     show.add_argument("task_id")
     design = sub.add_parser("propose-design")
@@ -115,13 +117,14 @@ def main():
         if args.command == "setup-db":
             setup_database()
         elif args.command == "migrate":
-            initialize_schema()
-            print("数据库迁移已完成")
+            applied = initialize_schema()
+            print("数据库迁移已完成：" + (", ".join(f"{version:03d}" for version in applied) if applied else "无待应用版本"))
         elif args.command == "start":
             print(create_task(args.actor))
         elif args.command == "show":
             print(json.dumps(get_task(args.task_id), ensure_ascii=False, indent=2))
         elif args.command == "turn":
+            operation_id = args.operation_id or str(uuid4())
             key = os.getenv("LAPIS_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
             if not key:
                 raise ValueError("请先设置 LAPIS_API_KEY 或 DEEPSEEK_API_KEY")
@@ -130,7 +133,9 @@ def main():
                 api_key=key, base_url=os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com"), timeout=40,
             ), mode=instructor.Mode.JSON)
             prompt_hash = digest({"extract": SYSTEM_PROMPT, "proposal": PROPOSAL_PROMPT})
-            result = run_intake_turn(args.task_id, args.text, args.actor, client, model, prompt_hash)
+            print(f"operation_id={operation_id}", flush=True)
+            result = run_intake_turn(args.task_id, args.text, args.actor, client, model, prompt_hash,
+                                     operation_id)
             print(json.dumps(result, ensure_ascii=False, indent=2))
         elif args.command == "propose-design":
             payload = json.loads(args.file.read_text(encoding="utf-8"))

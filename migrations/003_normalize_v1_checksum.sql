@@ -1,0 +1,4 @@
+UPDATE schema_migrations
+SET checksum = 'a409245497b2d269756626a2eabcf72d99581450de25ff006f540ff76912dd09'
+WHERE version = 1
+  AND checksum = '23261c4afa9400c5e6e44448701f877b865530e9c6a8f61fc80c95879bac747c';

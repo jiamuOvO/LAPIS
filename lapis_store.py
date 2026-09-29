@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
+import re
 from uuid import uuid4
 
 import psycopg
@@ -17,6 +19,7 @@ from lapis_intake import new_state
 
 
 ROOT = Path(__file__).resolve().parent
+LEGACY_V1_CHECKSUM = "23261c4afa9400c5e6e44448701f877b865530e9c6a8f61fc80c95879bac747c"
 
 
 def db_config() -> dict:
@@ -40,13 +43,67 @@ def artifact_root() -> Path:
     return ROOT / ("artifacts-test" if db_config()["dbname"] == "lapis_test" else "artifacts")
 
 
-def initialize_schema() -> None:
-    with connect() as db:
-        with db.cursor() as cursor:
-            for sql in (ROOT / "schema.sql").read_text(encoding="utf-8").split(";"):
-                if sql.strip():
-                    cursor.execute(sql)
-        db.commit()
+def initialize_schema(migrations_dir: Path | None = None, connector=None) -> list[int]:
+    """Apply numbered PostgreSQL migrations, each in its own locked transaction."""
+    directory = migrations_dir or ROOT / "migrations"
+    files = sorted(directory.glob("*.sql"))
+    versions = []
+    for path in files:
+        match = re.fullmatch(r"(\d{3})_[a-z0-9_]+\.sql", path.name)
+        if not match:
+            raise ValueError(f"无效迁移文件名：{path.name}")
+        versions.append(int(match.group(1)))
+    if versions != list(range(1, len(files) + 1)):
+        raise ValueError("迁移版本必须从 001 开始连续且唯一")
+    if not files:
+        raise ValueError("没有数据库迁移文件")
+
+    hashes = {version: hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+              for version, path in zip(versions, files)}
+    applied_now = []
+    for version, path in zip(versions, files):
+        with (connector or connect)() as db:
+            with db.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_xact_lock(487064276)")
+                exists = cursor.execute("SELECT to_regclass('public.schema_migrations')").fetchone()[0]
+                applied = {}
+                has_checksum = False
+                if exists:
+                    has_checksum = bool(cursor.execute(
+                        "SELECT 1 FROM information_schema.columns WHERE table_name='schema_migrations' "
+                        "AND column_name='checksum'"
+                    ).fetchone())
+                    columns = "version, checksum" if has_checksum else "version"
+                    cursor.execute(f"SELECT {columns} FROM schema_migrations ORDER BY version")
+                    applied = {row[0]: row[1] if has_checksum else None for row in cursor.fetchall()}
+                    if sorted(applied) != list(range(1, len(applied) + 1)) or max(applied, default=0) > len(files):
+                        raise ValueError("数据库迁移历史不连续或存在未知版本")
+                if version in applied:
+                    legacy_v1 = (version == 1 and applied[version] == LEGACY_V1_CHECKSUM
+                                 and max(applied) < 3)
+                    if has_checksum and applied[version] != hashes[version] and not legacy_v1:
+                        raise ValueError(f"迁移 {version:03d} 的内容与已应用记录不一致")
+                    if not has_checksum and version != 1:
+                        raise ValueError("迁移记录缺少校验字段")
+                    continue
+                if max(applied, default=0) != version - 1:
+                    raise ValueError(f"不能跳过迁移 {version:03d}")
+                for statement in path.read_text(encoding="utf-8").split(";"):
+                    if statement.strip():
+                        cursor.execute(statement)
+                if version == 1:
+                    # The pre-migration v1 schema already inserted its own ledger row.
+                    if cursor.execute("SELECT 1 FROM schema_migrations WHERE version=1").fetchone() is None:
+                        raise ValueError("初始迁移未登记版本 1")
+                else:
+                    cursor.execute("INSERT INTO schema_migrations (version,checksum,description) VALUES (%s,%s,%s)",
+                                   (version, hashes[version], path.stem))
+                    if version == 2:
+                        cursor.execute("UPDATE schema_migrations SET checksum=%s,description=%s WHERE version=1",
+                                       (hashes[1], files[0].stem))
+            db.commit()
+        applied_now.append(version)
+    return applied_now
 
 
 def _json(value):
@@ -93,7 +150,7 @@ def get_task(task_id: str) -> dict:
 def get_intake_operation(operation_id: str) -> dict | None:
     with connect() as db:
         with db.cursor(row_factory=dict_row) as cursor:
-            cursor.execute("SELECT task_id, result, request_version FROM intake_operations WHERE operation_id=%s", (operation_id,))
+            cursor.execute("SELECT task_id, result, request_version, input_sha256 FROM intake_operations WHERE operation_id=%s", (operation_id,))
             return cursor.fetchone()
 
 
@@ -106,10 +163,13 @@ def save_turn(task_id: str, expected_revision: int, state: dict, result: dict,
             cursor.execute("SELECT revision FROM research_tasks WHERE id=%s FOR UPDATE", (task_id,))
             row = cursor.fetchone()
             if operation_id:
-                cursor.execute("SELECT request_version FROM intake_operations WHERE operation_id=%s AND task_id=%s",
+                cursor.execute("SELECT request_version,input_sha256 FROM intake_operations WHERE operation_id=%s AND task_id=%s",
                                (operation_id, task_id))
                 previous = cursor.fetchone()
                 if previous:
+                    input_sha = hashlib.sha256(state["turns"][-1].strip().encode("utf-8")).hexdigest()
+                    if previous["input_sha256"] and previous["input_sha256"] != input_sha:
+                        raise ValueError("相同操作标识不能用于不同输入")
                     return previous["request_version"]
             if row is None or row["revision"] != expected_revision:
                 raise ValueError("会话已被另一轮更新，请重新读取任务")
@@ -143,9 +203,11 @@ def save_turn(task_id: str, expected_revision: int, state: dict, result: dict,
                 "request_version": version, "input": state["turns"][-1],
             })
             if operation_id:
+                input_sha = hashlib.sha256(state["turns"][-1].strip().encode("utf-8")).hexdigest()
                 cursor.execute(
-                    "INSERT INTO intake_operations (operation_id,task_id,revision,result,request_version) VALUES (%s,%s,%s,%s,%s)",
-                    (operation_id, task_id, expected_revision + 1, Jsonb(result), version),
+                    "INSERT INTO intake_operations (operation_id,task_id,revision,result,request_version,input_sha256) "
+                    "VALUES (%s,%s,%s,%s,%s,%s)",
+                    (operation_id, task_id, expected_revision + 1, Jsonb(result), version, input_sha),
                 )
         db.commit()
     return version
@@ -176,6 +238,7 @@ def propose_design(task_id: str, payload: dict, actor: str) -> int:
 
 
 def approve_design(task_id: str, version: int, reviewer: str) -> None:
+    """Record a reviewer claim; CLI identity is not authenticated for real execution."""
     with connect() as db:
         with db.cursor(row_factory=dict_row) as cursor:
             cursor.execute("SELECT id FROM research_tasks WHERE id=%s FOR UPDATE", (task_id,))
