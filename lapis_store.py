@@ -14,7 +14,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from lapis_core import (ExecutionPlan, check_attempt_transition, digest,
-                        intake_is_confirmed, verify_artifact)
+                        intake_is_confirmed, validate_research_request_v2, verify_artifact)
 from lapis_intake import new_state
 
 
@@ -226,6 +226,9 @@ def propose_design(task_id: str, payload: dict, actor: str) -> int:
             current = cursor.fetchone()["version"]
             if current is None or payload.get("request_version") != current:
                 raise ValueError("设计必须引用当前已确认的研究请求版本")
+            cursor.execute("SELECT payload FROM request_versions WHERE task_id=%s AND version=%s",
+                           (task_id, current))
+            validate_research_request_v2(_json(cursor.fetchone()["payload"]))
             cursor.execute("SELECT COALESCE(MAX(version),0)+1 AS version FROM design_versions WHERE task_id=%s", (task_id,))
             version = cursor.fetchone()["version"]
             cursor.execute(

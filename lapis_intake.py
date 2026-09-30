@@ -1,4 +1,4 @@
-"""LAPIS module 1: turn a researcher's words into a reviewable request."""
+"""LAPIS module 1: turn incomplete intent into a reviewable research request."""
 
 from __future__ import annotations
 
@@ -12,446 +12,438 @@ import instructor
 from openai import OpenAI
 from pydantic import BaseModel, Field, model_validator
 
+from lapis_core import validate_research_request_v2
 
+
+SCALAR_FIELDS = (
+    "purpose", "research_object", "application", "work_conditions",
+    "research_scope", "material_function",
+)
+LIST_FIELDS = ("target_performance", "constraints")
+REQUEST_FIELDS = (
+    "purpose", "research_object", "application", "work_conditions",
+    "target_performance", "constraints", "research_scope", "material_function",
+)
 FieldName = Literal[
-    "task_type", "purpose", "application", "material", "metric", "direction",
-    "conditions", "candidates", "constraints", "hypothesis", "controls",
+    "task_type", "purpose", "research_object", "application", "work_conditions",
+    "target_performance", "constraints", "research_scope", "material_function",
+    "reference_note",
 ]
 Status = Literal["specified", "none", "open", "unclear"]
-TASK_TYPES = {"screening", "comparison", "mechanism_validation"}
-INTENT_ISSUES = {"mechanism_exploration", "multiple_tasks", "out_of_scope"}
-
+Action = Literal["add", "replace", "remove"]
+TASK_TYPES = {"screening", "comparison", "mechanism_validation", "mechanism_exploration", "other"}
+CONFIRM_WORDS = {"确认", "确认继续", "按此继续", "就按这个", "同意"}
 LABELS = {
-    "task_type": "任务目的",
-    "purpose": "研究目的",
-    "application": "应用场景",
-    "material": "材料体系",
-    "metric": "目标指标",
-    "direction": "目标方向",
-    "conditions": "工作条件",
-    "candidates": "候选范围",
-    "constraints": "其他约束",
-    "hypothesis": "机制假设",
-    "controls": "对照对象",
-}
-COMMON = ("task_type", "purpose", "material", "application", "conditions")
-BY_TASK = {
-    "screening": ("metric", "direction", "candidates"),
-    "comparison": ("candidates", "metric"),
-    "mechanism_validation": ("hypothesis", "metric", "controls"),
+    "purpose": "研究目的", "research_object": "研究对象", "application": "应用场景",
+    "work_conditions": "工作条件", "target_performance": "目标性能",
+    "constraints": "约束条件", "research_scope": "研究范围",
+    "material_function": "材料功能",
 }
 QUESTIONS = {
-    "task_type": "这次最终希望得到什么结果？例如选出候选、比较差异、验证具体机制；其他目标也可以直接描述。",
-    "metric": "你更在意材料的哪方面表现？例如稳定性、传输性能或合成可行性；也可以由系统先推荐一个具体指标。",
-    "material": "这次研究的材料、分子或体系是什么？",
-    "purpose": "这次希望筛选候选、比较已有候选，还是验证一个机制？",
-    "application": "研究对象将用于什么应用场景？没有具体应用也可以说明。",
-    "candidates": "你已有候选对象或允许探索的范围吗？没有也可以由系统提出。",
-    "conditions": "有哪些需要固定或比较的工作条件？没有预设条件也可以直接说。",
-    "direction": "目标指标是越高越好、越低越好，还是希望落在某个区间？",
-    "hypothesis": "你希望检验的具体机制主张是什么？例如“X通过Y影响Z”。",
-    "controls": "有指定的对照对象吗？没有也可以，由研究设计阶段提出。",
+    "purpose": "本轮具体希望作出什么研究判断：筛选、比较、探索原因，还是其他目标？",
+    "research_object": "本轮先研究哪类材料或体系？请尽量限定到可讨论的对象。",
+    "application": "这些材料用于什么使用或服役场景？纯基础研究目前先保留草稿。",
+    "research_scope": "本轮研究哪些对象或变化范围，明确暂不研究什么？",
+    "constraints": "这项要求是必须满足的硬约束，还是偏好？",
+    "target_performance": "请澄清本轮关注的性能目标或取消的目标；定性方向也可以。",
+    "task_type": "你提出了不同的研究任务；本轮先聚焦哪一个对象和目的？其他目标会保留在原话中。",
 }
-BARE_REPLIES = {"没有", "无", "暂无", "越多越好", "越高越好", "越大越好"}
+BARE_REPLIES = {"没有", "无", "暂无"}
 
 
 class Update(BaseModel):
     field: FieldName
     status: Status
     value: str | None = None
-    quote: str = Field(description="当前用户原话中支持此更新的连续片段")
+    quote: str = Field(min_length=1, description="当前用户原话里的连续片段")
+    action: Action = "add"
+    direction: str | None = None
+    strength: Literal["hard", "preference"] | None = None
+    category: Literal["hypothesis", "method", "parameter", "other"] | None = None
+
+    @model_validator(mode="after")
+    def required_qualifiers(self):
+        if self.field == "target_performance" and self.status == "specified" and not self.direction:
+            raise ValueError("明确的目标性能须有方向；比较差异可填“比较”")
+        if self.field == "constraints" and self.status == "specified" and not self.strength:
+            raise ValueError("明确的约束须区分硬约束与偏好")
+        return self
 
 
 class Extraction(BaseModel):
     updates: list[Update] = Field(default_factory=list)
 
 
-class EvaluationCriterion(BaseModel):
-    aspect: str
-    metric: str
-    direction: str
-    reason: str
-    calculation_role: Literal["direct", "proxy"] = Field(description="相对用户目标性能：直接评价或仅为计算代理量")
-    calculation_route: str = Field(description="拟采用的方法类别，以及所需输入或条件；具体参数由研究设计确定")
+class SuggestedGoal(BaseModel):
+    value: str = Field(min_length=1)
+    direction: str = Field(min_length=1)
 
 
-class EvaluationProposal(BaseModel):
-    application_assumption: str
-    assumptions: list[str] = Field(max_length=3)
-    criteria: list[EvaluationCriterion] = Field(min_length=1, max_length=4)
-    comparison_rule: str
-    limitation: str
-
-    @model_validator(mode="after")
-    def primary_metric_is_concrete(self):
-        metric = self.criteria[0].metric
-        if any(phrase in metric for phrase in ("例如", "如", "或", "等", "需确认", "待确认", "关键性能指标", "综合性能")):
-            raise ValueError("首选 metric 必须只写一个具体可比较量，例如‘载流子迁移率’，不能列举选项或要求用户再选")
-        return self
+class IntakeSuggestion(BaseModel):
+    material_function: str = Field(min_length=1)
+    target_performance: list[SuggestedGoal] = Field(min_length=1, max_length=3)
+    limitation: str = Field(min_length=1)
 
 
-SYSTEM_PROMPT = """你是 LAPIS 的研究请求信息提取器。请只返回 JSON。
-从本轮用户原话提取字段更新，不生成研究方案或科学事实。
-字段：task_type任务目的、purpose研究目的、application应用场景、material材料体系、
-metric具体可比较指标、direction目标方向、conditions工作条件、candidates候选范围、
-constraints其他约束、hypothesis机制假设、controls对照对象。
-支持的task_type：screening（筛选优先候选）、comparison（比较指定对象的差异）、
-mechanism_validation（检验一个具体机制主张）。根据最终想获得的判断分类，不仅凭动词；
-“比较并选出最优”属于screening。
-其他明确意图：mechanism_exploration（探索未知原因或反应路径，尚无待检验假设）、
-multiple_tasks（一句话提出多个独立研究目标，不能归入单个任务）、
-out_of_scope（写综述、科普问答、开发软件等非本模块的计算研究请求）。
-意图信息不足时输出task_type且status=unclear；不要把明确的其他意图强塞进三类。
-只有用户给出“X通过Y影响Z”这样的具体作用路径并要求检验，才是mechanism_validation。
-“FEC为什么能提升循环寿命”只描述了观察到的效果，没有提出作用路径，属于mechanism_exploration；
-“验证FEC是否通过改变溶剂化结构提升循环寿命”才是mechanism_validation。
-先检查是否属于材料、分子或计算科研任务；“筛选基金”“比较电脑价格”虽含筛选或比较，仍是out_of_scope。
-status: specified=明确给定；none=明确没有预设值；open=交由系统选择或尽可能多；
-unclear=提到该字段但无法确定具体含义。未提及的字段不要输出。
-quote必须是当前原话里的连续片段。不得补造温度、候选名称、计算方法或默认值。
-“传输性能更好”属于尚未明确的metric；“越高越好”若指性能，只是direction。
-“结合能力”“稳定性”等宽泛性能也属于metric=unclear，除非用户已给出具体可比较量。
-比较任务中的“两个/三个/若干候选”只给数量，未给具体身份，candidates=unclear。
-验证任务须提取可检验的hypothesis；仅说“研究机制”时hypothesis=unclear。
-“没有”须结合上一句问题确定指向；没有上一句问题时不要猜字段。
-“越多越好”若指候选数量，应是candidates=open；不要解释成无限计算预算。
-上一句询问指标时，若用户说不懂具体指标、希望综合评价，应输出metric=open，
-表示评价维度和指标交由研究设计提出，不要反复要求用户报出指标名称。
-示例输入：我想找一种传输性能更好的电解液
-示例输出 JSON：{"updates":[
- {"field":"task_type","status":"specified","value":"screening","quote":"找一种传输性能更好的电解液"},
- {"field":"purpose","status":"specified","value":"筛选传输性能更好的电解液","quote":"找一种传输性能更好的电解液"},
- {"field":"material","status":"specified","value":"电解液","quote":"电解液"},
- {"field":"metric","status":"unclear","value":"传输性能","quote":"传输性能"}]}
-若上一句询问候选，用户答“没有”，输出 JSON：{"updates":[{"field":"candidates","status":"none","value":null,"quote":"没有"}]}"""
+SYSTEM_PROMPT = """你是 LAPIS 第一模块的用户原话提取器，只返回符合结构的 JSON。
+只提取本轮用户明确表达的信息，不补造候选、数值、方法或科学事实。quote 必须是原话连续片段。
+八项字段：purpose 研究目的；research_object 研究对象；application 应用场景；
+work_conditions 工作条件；target_performance 目标性能；constraints 约束条件；
+research_scope 本轮包含/排除的范围；material_function 材料在场景中承担的作用。
+target_performance 可为定性方向，如提高稳定性、比较传输能力；无需强求可计算代理指标。
+研究目的必须是本轮研究行动或判断；“设计高电压电池”只是上层意图，不是已明确的筛选/比较任务。
+研究对象是被研究的材料或体系，不要把整个器件误当成已确定的材料对象。
+例如“想设计高电压电池”：application=高电压电池，purpose=unclear，research_object 未提及；
+“高电压”是应用/工作背景，除非明确要提升工作电压，不要另造一个目标性能“提高电压”。
+后续“先只研究碳酸酯电解液，比较配方……”应更新 research_object 和 purpose，
+即使先前字段已有不准确或宽泛的解释。material_function 只提取用户明确说出的材料作用，
+不能把“电解液用于电池”改写成已指定的材料功能；不确定时让建议助手提出待确认解释。
+多个目标或约束各输出一条 update。明确的目标性能必须写 direction；
+只比较差异时 direction=比较，没有方向且不能判断时 status=unclear。
+明确的约束必须标 hard 或 preference，拿不准时 status=unclear。
+用户说“不使用”“必须”“不得”时不要颠倒含义。用户说“不知道数值”时保留已知的定性目标，
+工作条件数值可标 open。未提及的字段不要输出，不要把未知解释成明确没有预设值。
+status: specified=明确表达；none=明确说没有预设；open=交给后续研究设计；
+unclear=提到但含义有歧义。action: add=补充；replace=用户改成或只保留新内容；
+remove=明确撤回已有内容。用户修改列表时，同一轮可给多条 replace，系统会一次替换整个列表。
+task_type 仅作辅助分类：screening、comparison、mechanism_validation、
+mechanism_exploration（未知机制探索）、other、multiple_tasks（不同对象或目的的独立任务）、
+out_of_scope（非材料研究）。同一研究范围内的多项性能目标不是 multiple_tasks。
+只有用户给出可检验的作用路径，才分类为 mechanism_validation；没有假设仍可探索。
+用户主动给出的假设、计算方法或参数，作为 reference_note 记录，category 标明类别；
+它们不是已核验的研究设计。不要将方法建议放进八项请求字段。
+上一句问题对应字段和已保存原话仅用于理解短回复，不要把它们冒充本轮原话。"""
 
-PROPOSAL_PROMPT = """你是 LAPIS 的研究方案草案助手。用户尚未指定具体评价指标时，主动提出一份可修改的初步建议。
-依据用户原话、已确认字段和反馈，给出 1 至 4 个与研究目标相关、在后续计算设计中有可行计算路线的指标；数量由研究需要决定，不要为凑数添加指标。criteria 第一个是优先指标。metric 中只能填一个具体可比较量，绝不能写“如A、B或C”“关键性能指标”“需用户确认具体指标”这类泛称。每个指标填写 calculation_route（方法类别及至少一项必要输入或条件；不要预先固定具体泛函、基组、采样参数）和 calculation_role：相对用户想要的实际性能，direct 是直接评价，proxy 是计算代理量。计算代理量须在 reason 中说明不能单独代表实际性能。无法提出合理计算路线的实验指标不要列入。优先考虑同一批候选结构能用相近计算流程得到的指标；不同方法若可能显著增加成本，在 limitation 中说明。说明各自方向和用途；若评价方向依赖具体应用或目标区间，direction 应写“待研究设计确定目标区间”，不要武断设为越大或越小越好。综合评价时逐项比较，不要无依据地加权成一个总分。最多写 3 条简短假设。
-应用场景未给出时，选一个合理的示例场景写入 application_assumption（只写用途名称，尽量不超过20字），并在 assumptions 中明确这只是待用户确认的假设。
-不要把建议当成用户已给的事实；不要编造具体候选、数值门槛、计算结果或已验证的科学结论。计算路线只是待研究设计核验的建议，尚不保证可执行；科学依据尚未经过文献核对，应在 limitation 中说明。
-用户指出要修改的地方时，针对上一版方案修改。若材料类别过宽，在 limitation 里说明需要缩小范围。"""
+PROPOSAL_PROMPT = """你是 LAPIS 第一模块的草稿建议助手，只提出材料功能和目标性能的
+暂定解释供用户修改或确认。保留用户的应用目标，目标性能可定性、多目标；为每项目标写方向
+（提高、降低、保持、比较或探索）。不要提出计算方法、物理模型、代理描述符、力场、
+具体参数、阈值、科研结果或已验证结论。不要把建议写成用户已给事实。
+如果用户目标与建议之间有推断跳跃，在 limitation 中说明。只返回结构化 JSON。"""
 
 
-def question_for(field: str, task_type: str | None) -> str:
-    if field == "candidates" and task_type == "comparison":
-        return "你想比较哪些具体对象？如果还没有对象，也可以交给研究设计阶段提出。"
-    if field == "metric" and task_type == "mechanism_validation":
-        return "希望观察哪些量来支持或削弱这个机制？没有预设指标也可以说明。"
-    return QUESTIONS[field]
+def _unknown() -> dict:
+    return {"status": "unknown", "value": None, "source": None, "quote": None, "turn": None}
+
+
+def _new_fields() -> dict:
+    return {key: ([_unknown()] if key in LIST_FIELDS else _unknown())
+            for key in REQUEST_FIELDS}
 
 
 def new_state() -> dict:
-    return {"fields": {}, "asked_field": None, "turns": [], "proposal": None,
-            "evaluation_plan": None, "stage": None, "draft": None}
+    return {
+        "contract_version": 2, "fields": _new_fields(), "task_type": None,
+        "asked_field": None, "turns": [], "reference_notes": [], "history": [],
+        "stage": "clarifying", "draft": None, "suggestion": None,
+    }
+
+
+def normalize_state(state: dict) -> dict:
+    """Read old JSONB states without rewriting old request versions."""
+    if state.get("contract_version") == 2:
+        for key, value in _new_fields().items():
+            state.setdefault("fields", {}).setdefault(key, value)
+        state.setdefault("reference_notes", [])
+        state.setdefault("history", [])
+        return state
+    legacy = deepcopy(state)
+    converted = new_state()
+    converted["turns"] = list(legacy.get("turns") or [])
+    converted["legacy_fields"] = legacy.get("fields", {})
+    old = legacy.get("fields", {})
+    for old_key, new_key in (
+        ("purpose", "purpose"), ("material", "research_object"),
+        ("application", "application"), ("conditions", "work_conditions"),
+    ):
+        if old_key in old:
+            converted["fields"][new_key] = {
+                **deepcopy(old[old_key]), "source": old[old_key].get("source", "legacy_unknown")
+            }
+    if "metric" in old:
+        goal = {**deepcopy(old["metric"]), "source": old["metric"].get("source", "legacy_unknown")}
+        goal["direction"] = (old.get("direction") or {}).get("value")
+        converted["fields"]["target_performance"] = [goal]
+    if "constraints" in old:
+        note = {**deepcopy(old["constraints"]), "source": old["constraints"].get("source", "legacy_unknown")}
+        converted["fields"]["constraints"] = [note]
+    converted["task_type"] = (old.get("task_type") or {}).get("value")
+    state.clear()
+    state.update(converted)
+    return state
 
 
 def extract(client, model: str, state: dict, text: str) -> Extraction:
     context = {
-        "已有字段": state["fields"],
-        "上一句问题对应字段": state["asked_field"],
+        "已有字段": state["fields"], "上一句问题": state.get("asked_field"),
         "本轮用户原话": text,
     }
     options = {}
     if os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com").startswith("https://api.deepseek.com"):
         options["extra_body"] = {"thinking": {"type": "disabled"}}
     return client.create(
-        model=model,
-        response_model=Extraction,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": json.dumps(context, ensure_ascii=False)},
-        ],
-        max_retries=2,
-        max_tokens=2000,
-        temperature=0,
-        **options,
+        model=model, response_model=Extraction,
+        messages=[{"role": "system", "content": SYSTEM_PROMPT},
+                  {"role": "user", "content": json.dumps(context, ensure_ascii=False)}],
+        max_retries=2, max_tokens=1800, temperature=0, **options,
     )
 
 
-def propose_evaluation(client, model: str, state: dict, feedback: str = "") -> EvaluationProposal:
-    context = {
-        "用户原话": state["turns"],
-        "已确认与待定字段": state["fields"],
-        "上一版方案": state.get("proposal"),
-        "用户修改意见": feedback,
-    }
+def propose_intake(client, model: str, state: dict) -> IntakeSuggestion:
+    context = {"用户原话": state["turns"], "已有字段": state["fields"]}
     options = {}
     if os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com").startswith("https://api.deepseek.com"):
         options["extra_body"] = {"thinking": {"type": "disabled"}}
     return client.create(
-        model=model,
-        response_model=EvaluationProposal,
-        messages=[
-            {"role": "system", "content": PROPOSAL_PROMPT},
-            {"role": "user", "content": json.dumps(context, ensure_ascii=False)},
-        ],
-        max_retries=2,
-        max_tokens=1600,
-        temperature=0,
-        **options,
+        model=model, response_model=IntakeSuggestion,
+        messages=[{"role": "system", "content": PROPOSAL_PROMPT},
+                  {"role": "user", "content": json.dumps(context, ensure_ascii=False)}],
+        max_retries=2, max_tokens=1000, temperature=0, **options,
     )
 
 
 def contextual_reply(state: dict, text: str) -> Extraction | None:
-    """Resolve short answers from the last question without an LLM guess."""
-    field = state["asked_field"]
-    text = text.strip()
-    if not field:
+    field = state.get("asked_field")
+    answer = text.strip()
+    if not field or field not in REQUEST_FIELDS:
         return None
-    if text in {"没有", "无", "暂无"}:
-        return Extraction(updates=[Update(field=field, status="none", quote=text)])
-    if field in {"metric", "direction", "candidates", "application", "conditions", "controls"}:
-        brief = text.strip("。！？，!? ")
-        uncertain = any(phrase in text for phrase in ("不懂", "不知道", "不清楚", "不确定", "没想好"))
-        broad_evaluation = any(phrase in text for phrase in ("综合评价", "全面评价", "多维度评价"))
-        if brief in {"不知道", "不清楚", "不确定", "没想好", "我也不懂这些", "你来定", "交给系统"} or (
-            field == "metric" and broad_evaluation and (
-                uncertain or brief in {"综合评价", "全面评价", "多维度评价", "需要综合评价", "我觉得需要综合评价"}
-            )
-        ):
-            return Extraction(updates=[Update(
-                field=field, status="open",
-                value="综合评价；指标由研究设计确定" if field == "metric" and broad_evaluation else "由研究设计确定",
-                quote=text,
-            )])
-    if field == "task_type" and text in {"筛选", "比较", "机制验证", "机制探索"}:
-        task_type = {"筛选": "screening", "比较": "comparison", "机制验证": "mechanism_validation", "机制探索": "mechanism_exploration"}[text]
-        return Extraction(updates=[Update(
-            field=field, status="specified", value=task_type, quote=text
-        )])
-    if field == "candidates" and text == "越多越好":
-        return Extraction(updates=[Update(
-            field=field, status="open", value="尽可能多的可行候选", quote=text
-        )])
-    if field == "direction" and text in {"越高越好", "越大越好", "越多越好"}:
-        return Extraction(updates=[Update(field=field, status="specified", value=text, quote=text)])
-    if field == "metric" and text in {"越高越好", "越大越好", "越多越好"}:
-        return Extraction(updates=[Update(
-            field=field, status="unclear", value="仅给出优化方向，未给出指标", quote=text
-        )])
+    if answer in BARE_REPLIES:
+        return Extraction(updates=[Update(field=field, status="none", quote=answer)])
+    if answer in {"不知道", "不清楚", "不确定", "没想好", "交给研究设计确定"}:
+        return Extraction(updates=[Update(field=field, status="open", quote=answer)])
     return None
 
 
-def process_turn(state: dict, text: str, extraction: Extraction) -> dict:
-    """Merge only updates that are grounded in this turn's exact words."""
-    text = text.strip()
-    asked = state["asked_field"]
-    state["turns"].append(text)
-    if text in BARE_REPLIES and asked is None:
-        return {
-            "intake_status": "needs_clarification",
-            "ready": False,
-            "request": state["fields"],
-            "deferred_to_research_design": [],
-            "next_question": f"你说的“{text}”具体是指哪个方面？",
-        }
+def _record(update: Update, turn: int) -> dict:
+    entry = {
+        "status": update.status, "value": update.value, "source": "user",
+        "quote": update.quote, "turn": turn,
+    }
+    if update.field == "target_performance":
+        entry["direction"] = update.direction
+    if update.field == "constraints":
+        entry["strength"] = update.strength
+    return entry
 
-    new_task_type = next((item.value for item in extraction.updates
-                          if item.field == "task_type" and item.status == "specified"
-                          and item.value in TASK_TYPES | INTENT_ISSUES
-                          and item.quote and item.quote in text), None)
-    old_task_type = state["fields"].get("task_type", {}).get("value")
-    if old_task_type and new_task_type and new_task_type != old_task_type:
-        state["fields"].clear()
-        state["proposal"] = None
-        state["evaluation_plan"] = None
-        state["stage"] = None
-        state["draft"] = None
 
+def _valid_updates(state: dict, text: str, extraction: Extraction) -> dict[str, list[Update]]:
+    grouped: dict[str, list[Update]] = {}
+    bare = text in BARE_REPLIES
     for item in extraction.updates:
-        if not item.quote or item.quote not in text:
-            continue
-        if text in BARE_REPLIES and asked and item.field != asked:
+        if item.quote not in text or (bare and state.get("asked_field") and item.field != state["asked_field"]):
             continue
         if item.status == "specified" and not item.value:
             continue
-        if item.field == "task_type" and item.status == "specified" and item.value not in TASK_TYPES | INTENT_ISSUES:
+        grouped.setdefault(item.field, []).append(item)
+    return grouped
+
+
+def _merge(state: dict, text: str, extraction: Extraction) -> None:
+    if state.get("stage") == "review" and state.get("draft"):
+        state["fields"] = deepcopy(state["draft"]["fields"])
+    grouped = _valid_updates(state, text, extraction)
+    turn = len(state["turns"])
+    stale = ({"material_function", "target_performance"} if
+             {"research_object", "application"} & grouped.keys() else
+             {"target_performance"} if {"purpose", "research_scope"} & grouped.keys() else set())
+    for field in stale:
+        if field in grouped:
             continue
-        state["fields"][item.field] = {
-            "status": item.status,
-            "value": item.value,
-            "quote": item.quote,
-            "turn": len(state["turns"]),
-        }
+        before = deepcopy(state["fields"][field])
+        entries = before if isinstance(before, list) else [before]
+        kept = [x for x in entries if x.get("source") not in {"system_suggestion", "confirmed_suggestion"}]
+        after = (kept or [_unknown()]) if isinstance(before, list) else (kept[0] if kept else _unknown())
+        if after != before:
+            state["fields"][field] = after
+            state["history"].append({"field": field, "before": before,
+                                     "after": deepcopy(after), "turn": turn,
+                                     "reason": "research_context_changed"})
+    for field, updates in grouped.items():
+        if field == "task_type":
+            value = updates[-1].value
+            if value in TASK_TYPES | {"multiple_tasks", "out_of_scope"}:
+                state["task_type"] = value
+            continue
+        if field == "reference_note":
+            for item in updates:
+                state["reference_notes"].append({
+                    "value": item.value, "category": item.category or "other",
+                    "status": "unverified_user_reference", "quote": item.quote, "turn": turn,
+                })
+            continue
+        if any(item.action != "remove" for item in updates):
+            state["unresolved_edits"] = [x for x in state.get("unresolved_edits", [])
+                                         if x["field"] != field]
+        before = deepcopy(state["fields"][field])
+        if field in SCALAR_FIELDS:
+            state["fields"][field] = _record(updates[-1], turn)
+        else:
+            current = [x for x in state["fields"][field] if x["status"] != "unknown"]
+            replacing = any(item.action == "replace" for item in updates)
+            if replacing:
+                current = []
+            for item in updates:
+                if item.action == "remove":
+                    if replacing:
+                        continue
+                    target = (item.value or "").casefold().strip()
+                    matches = [x for x in current if target and target in (x.get("value") or "").casefold()]
+                    if not matches:
+                        state.setdefault("unresolved_edits", []).append({"field": field, "quote": item.quote})
+                    current = [x for x in current if x not in matches]
+                else:
+                    entry = _record(item, turn)
+                    if not any(x.get("value") == entry["value"] and x.get("status") == entry["status"]
+                               and x.get("direction") == entry.get("direction") for x in current):
+                        current.append(entry)
+            state["fields"][field] = current or [_unknown()]
+        state["history"].append({"field": field, "before": before,
+                                 "after": deepcopy(state["fields"][field]), "turn": turn})
+    if grouped:
+        state["draft"] = None
+        state["suggestion"] = None
+        state["stage"] = "clarifying"
 
-    task_type = state["fields"].get("task_type", {}).get("value")
-    if task_type in INTENT_ISSUES:
-        status, question = {
-            "mechanism_exploration": (
-                "unsupported",
-                "我理解你想探索未知机制。当前原型尚未定义这类任务的研究规约；如果要检验一个具体机制，请说出待检验的主张。",
-            ),
-            "multiple_tasks": (
-                "needs_clarification",
-                "你提出了多个独立研究目标。请先选一个作为本次任务；其他目标可以另开任务。",
-            ),
-            "out_of_scope": (
-                "unsupported",
-                "当前模块受理材料研究的筛选、比较和具体机制验证。请描述一个属于这些范围的研究目标。",
-            ),
-        }[task_type]
-        state["asked_field"] = "task_type" if task_type == "multiple_tasks" else None
-        return {
-            "intake_status": status,
-            "ready": False,
-            "request": state["fields"],
-            "deferred_to_research_design": [],
-            "next_question": question,
-        }
-    if task_type != "mechanism_validation":
-        state["fields"].pop("hypothesis", None)
-        state["fields"].pop("controls", None)
-    required = ("task_type",) if task_type not in TASK_TYPES else (
-        "task_type", *BY_TASK[task_type], *COMMON[1:]
+
+def _good_scalar(entry: dict, *, user_only: bool = False) -> bool:
+    sources = {"user"} if user_only else {"user", "confirmed_suggestion"}
+    return entry.get("status") == "specified" and bool(entry.get("value")) and entry.get("source") in sources
+
+
+def _critical_gap(state: dict) -> str | None:
+    if state.get("task_type") == "multiple_tasks":
+        return "task_type"
+    for field in ("purpose", "research_object", "application", "research_scope"):
+        if not _good_scalar(state["fields"][field], user_only=True):
+            return field
+    if state.get("unresolved_edits"):
+        return state["unresolved_edits"][-1]["field"]
+    for entry in state["fields"]["constraints"]:
+        if entry["status"] == "unclear":
+            return "constraints"
+    if any(item["status"] == "unclear" or
+           (item["status"] == "specified" and (not item.get("value") or not item.get("direction")))
+           for item in state["fields"]["target_performance"]):
+        return "target_performance"
+    return None
+
+
+def _needs_suggestion(fields: dict) -> bool:
+    function = fields["material_function"]
+    goals = fields["target_performance"]
+    return not (_good_scalar(function) or
+                function.get("status") == "specified" and function.get("source") == "system_suggestion" and function.get("value")) or not any(
+        item["status"] == "specified" and item.get("source") in {"user", "system_suggestion", "confirmed_suggestion"} and item.get("direction") and item.get("value")
+        for item in goals
     )
-    if task_type == "screening" and state["fields"].get("metric", {}).get("status") in {"open", "none"}:
-        required = ("task_type", "purpose", "material", "application", "candidates", "conditions", "metric")
-    must_specify = {"task_type", "material", "purpose", "hypothesis"}
-    missing = [
-        field for field in required
-        if field not in state["fields"] or state["fields"][field]["status"] == "unclear"
-        or (field in must_specify
-            and state["fields"][field]["status"] != "specified")
-    ]
-    state["asked_field"] = missing[0] if missing else None
-    return {
-        "intake_status": "ready" if not missing else "needs_clarification",
-        "ready": not missing,
-        "request": state["fields"],
-        "deferred_to_research_design": [
-            LABELS[field] for field in required
-            if field in state["fields"] and state["fields"][field]["status"] in ("none", "open")
-        ],
-        "next_question": question_for(missing[0], task_type) if missing else None,
-    }
 
 
-def required_fields(task_type: str) -> tuple[str, ...]:
-    return ("task_type", *BY_TASK[task_type], *COMMON[1:])
+def _suggested(value: str, turn: int, direction: str | None = None) -> dict:
+    entry = {"status": "specified", "value": value, "source": "system_suggestion",
+             "quote": None, "turn": None, "suggested_after_turn": turn}
+    if direction is not None:
+        entry["direction"] = direction
+    return entry
 
 
 def make_draft(state: dict) -> dict:
-    """Keep the user's words separate from clearly marked system suggestions."""
-    draft = deepcopy(state["fields"])
-    task_type = draft["task_type"]["value"]
-    proposal = state.get("proposal")
-    suggestions = {
-        "application": (proposal["application_assumption"], "specified") if proposal else
-                       ("应用场景暂不限定，由研究设计明确", "open"),
-        "metric": ("由研究设计确定具体可比较指标", "open"),
-        "direction": ("由研究设计依据指标确定方向", "open"),
-        "candidates": ("在已给材料范围内寻找可行候选，由研究设计限定搜索范围", "open"),
-        "conditions": ("暂不指定具体数值，由研究设计设置统一可比的条件", "open"),
-        "controls": ("由研究设计提出合适的对照对象", "open"),
+    fields = deepcopy(state["fields"])
+    suggestion = state.get("suggestion")
+    if suggestion:
+        if fields["material_function"].get("status") != "specified" or not fields["material_function"].get("value"):
+            fields["material_function"] = _suggested(suggestion["material_function"], len(state["turns"]))
+        if not any(item["status"] == "specified" and item.get("value") and item.get("direction")
+                   for item in fields["target_performance"]):
+            current = [x for x in fields["target_performance"] if x["status"] != "unknown"]
+            current.extend(_suggested(goal["value"], len(state["turns"]), goal["direction"])
+                           for goal in suggestion["target_performance"])
+            fields["target_performance"] = current
+    return {
+        "contract_version": 2, "original_intent": state["turns"][0],
+        "task_pattern": state.get("task_type"), "fields": fields,
+        "reference_notes": deepcopy(state["reference_notes"]),
     }
-    if proposal:
-        primary = proposal["criteria"][0]
-        original_metric = (draft.get("metric", {}).get("value") or "") + (draft.get("metric", {}).get("quote") or "")
-        selected = proposal["criteria"] if any(word in original_metric for word in ("综合评价", "全面评价", "多维度评价")) else [primary]
-        suggestions.update({"metric": ("；".join(item["metric"] for item in selected), "specified"),
-                            "direction": ("；".join(item["direction"] for item in selected),
-                                          "open" if any("待研究设计" in item["direction"] for item in selected) else "specified")})
-    for field in required_fields(task_type):
-        current = draft.get(field, {})
-        if field not in suggestions or current.get("status") == "specified" or (
-            current.get("status") in {"none", "open"} and field not in {"metric", "direction"}
-        ):
-            continue
-        value, status = suggestions[field]
-        draft[field] = {"status": status, "value": value, "source": "system_suggestion"}
-    return draft
 
 
-def offer_confirmation(state: dict, result: dict) -> dict:
-    draft = make_draft(state)
-    hard_missing = [field for field in ("purpose", "material", "hypothesis")
-                    if field in required_fields(draft["task_type"]["value"])
-                    and draft.get(field, {}).get("status") != "specified"]
-    if hard_missing:
-        return offer_bundle(state, result, hard_missing)
-    state["draft"] = draft
-    state["stage"] = "confirmation"
-    state["asked_field"] = None
-    result.update(intake_status="needs_confirmation", ready=False,
-                  proposed_request=draft,
-                  calculation_status="pending_research_design",
-                  next_question="请核对上面的完整草稿。回复“确认”进入研究设计；需要调整时一次写出修改内容。")
-    if state.get("proposal"):
-        result["proposal"] = state["proposal"]
-    return result
-
-
-def offer_bundle(state: dict, result: dict, fields: list[str] | None = None) -> dict:
-    task_type = state["fields"]["task_type"]["value"]
-    proposal = state.get("proposal")
-    fields = fields if fields is not None else [
-        field for field in required_fields(task_type)
-        if field != "task_type" and state["fields"].get(field, {}).get("status") != "specified"
-        and not (proposal and field in {"metric", "direction"})
-    ]
-    if not fields:
-        return offer_confirmation(state, result)
-    lead = ""
-    if proposal:
-        primary, *alternatives = proposal["criteria"]
-        lead = (f"暂按“{proposal['application_assumption']}”这一待确认用途，建议优先用"
-                f"“{primary['metric']}”（{primary['direction']}，拟用{primary['calculation_route']}）评价。")
-        if alternatives:
-            lead += "其他可计算选项：" + "、".join(f"“{item['metric']}”" for item in alternatives) + "。"
-    state["stage"] = "bundle"
-    state["asked_field"] = None
-    result.update(intake_status="needs_clarification", ready=False,
-                  calculation_status="pending_research_design",
-                  next_question=lead + "请一次补充或修改：" + "、".join(LABELS[field] for field in fields)
-                  + "。不确定的项目可以不答，我会用宽泛建议列入待确认草稿；也可回复“按建议继续”。计算路线需研究设计核验。")
-    if proposal:
-        result["proposal"] = proposal
-    return result
+def process_turn(state: dict, text: str, extraction: Extraction) -> dict:
+    normalize_state(state)
+    text = text.strip()
+    state["turns"].append(text)
+    _merge(state, text, extraction)
+    if state.get("task_type") == "out_of_scope":
+        state["asked_field"] = None
+        return {"intake_status": "unsupported", "ready": False, "ready_for_design": False,
+                "request": make_draft(state), "next_question": "首版只受理材料应用研究；请描述材料研究问题。"}
+    gap = _critical_gap(state)
+    state["asked_field"] = gap
+    return {
+        "intake_status": "needs_clarification" if gap else "draft_available",
+        "ready": False, "ready_for_design": False, "request": make_draft(state),
+        "next_question": QUESTIONS.get(gap) if gap else None,
+    }
 
 
 def handle_turn(client, model: str, state: dict, text: str) -> dict:
+    normalize_state(state)
     text = text.strip()
-    if state.get("stage") in {"bundle", "confirmation"} and text in {"不采用", "不用方案", "先不采用"}:
-        state["proposal"] = None
-        return offer_confirmation(state, process_turn(state, text, Extraction()))
-    if state.get("stage") == "confirmation" and text in {"确认", "确认继续", "按此继续", "就按这个", "同意", "采用方案"}:
-        for field, entry in state["draft"].items():
-            if entry.get("source") == "system_suggestion":
-                state["fields"][field] = {**entry, "source": "confirmed_suggestion",
-                                          "quote": text, "turn": len(state["turns"]) + 1}
-        state["evaluation_plan"] = state.get("proposal")
-        state["proposal"] = None
+    if not text:
+        raise ValueError("输入不能为空")
+    if state.get("stage") == "review" and text in CONFIRM_WORDS:
+        draft = deepcopy(state["draft"])
+        confirmed_turn = len(state["turns"]) + 1
+        for value in draft["fields"].values():
+            entries = value if isinstance(value, list) else [value]
+            for entry in entries:
+                if entry.get("source") == "system_suggestion":
+                    entry["source"] = "confirmed_suggestion"
+                    entry["confirmed_turn"] = confirmed_turn
+        validate_research_request_v2(draft)
+        state["turns"].append(text)
+        state["fields"] = deepcopy(draft["fields"])
         state["draft"] = None
-        state["stage"] = None
-        result = process_turn(state, text, Extraction())
-        result["calculation_status"] = "pending_research_design"
-        if state.get("evaluation_plan"):
-            result["evaluation_plan"] = state["evaluation_plan"]
+        state["stage"] = "ready_for_design"
+        state["asked_field"] = None
+        return {
+            "intake_status": "ready_for_design", "ready": True, "ready_for_design": True,
+            "confirmation_event": True, "calculation_status": "pending_research_design",
+            "request": draft, "next_question": None,
+        }
+
+    if state.get("stage") == "review" and text in {"不采用", "不用建议", "先不确认"}:
+        for field in ("material_function", "target_performance"):
+            value = state["fields"][field]
+            if isinstance(value, list):
+                kept = [x for x in value if x.get("source") != "system_suggestion"]
+                state["fields"][field] = kept or [_unknown()]
+            elif value.get("source") == "system_suggestion":
+                state["fields"][field] = _unknown()
+        state["suggestion"] = None
+        state["draft"] = None
+        state["stage"] = "clarifying"
+        state["turns"].append(text)
+        state["asked_field"] = "material_function"
+        return {"intake_status": "needs_clarification", "ready": False,
+                "ready_for_design": False, "request": make_draft(state),
+                "next_question": "请修改材料功能或目标性能的建议，再由我展示完整草稿。"}
+
+    extraction = contextual_reply(state, text) or extract(client, model, state, text)
+    result = process_turn(state, text, extraction)
+    if result["intake_status"] == "unsupported" or result["next_question"]:
         return result
-
-    if state.get("stage") == "bundle" and text in {"按建议继续", "采用方案", "按这个方案", "同意"}:
-        updates = Extraction()
-    else:
-        updates = contextual_reply(state, text) or extract(client, model, state, text)
-    previous = deepcopy(state["fields"])
-    result = process_turn(state, text, updates)
-    task_type = state["fields"].get("task_type", {}).get("value")
-    if task_type not in TASK_TYPES:
-        state["stage"] = None
-        return result
-
-    metric = state["fields"].get("metric", {})
-    if metric.get("status") == "specified":
-        state["proposal"] = None
-    elif task_type != "mechanism_validation" or state["fields"].get("hypothesis", {}).get("status") == "specified":
-        changed = any(previous.get(field) != state["fields"].get(field)
-                      for field in ("task_type", "material", "application", "metric"))
-        if not state.get("proposal") or changed or text.startswith("修改"):
-            state["proposal"] = propose_evaluation(client, model, state, text if text.startswith("修改") else "").model_dump()
-
-    if state.get("stage") in {"bundle", "confirmation"}:
-        return offer_confirmation(state, result)
-    return offer_bundle(state, result)
+    if _needs_suggestion(state["fields"]):
+        state["suggestion"] = propose_intake(client, model, state).model_dump()
+    draft = make_draft(state)
+    state["draft"] = draft
+    state["stage"] = "review"
+    state["asked_field"] = None
+    return {
+        "intake_status": "needs_confirmation", "ready": False, "ready_for_design": False,
+        "calculation_status": "pending_research_design", "request": draft,
+        "proposed_request": draft, "next_question": (
+            "请核对八项内容、原话来源、系统建议和未定事项。回复“确认”进入研究设计；"
+            "如需修改，请直接写出修改内容。此确认不批准任何计算。"
+        ),
+        "suggestion_limitation": (state.get("suggestion") or {}).get("limitation"),
+    }
 
 
 def main() -> None:
@@ -461,11 +453,11 @@ def main() -> None:
     key = os.getenv("LAPIS_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
     if not key:
         parser.error("请设置 LAPIS_API_KEY 或 DEEPSEEK_API_KEY")
-    model = os.getenv("LAPIS_MODEL", "deepseek-flash")
-    base_url = os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com")
     client = instructor.from_openai(
-        OpenAI(api_key=key, base_url=base_url, timeout=40), mode=instructor.Mode.JSON
+        OpenAI(api_key=key, base_url=os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com"), timeout=40),
+        mode=instructor.Mode.JSON,
     )
+    model = os.getenv("LAPIS_MODEL", "deepseek-flash")
     state = new_state()
     pending_text = None
     while True:
@@ -484,16 +476,16 @@ def main() -> None:
         print(json.dumps(result, ensure_ascii=False, indent=2))
         if args.text is not None:
             break
-        if result["ready"]:
-            print("规范请求已形成；如需修改继续输入，直接回车结束。")
+        if result["ready_for_design"]:
+            print("研究请求已确认，可进入研究设计；如需修改继续输入，直接回车结束。")
             try:
                 pending_text = input("修改> ")
                 if not pending_text.strip():
                     break
             except (EOFError, KeyboardInterrupt):
                 break
-            continue
-        print(result["next_question"])
+        else:
+            print(result["next_question"])
 
 
 if __name__ == "__main__":

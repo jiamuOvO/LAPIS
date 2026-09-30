@@ -6,22 +6,50 @@ from lapis_store import (approve_design, create_task, freeze_execution, get_task
                          initialize_schema, propose_design, save_turn, verify_artifacts)
 
 
+def confirmed_v2_request():
+    def user(value, *, direction=None):
+        entry = {"status": "specified", "value": value, "source": "user",
+                 "quote": "研究意图", "turn": 1}
+        if direction:
+            entry["direction"] = direction
+        return entry
+    unknown = {"status": "unknown", "value": None, "source": None, "quote": None, "turn": None}
+    return {
+        "contract_version": 2, "original_intent": "研究意图", "task_pattern": "comparison",
+        "fields": {
+            "purpose": user("比较材料"), "research_object": user("材料"),
+            "application": user("储能"), "work_conditions": unknown,
+            "target_performance": [user("稳定性", direction="比较")],
+            "constraints": [unknown], "research_scope": user("材料 A 与 B"),
+            "material_function": user("储能"),
+        },
+        "reference_notes": [],
+    }
+
+
 @unittest.skipUnless(os.getenv("LAPIS_TEST_PG") == "1" and
                      os.getenv("LAPIS_DB_NAME") == "lapis_test", "requires isolated lapis_test PostgreSQL")
 class StoreGateTest(unittest.TestCase):
     def test_persistence_and_execution_gate(self):
         initialize_schema()
         task = create_task("test")
-        self.assertEqual(get_task(task)["request_version"], None)
-        state = {"fields": {"purpose": {"status": "specified", "value": "test"}},
-                 "turns": ["研究意图"], "stage": None}
-        result = {"ready": True, "intake_status": "ready", "request": state["fields"],
-                  "calculation_status": "pending_research_design"}
-        self.assertIsNone(save_turn(task, 0, state, result, "test", "fake"))
+        self.assertIsNone(get_task(task)["request_version"])
+        request = confirmed_v2_request()
+        state = {"contract_version": 2, "fields": request["fields"],
+                 "turns": ["研究意图"], "stage": "clarifying"}
+        draft_result = {"ready": False, "ready_for_design": False,
+                        "intake_status": "needs_confirmation", "request": request}
+        self.assertIsNone(save_turn(task, 0, state, draft_result, "test", "fake"))
         self.assertIsNone(get_task(task)["request_version"])
         state["turns"].append("确认")
+        state["stage"] = "ready_for_design"
+        result = {"ready": True, "ready_for_design": True, "confirmation_event": True,
+                  "intake_status": "ready_for_design", "request": request,
+                  "calculation_status": "pending_research_design"}
         self.assertEqual(save_turn(task, 1, state, result, "test", "fake"), 1)
         self.assertEqual(get_task(task)["request_version"], 1)
+        self.assertEqual(get_task(task)["status"], "request_confirmed")
+
         incomplete = propose_design(task, {"request_version": 1}, "test")
         with self.assertRaises(ValueError):
             approve_design(task, incomplete, "test-reviewer")
@@ -53,6 +81,16 @@ class StoreGateTest(unittest.TestCase):
             run_simulation(execution, "test-adapter", fail=False)
         with self.assertRaises(ValueError):
             save_turn(task, 0, state, result, "test", "fake")
+
+    def test_legacy_request_is_readable_but_cannot_enter_new_design(self):
+        task = create_task("test")
+        state = {"fields": {}, "turns": ["旧意图", "确认"], "stage": None}
+        result = {"ready": True, "intake_status": "ready", "request": {"purpose": "旧请求"},
+                  "calculation_status": "pending_research_design"}
+        self.assertEqual(save_turn(task, 0, state, result, "test", "fake"), 1)
+        self.assertEqual(get_task(task)["request_version"], 1)
+        with self.assertRaisesRegex(ValueError, "v2"):
+            propose_design(task, {"request_version": 1}, "test")
 
     def test_replayed_operation_does_not_duplicate_a_turn(self):
         task = create_task("test")

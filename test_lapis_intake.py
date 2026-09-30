@@ -1,248 +1,242 @@
 import unittest
+from copy import deepcopy
 from unittest.mock import patch
 
+from lapis_core import intake_is_confirmed, validate_research_request_v2
 from lapis_intake import (
-    EvaluationCriterion, EvaluationProposal, Extraction, Update,
-    contextual_reply, handle_turn, make_draft, new_state, process_turn,
+    Extraction, IntakeSuggestion, SuggestedGoal, Update, handle_turn,
+    new_state, normalize_state, process_turn,
 )
 
 
-class IntakeTest(unittest.TestCase):
-    def test_missing_then_explicit_none(self):
+TEXT = "在高电压电池中，仅比较碳酸酯电解液的稳定性和传输，不用含氟添加剂，尽量低成本"
+BASE = [
+    Update(field="task_type", status="specified", value="comparison", quote="比较"),
+    Update(field="purpose", status="specified", value="比较电解液配方", quote="比较"),
+    Update(field="research_object", status="specified", value="碳酸酯电解液", quote="碳酸酯电解液"),
+    Update(field="application", status="specified", value="高电压电池", quote="高电压电池"),
+    Update(field="research_scope", status="specified", value="仅研究碳酸酯电解液", quote="仅比较碳酸酯电解液"),
+]
+
+
+def full_updates():
+    return Extraction(updates=BASE + [
+        Update(field="target_performance", status="specified", value="稳定性", direction="比较",
+               quote="稳定性"),
+        Update(field="target_performance", status="specified", value="离子传输", direction="比较",
+               quote="传输"),
+        Update(field="constraints", status="specified", value="不使用含氟添加剂",
+               strength="hard", quote="不用含氟添加剂"),
+        Update(field="constraints", status="specified", value="成本尽量低",
+               strength="preference", quote="尽量低成本"),
+        Update(field="material_function", status="specified",
+               value="提供离子传输并保持稳定", quote="稳定性和传输"),
+    ])
+
+
+class IntakeV2Test(unittest.TestCase):
+    def test_eight_fields_and_explicit_unknowns(self):
         state = new_state()
-        result = process_turn(state, "我想找传输性能更好的电解液", Extraction(updates=[
-            Update(field="task_type", status="specified", value="screening", quote="找传输性能更好的电解液"),
-            Update(field="material", status="specified", value="电解液", quote="电解液"),
-            Update(field="metric", status="unclear", value="传输性能", quote="传输性能"),
-        ]))
-        self.assertIn("先推荐一个具体指标", result["next_question"])
-        self.assertNotIn("conditions", result["request"])
+        self.assertEqual(len(state["fields"]), 8)
+        self.assertEqual(state["fields"]["work_conditions"]["status"], "unknown")
+        self.assertEqual(state["fields"]["constraints"][0]["status"], "unknown")
 
-        state["asked_field"] = "candidates"
-        result = process_turn(state, "没有", Extraction(updates=[
-            Update(field="candidates", status="none", quote="没有"),
-        ]))
-        self.assertEqual(result["request"]["candidates"]["status"], "none")
-
-    def test_open_and_ungrounded_values(self):
+    def test_multiple_goals_and_constraints_survive_confirmation(self):
         state = new_state()
-        state["asked_field"] = "candidates"
-        result = process_turn(state, "越多越好", Extraction(updates=[
-            Update(field="candidates", status="open", value="尽可能多", quote="越多越好"),
-            Update(field="conditions", status="specified", value="298 K", quote="298 K"),
-        ]))
-        self.assertEqual(result["request"]["candidates"]["status"], "open")
-        self.assertNotIn("conditions", result["request"])
+        with patch("lapis_intake.extract", return_value=full_updates()):
+            draft = handle_turn(None, "fake", state, TEXT)
+        self.assertEqual(draft["intake_status"], "needs_confirmation")
+        self.assertEqual(len(draft["proposed_request"]["fields"]["target_performance"]), 2)
+        self.assertEqual(len(draft["proposed_request"]["fields"]["constraints"]), 2)
+        self.assertEqual(draft["proposed_request"]["fields"]["work_conditions"]["status"], "unknown")
+        self.assertFalse(intake_is_confirmed(state, draft))
+        confirmed = handle_turn(None, "fake", state, "确认")
+        self.assertEqual(confirmed["intake_status"], "ready_for_design")
+        self.assertEqual(confirmed["calculation_status"], "pending_research_design")
+        self.assertTrue(intake_is_confirmed(state, confirmed))
+        validate_research_request_v2(confirmed["request"])
+        constraints = confirmed["request"]["fields"]["constraints"]
+        self.assertEqual({item["strength"] for item in constraints}, {"hard", "preference"})
+        self.assertNotIn("calculation_route", str(confirmed["request"]))
 
-    def test_bare_reply_without_context(self):
+    def test_unknown_mechanism_is_accepted_without_hypothesis(self):
         state = new_state()
-        result = process_turn(state, "没有", Extraction(updates=[
-            Update(field="candidates", status="none", quote="没有"),
-        ]))
-        self.assertIn("具体是指", result["next_question"])
-        self.assertEqual(result["request"], {})
-
-    def test_contextual_open_reply(self):
-        state = new_state()
-        state["asked_field"] = "candidates"
-        extraction = contextual_reply(state, "越多越好")
-        result = process_turn(state, "越多越好", extraction)
-        self.assertEqual(result["request"]["candidates"]["status"], "open")
-
-    def test_open_without_value_is_preserved(self):
-        state = new_state()
-        result = process_turn(state, "候选越多越好", Extraction(updates=[
-            Update(field="candidates", status="open", quote="候选越多越好"),
-        ]))
-        self.assertEqual(result["request"]["candidates"]["status"], "open")
-
-    def test_comprehensive_evaluation_advances_past_metric_and_direction(self):
-        state = new_state()
-        process_turn(state, "我想要找到最先进的呋喃材料", Extraction(updates=[
-            Update(field="task_type", status="specified", value="screening", quote="找到最先进的呋喃材料"),
-            Update(field="purpose", status="specified", value="找到最先进的呋喃材料", quote="找到最先进的呋喃材料"),
-            Update(field="material", status="specified", value="呋喃材料", quote="呋喃材料"),
-            Update(field="metric", status="unclear", value="最先进", quote="最先进"),
-        ]))
-        reply = "我也不懂这些，我觉得需要综合评价"
-        result = process_turn(state, reply, contextual_reply(state, reply))
-        self.assertEqual(result["request"]["metric"]["status"], "open")
-        self.assertIn("目标指标", result["deferred_to_research_design"])
-        self.assertEqual(state["asked_field"], "application")
-        self.assertNotIn("目标方向", result["deferred_to_research_design"])
-
-    def test_proposal_bundle_defaults_and_confirmation(self):
-        state = new_state()
-        proposal = EvaluationProposal(
-            application_assumption="包装材料",
-            assumptions=["暂以包装材料为应用场景"],
-            criteria=[
-                EvaluationCriterion(aspect="阻隔性", metric="氧气透过率", direction="越低越好", reason="评估阻隔性能", calculation_role="direct", calculation_route="基于给定薄膜结构与条件的渗透模拟"),
-                EvaluationCriterion(aspect="力学性能", metric="拉伸强度", direction="越高越好", reason="评估承载能力", calculation_role="direct", calculation_route="基于给定结构的拉伸模拟"),
-            ],
-            comparison_rule="先核对可比条件，再分别比较指标",
-            limitation="应用场景仍需确认",
-        )
-        utterance = "我想要找到最先进的呋喃材料"
-        extraction = Extraction(updates=[
-            Update(field="task_type", status="specified", value="screening", quote="找到最先进的呋喃材料"),
-            Update(field="purpose", status="specified", value="找到最先进的呋喃材料", quote="找到最先进的呋喃材料"),
-            Update(field="material", status="specified", value="呋喃材料", quote="呋喃材料"),
-            Update(field="metric", status="unclear", value="最先进", quote="最先进"),
-        ])
-        with patch("lapis_intake.extract", return_value=extraction), patch("lapis_intake.propose_evaluation", return_value=proposal):
-            result = handle_turn(None, "", state, utterance)
-        self.assertFalse(result["ready"])
-        self.assertEqual(result["proposal"]["criteria"][0]["metric"], "氧气透过率")
-        self.assertIn("氧气透过率", result["next_question"])
-        self.assertIn("拉伸强度", result["next_question"])
-        self.assertIn("候选范围", result["next_question"])
-        self.assertIn("工作条件", result["next_question"])
-        self.assertNotIn("综合评价", result["next_question"])
-
-        result = handle_turn(None, "", state, "按建议继续")
-        self.assertEqual(result["intake_status"], "needs_confirmation")
-        self.assertFalse(result["ready"])
-        self.assertEqual(result["proposed_request"]["metric"]["value"], "氧气透过率")
-        self.assertEqual(result["proposed_request"]["candidates"]["status"], "open")
-        self.assertEqual(result["proposed_request"]["conditions"]["status"], "open")
-        self.assertEqual(result["proposed_request"]["application"]["source"], "system_suggestion")
-
-        result = handle_turn(None, "", state, "确认")
-        self.assertTrue(result["ready"])
-        self.assertEqual(result["request"]["metric"]["status"], "specified")
-        self.assertEqual(result["request"]["application"]["value"], "包装材料")
-        self.assertEqual(result["request"]["metric"]["source"], "confirmed_suggestion")
-        self.assertIn("evaluation_plan", result)
-
-    def test_bundle_reply_can_supply_multiple_fields(self):
-        state = new_state()
-        state["fields"] = {
-            "task_type": {"status": "specified", "value": "comparison", "quote": "比较", "turn": 1},
-            "purpose": {"status": "specified", "value": "比较两个材料", "quote": "比较", "turn": 1},
-            "material": {"status": "specified", "value": "呋喃材料", "quote": "呋喃", "turn": 1},
-            "metric": {"status": "specified", "value": "拉伸强度", "quote": "拉伸强度", "turn": 1},
-        }
-        state["stage"] = "bundle"
-        text = "用于包装，比较A和B，没有预设条件"
+        text = "探索高电压电池中碳酸酯电解液失稳的原因，只研究电解液"
         updates = Extraction(updates=[
-            Update(field="application", status="specified", value="包装", quote="包装"),
-            Update(field="candidates", status="specified", value="A和B", quote="A和B"),
-            Update(field="conditions", status="none", quote="没有预设条件"),
+            Update(field="task_type", status="specified", value="mechanism_exploration", quote="探索"),
+            Update(field="purpose", status="specified", value="探索失稳原因", quote="探索高电压电池中碳酸酯电解液失稳的原因"),
+            Update(field="research_object", status="specified", value="碳酸酯电解液", quote="碳酸酯电解液"),
+            Update(field="application", status="specified", value="高电压电池", quote="高电压电池"),
+            Update(field="research_scope", status="specified", value="只研究电解液", quote="只研究电解液"),
+            Update(field="target_performance", status="specified", value="稳定性", direction="探索",
+                   quote="失稳"),
+            Update(field="material_function", status="specified", value="保持稳定",
+                   quote="电解液失稳"),
         ])
         with patch("lapis_intake.extract", return_value=updates):
-            result = handle_turn(None, "", state, text)
+            result = handle_turn(None, "fake", state, text)
         self.assertEqual(result["intake_status"], "needs_confirmation")
-        self.assertEqual(result["proposed_request"]["application"]["value"], "包装")
-        self.assertEqual(result["proposed_request"]["candidates"]["value"], "A和B")
-        self.assertEqual(result["proposed_request"]["conditions"]["status"], "none")
-        self.assertTrue(handle_turn(None, "", state, "确认")["ready"])
+        self.assertEqual(handle_turn(None, "fake", state, "确认")["intake_status"], "ready_for_design")
 
-    def test_proposal_rejects_vague_primary_metric(self):
-        with self.assertRaises(ValueError):
-            EvaluationProposal(
-                application_assumption="有机电子器件", assumptions=[],
-                criteria=[
-                    EvaluationCriterion(aspect="性能", metric="载流子迁移率或光电效率", direction="越高越好", reason="筛选", calculation_role="direct", calculation_route="基于结构与条件的模拟"),
-                    EvaluationCriterion(aspect="稳定性", metric="热分解温度", direction="越高越好", reason="筛选", calculation_role="direct", calculation_route="基于结构与条件的模拟"),
-                ],
-                comparison_rule="分别比较", limitation="尚未核验",
-            )
-
-    def test_comprehensive_request_keeps_multiple_calculation_metrics(self):
+    def test_system_suggestion_keeps_origin_and_confirmation_turn(self):
         state = new_state()
-        state["fields"] = {
-            "task_type": {"status": "specified", "value": "screening"},
-            "purpose": {"status": "specified", "value": "筛选呋喃材料"},
-            "material": {"status": "specified", "value": "呋喃材料"},
-            "metric": {"status": "open", "value": None, "quote": "我不懂具体指标，想综合评价"},
-        }
-        state["proposal"] = EvaluationProposal(
-            application_assumption="有机光电材料", assumptions=[],
-            criteria=[
-                EvaluationCriterion(aspect="电子结构", metric="HOMO-LUMO 能隙", direction="待研究设计确定目标区间", reason="只是光电性能代理量", calculation_role="proxy", calculation_route="由分子结构进行 DFT 计算"),
-                EvaluationCriterion(aspect="吸收", metric="振子强度", direction="越高越好", reason="只是吸收性能代理量", calculation_role="proxy", calculation_route="由分子结构进行 TD-DFT 计算"),
-            ],
-            comparison_rule="逐项比较", limitation="方法尚需核验",
-        ).model_dump()
-        draft = make_draft(state)
-        self.assertEqual(draft["metric"]["value"], "HOMO-LUMO 能隙；振子强度")
-        self.assertEqual(draft["direction"]["status"], "open")
+        suggestion = IntakeSuggestion(
+            material_function="传导锂离子并在高电压下保持稳定",
+            target_performance=[SuggestedGoal(value="高电压稳定性", direction="提高")],
+            limitation="这只是应用目标的暂定解释",
+        )
+        with patch("lapis_intake.extract", return_value=Extraction(updates=BASE)), \
+             patch("lapis_intake.propose_intake", return_value=suggestion):
+            result = handle_turn(None, "fake", state, TEXT)
+        function = result["proposed_request"]["fields"]["material_function"]
+        self.assertEqual(function["source"], "system_suggestion")
+        self.assertEqual(function["suggested_after_turn"], 1)
+        confirmed = handle_turn(None, "fake", state, "确认")
+        function = confirmed["request"]["fields"]["material_function"]
+        self.assertEqual(function["source"], "confirmed_suggestion")
+        self.assertEqual(function["suggested_after_turn"], 1)
+        self.assertEqual(function["confirmed_turn"], 2)
+        self.assertEqual(confirmed["request"]["original_intent"], TEXT)
 
-    def test_no_preferred_metric_is_deferred(self):
+    def test_goal_removal_keeps_applicable_suggestion_before_and_after_confirmation(self):
         state = new_state()
-        state["fields"] = {
-            field: {"status": "specified", "value": field, "quote": field, "turn": 1}
-            for field in ("purpose", "material", "application", "conditions", "candidates", "direction")
-        }
-        state["fields"]["task_type"] = {
-            "status": "specified", "value": "screening", "quote": "筛选", "turn": 1
-        }
-        state["asked_field"] = "metric"
-        result = process_turn(state, "没有", contextual_reply(state, "没有"))
-        self.assertTrue(result["ready"])
-        self.assertEqual(result["deferred_to_research_design"], ["目标指标"])
+        suggestion = IntakeSuggestion(
+            material_function="在高电压电池中传导离子",
+            target_performance=[SuggestedGoal(value="稳定性", direction="比较")],
+            limitation="材料功能仅为待确认建议",
+        )
+        first = Extraction(updates=BASE + [
+            Update(field="target_performance", status="specified", value="稳定性",
+                   direction="比较", quote="稳定性"),
+            Update(field="target_performance", status="specified", value="离子传输",
+                   direction="比较", quote="传输"),
+        ])
+        with patch("lapis_intake.extract", return_value=first), \
+             patch("lapis_intake.propose_intake", return_value=suggestion):
+            handle_turn(None, "fake", state, TEXT)
+        with patch("lapis_intake.extract", return_value=Extraction(updates=[
+            Update(field="target_performance", status="specified", value="离子传输",
+                   direction="比较", quote="离子传输", action="remove"),
+            Update(field="target_performance", status="specified", value="稳定性",
+                   direction="比较", quote="稳定性", action="replace"),
+        ])), patch("lapis_intake.propose_intake", side_effect=AssertionError("不应重新提出建议")):
+            revised = handle_turn(None, "fake", state, "取消离子传输目标，仍比较稳定性")
+        self.assertEqual(revised["intake_status"], "needs_confirmation")
+        self.assertEqual([x["value"] for x in revised["request"]["fields"]["target_performance"]],
+                         ["稳定性"])
+        function = revised["request"]["fields"]["material_function"]
+        self.assertEqual(function["source"], "system_suggestion")
+        self.assertEqual(function["suggested_after_turn"], 1)
+        confirmed = handle_turn(None, "fake", state, "确认")
+        self.assertEqual(confirmed["request"]["fields"]["material_function"]["source"],
+                         "confirmed_suggestion")
+        with patch("lapis_intake.extract", return_value=Extraction(updates=[
+            Update(field="target_performance", status="specified", value="氧化稳定性",
+                   direction="比较", quote="氧化稳定性", action="replace"),
+        ])), patch("lapis_intake.propose_intake", side_effect=AssertionError("不应重新提出建议")):
+            second = handle_turn(None, "fake", state, "改为只比较氧化稳定性")
+        self.assertEqual(second["intake_status"], "needs_confirmation")
+        self.assertEqual(second["request"]["fields"]["material_function"]["source"],
+                         "confirmed_suggestion")
 
-    def test_comparison_does_not_require_direction_or_hypothesis(self):
+    def test_unclear_remaining_goal_blocks_confirmation(self):
         state = new_state()
-        text = "比较A和B在298 K下的扩散系数，用于动力电池电解液研究"
-        result = process_turn(state, text, Extraction(updates=[
-            Update(field="task_type", status="specified", value="comparison", quote="比较A和B"),
-            Update(field="purpose", status="specified", value="比较A和B", quote="比较A和B"),
-            Update(field="material", status="specified", value="电解液", quote="电解液"),
-            Update(field="application", status="specified", value="动力电池", quote="动力电池"),
-            Update(field="conditions", status="specified", value="298 K", quote="298 K"),
-            Update(field="candidates", status="specified", value="A和B", quote="A和B"),
-            Update(field="metric", status="specified", value="扩散系数", quote="扩散系数"),
-            Update(field="controls", status="specified", value="A", quote="A"),
-        ]))
-        self.assertTrue(result["ready"])
-        self.assertNotIn("controls", result["request"])
-
-    def test_mechanism_requires_hypothesis(self):
-        state = new_state()
-        result = process_turn(state, "验证催化剂机制", Extraction(updates=[
-            Update(field="task_type", status="specified", value="mechanism_validation", quote="验证"),
-        ]))
-        self.assertEqual(result["next_question"], "你希望检验的具体机制主张是什么？例如“X通过Y影响Z”。")
-
-    def test_unsupported_intent_does_not_become_ready(self):
-        state = new_state()
-        result = process_turn(state, "请帮我写一篇综述", Extraction(updates=[
-            Update(field="task_type", status="specified", value="out_of_scope", quote="写一篇综述"),
-        ]))
-        self.assertEqual(result["intake_status"], "unsupported")
-        self.assertFalse(result["ready"])
-        self.assertIn("当前模块受理", result["next_question"])
-
-    def test_exploration_and_multiple_goals_have_distinct_responses(self):
-        state = new_state()
-        result = process_turn(state, "研究催化剂的反应路径", Extraction(updates=[
-            Update(field="task_type", status="specified", value="mechanism_exploration", quote="研究催化剂的反应路径"),
-        ]))
-        self.assertEqual(result["intake_status"], "unsupported")
-        self.assertIn("探索未知机制", result["next_question"])
-
-        result = process_turn(state, "既要筛选电解液，也要验证机制", Extraction(updates=[
-            Update(field="task_type", status="specified", value="multiple_tasks", quote="既要筛选电解液，也要验证机制"),
-        ]))
+        with patch("lapis_intake.extract", return_value=full_updates()):
+            handle_turn(None, "fake", state, TEXT)
+        with patch("lapis_intake.extract", return_value=Extraction(updates=[
+            Update(field="target_performance", status="unclear", quote="指标还不明确"),
+        ])):
+            result = handle_turn(None, "fake", state, "指标还不明确")
         self.assertEqual(result["intake_status"], "needs_clarification")
-        self.assertEqual(state["asked_field"], "task_type")
+        self.assertEqual(state["asked_field"], "target_performance")
+        with self.assertRaises(ValueError):
+            validate_research_request_v2(result["request"])
 
-    def test_switching_goal_clears_old_fields(self):
+    def test_explicit_rejection_removes_pending_suggestion(self):
         state = new_state()
-        process_turn(state, "筛选电解液，目标越高越好", Extraction(updates=[
-            Update(field="task_type", status="specified", value="screening", quote="筛选电解液"),
-            Update(field="material", status="specified", value="电解液", quote="电解液"),
-            Update(field="direction", status="specified", value="越高越好", quote="越高越好"),
+        suggestion = IntakeSuggestion(
+            material_function="在高电压电池中传导离子",
+            target_performance=[SuggestedGoal(value="稳定性", direction="比较")],
+            limitation="待确认",
+        )
+        with patch("lapis_intake.extract", return_value=Extraction(updates=BASE)), \
+             patch("lapis_intake.propose_intake", return_value=suggestion):
+            handle_turn(None, "fake", state, TEXT)
+        with patch("lapis_intake.extract", return_value=Extraction(updates=[
+            Update(field="target_performance", status="specified", value="稳定性",
+                   direction="比较", quote="稳定性"),
+        ])):
+            handle_turn(None, "fake", state, "仍比较稳定性")
+        rejected = handle_turn(None, "fake", state, "不采用")
+        self.assertEqual(rejected["request"]["fields"]["material_function"]["status"],
+                         "unknown")
+
+    def test_task_classification_change_does_not_erase_hard_constraint(self):
+        state = new_state()
+        process_turn(state, TEXT, full_updates())
+        before = deepcopy(state["fields"]["constraints"])
+        process_turn(state, "改成筛选同类电解液", Extraction(updates=[
+            Update(field="task_type", status="specified", value="screening", quote="筛选"),
+            Update(field="purpose", status="specified", value="筛选同类电解液", quote="筛选同类电解液"),
         ]))
-        result = process_turn(state, "改成比较药物A和B", Extraction(updates=[
-            Update(field="task_type", status="specified", value="comparison", quote="比较药物A和B"),
-            Update(field="material", status="specified", value="药物", quote="药物"),
+        self.assertEqual(state["fields"]["constraints"], before)
+        self.assertEqual(state["task_type"], "screening")
+        self.assertEqual(state["history"][-1]["field"], "purpose")
+
+    def test_revision_creates_new_draft_with_audit_history(self):
+        state = new_state()
+        with patch("lapis_intake.extract", return_value=full_updates()):
+            handle_turn(None, "fake", state, TEXT)
+        old = deepcopy(handle_turn(None, "fake", state, "确认")["request"])
+        change = "改成只比较氧化稳定性"
+        with patch("lapis_intake.extract", return_value=Extraction(updates=[
+            Update(field="target_performance", status="specified", value="氧化稳定性",
+                   direction="比较", quote="只比较氧化稳定性", action="replace"),
+        ])):
+            draft = handle_turn(None, "fake", state, change)
+        self.assertEqual(draft["intake_status"], "needs_confirmation")
+        self.assertEqual(len(draft["proposed_request"]["fields"]["target_performance"]), 1)
+        self.assertEqual(old["fields"]["target_performance"][0]["value"], "稳定性")
+        self.assertEqual(state["history"][-1]["field"], "target_performance")
+        self.assertEqual(state["history"][-1]["after"][0]["turn"], 3)
+
+    def test_method_is_only_an_unverified_reference(self):
+        state = new_state()
+        text = TEXT + "，希望用分子动力学"
+        updates = full_updates().updates + [
+            Update(field="reference_note", status="specified", value="分子动力学",
+                   category="method", quote="希望用分子动力学"),
+        ]
+        with patch("lapis_intake.extract", return_value=Extraction(updates=updates)):
+            draft = handle_turn(None, "fake", state, text)
+        note = draft["proposed_request"]["reference_notes"][0]
+        self.assertEqual(note["status"], "unverified_user_reference")
+        self.assertEqual(note["category"], "method")
+        self.assertNotIn("method", draft["proposed_request"]["fields"])
+
+    def test_legacy_state_readable_but_requires_v2_reconfirmation(self):
+        state = {"fields": {"purpose": {"status": "specified", "value": "筛选", "quote": "筛选",
+                                        "turn": 1},
+                            "material": {"status": "specified", "value": "电解液", "quote": "电解液",
+                                         "turn": 1}},
+                 "turns": ["筛选电解液"], "stage": None}
+        normalize_state(state)
+        self.assertEqual(state["legacy_fields"]["material"]["value"], "电解液")
+        self.assertEqual(state["fields"]["research_object"]["source"], "legacy_unknown")
+        self.assertEqual(state["fields"]["research_scope"]["status"], "unknown")
+        with self.assertRaises(ValueError):
+            validate_research_request_v2({"contract_version": 2, "original_intent": "筛选电解液",
+                                          "fields": state["fields"]})
+
+    def test_out_of_scope_and_ungrounded_update(self):
+        state = new_state()
+        text = "筛选手机"
+        result = process_turn(state, text, Extraction(updates=[
+            Update(field="task_type", status="specified", value="out_of_scope", quote="筛选"),
+            Update(field="work_conditions", status="specified", value="298 K", quote="298 K"),
         ]))
-        self.assertEqual(result["request"]["task_type"]["value"], "comparison")
-        self.assertEqual(result["request"]["material"]["value"], "药物")
-        self.assertNotIn("direction", result["request"])
+        self.assertEqual(result["intake_status"], "unsupported")
+        self.assertEqual(state["fields"]["work_conditions"]["status"], "unknown")
 
 
 if __name__ == "__main__":

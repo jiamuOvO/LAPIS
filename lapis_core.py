@@ -77,6 +77,60 @@ def digest(value: object) -> str:
     return hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()
 
 
+REQUEST_FIELDS_V2 = {
+    "purpose", "research_object", "application", "work_conditions",
+    "target_performance", "constraints", "research_scope", "material_function",
+}
+
+
+def validate_research_request_v2(payload: dict) -> None:
+    """A confirmed request may enter research design; it never authorizes computation."""
+    if not isinstance(payload, dict) or payload.get("contract_version") != 2:
+        raise ValueError("进入研究设计前须重新确认 v2 研究请求")
+    if not isinstance(payload.get("original_intent"), str) or not payload["original_intent"].strip():
+        raise ValueError("研究请求缺少用户原始意图")
+    if payload.get("task_pattern") == "out_of_scope":
+        raise ValueError("非材料研究不在首版范围")
+    fields = payload.get("fields")
+    if not isinstance(fields, dict) or set(fields) != REQUEST_FIELDS_V2:
+        raise ValueError("研究请求必须分别包含八项输出")
+    for key in REQUEST_FIELDS_V2:
+        entries = fields[key] if key in {"target_performance", "constraints"} else [fields[key]]
+        if not isinstance(entries, list) or not entries or not all(isinstance(x, dict) for x in entries):
+            raise ValueError(f"{key} 缺少可检查的状态")
+        for entry in entries:
+            if entry.get("status") not in {"specified", "none", "open", "unclear", "unknown"}:
+                raise ValueError(f"{key} 状态无效")
+            source = entry.get("source")
+            if source == "system_suggestion":
+                raise ValueError(f"{key} 的系统建议尚未获得用户确认")
+            if source in {"user", "confirmed_suggestion"} and (
+                not isinstance(entry.get("turn"), int) and source == "user"
+                or source == "user" and not entry.get("quote")
+                or source == "confirmed_suggestion" and not isinstance(entry.get("confirmed_turn"), int)
+            ):
+                raise ValueError(f"{key} 缺少来源或确认轮次")
+    for key in ("purpose", "research_object", "application", "research_scope"):
+        entry = fields[key]
+        if entry.get("status") != "specified" or not entry.get("value") or entry.get("source") != "user":
+            raise ValueError(f"{key} 尚不足以界定研究任务")
+    function = fields["material_function"]
+    if function.get("status") != "specified" or not function.get("value") or function.get("source") not in {
+        "user", "confirmed_suggestion"
+    }:
+        raise ValueError("材料功能尚未确认")
+    goals = fields["target_performance"]
+    if any(goal.get("status") == "unclear" or
+           goal.get("status") == "specified" and (not goal.get("value") or not goal.get("direction"))
+           for goal in goals):
+        raise ValueError("目标性能含糊或缺少方向")
+    if not any(goal.get("status") == "specified" and goal.get("value") and goal.get("direction")
+               and goal.get("source") in {"user", "confirmed_suggestion"} for goal in goals):
+        raise ValueError("目标性能方向尚未确认")
+    if any(item.get("status") == "unclear" for item in fields["constraints"]):
+        raise ValueError("含糊的约束须先澄清")
+
+
 ATTEMPT_TRANSITIONS = {
     "queued": {"running", "cancelled"},
     "running": {"succeeded", "failed", "cancelled", "needs_reconciliation"},
@@ -91,7 +145,18 @@ def check_attempt_transition(current: str, target: str) -> None:
 
 
 def intake_is_confirmed(state: dict, result: dict) -> bool:
-    """`ready` alone is insufficient: a whole-draft confirmation is required."""
+    """Only explicit review confirmation creates a versioned research request."""
+    request = result.get("request")
+    if isinstance(request, dict) and request.get("contract_version") == 2:
+        try:
+            validate_research_request_v2(request)
+        except ValueError:
+            return False
+        return bool(result.get("ready_for_design") and result.get("confirmation_event")
+                    and result.get("calculation_status") == "pending_research_design"
+                    and state.get("stage") == "ready_for_design" and state.get("turns")
+                    and state["turns"][-1] in {"确认", "确认继续", "按此继续", "就按这个", "同意"})
+    # Historical v1 requests stay readable. New design proposals reject them until v2 reconfirmation.
     return bool(result.get("ready") and result.get("calculation_status") == "pending_research_design"
                 and state.get("stage") is None and state.get("turns")
                 and state["turns"][-1] in {"确认", "确认继续", "按此继续", "就按这个", "同意", "采用方案"})

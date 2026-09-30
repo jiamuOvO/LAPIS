@@ -114,5 +114,33 @@ class GraphIntakeTest(unittest.TestCase):
         self.assertEqual(get_task(task_id)["revision"], 1)
 
 
+    def test_v2_confirm_resumes_and_keeps_request_confirmed_status(self):
+        from lapis_intake import Extraction, Update
+        initialize_schema()
+        task_id = create_task("test")
+        text = "仅比较高电压电池的碳酸酯电解液稳定性"
+        updates = Extraction(updates=[
+            Update(field="purpose", status="specified", value="比较电解液稳定性", quote="比较"),
+            Update(field="research_object", status="specified", value="碳酸酯电解液", quote="碳酸酯电解液"),
+            Update(field="application", status="specified", value="高电压电池", quote="高电压电池"),
+            Update(field="research_scope", status="specified", value="仅比较碳酸酯电解液", quote="仅比较高电压电池的碳酸酯电解液"),
+            Update(field="target_performance", status="specified", value="稳定性",
+                   direction="比较", quote="稳定性"),
+            Update(field="material_function", status="specified", value="保持电解液稳定",
+                   quote="电解液稳定性"),
+        ])
+        with patch("lapis_intake.extract", return_value=updates):
+            first = run_intake_turn(task_id, text, "test", None, "fake", "prompt-v2")
+        self.assertEqual(first["graph_status"], "waiting_for_user")
+        self.assertIsNone(first["request_version"])
+        second = run_intake_turn(task_id, "确认", "test", None, "fake", "prompt-v2")
+        self.assertEqual(second["graph_status"], "idle")
+        self.assertEqual(second["request_version"], 1)
+        saved = get_task(task_id)
+        self.assertEqual(saved["status"], "request_confirmed")
+        self.assertEqual(saved["intake_result"]["request"]["contract_version"], 2)
+        self.assertEqual(len(saved["intake_result"]["request"]["fields"]), 8)
+
+
 if __name__ == "__main__":
     unittest.main()
