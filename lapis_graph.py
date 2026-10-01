@@ -80,6 +80,8 @@ def run_intake_turn(task_id: str, text: str, actor: str, client, model: str, pro
         acquired = lock_db.execute("SELECT pg_try_advisory_lock(%s,%s)", lock_parts).fetchone()[0]
         if not acquired:
             raise ValueError("此任务正在处理另一轮输入，请稍后重试")
+        # The session lock survives commit; an open transaction blocks checkpoint CREATE INDEX CONCURRENTLY.
+        lock_db.commit()
         with PostgresSaver.from_conn_string(make_conninfo(**db_config())) as checkpointer:
             checkpointer.setup()
             graph = build_intake_graph(client, model, prompt_hash, checkpointer)

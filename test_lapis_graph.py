@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 import unittest
 from unittest.mock import patch
+from psycopg.pq import TransactionStatus
 
 import lapis_graph
 from lapis_graph import run_intake_turn
@@ -12,6 +13,34 @@ from lapis_store import create_task, get_task, initialize_schema
 @unittest.skipUnless(os.getenv("LAPIS_TEST_PG") == "1" and
                      os.getenv("LAPIS_DB_NAME") == "lapis_test", "requires isolated lapis_test PostgreSQL")
 class GraphIntakeTest(unittest.TestCase):
+    def test_checkpoint_setup_starts_after_lock_transaction_ends(self):
+        initialize_schema()
+        task_id = create_task("test")
+        real_connect = lapis_graph.connect
+        lock_connection = None
+        case = self
+
+        def tracked_connect():
+            nonlocal lock_connection
+            lock_connection = real_connect()
+            return lock_connection
+
+        class CheckpointProbe:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                pass
+
+            def setup(self):
+                case.assertEqual(lock_connection.info.transaction_status, TransactionStatus.IDLE)
+                raise RuntimeError("checkpoint probe")
+
+        with patch("lapis_graph.connect", side_effect=tracked_connect), \
+             patch("lapis_graph.PostgresSaver.from_conn_string", return_value=CheckpointProbe()):
+            with self.assertRaisesRegex(RuntimeError, "checkpoint probe"):
+                run_intake_turn(task_id, "测试", "test", None, "fake", "prompt-test")
+
     @staticmethod
     def _needs_confirmation(client, model, state, text):
         state["turns"].append(text)
