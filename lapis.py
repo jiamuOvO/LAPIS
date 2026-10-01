@@ -73,6 +73,53 @@ def run_simulation(execution_id: str, actor: str, fail: bool) -> str:
     return attempt_id
 
 
+def run_chat(task_id: str | None, actor: str) -> None:
+    key = os.getenv("LAPIS_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
+    if not key:
+        raise ValueError("请先设置 LAPIS_API_KEY 或 DEEPSEEK_API_KEY")
+    task_id = task_id or create_task(actor)
+    get_task(task_id)
+    model = os.getenv("LAPIS_MODEL", "deepseek-flash")
+    client = instructor.from_openai(OpenAI(
+        api_key=key, base_url=os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com"), timeout=40,
+    ), mode=instructor.Mode.JSON)
+    prompt_hash = digest({"extract": SYSTEM_PROMPT, "proposal": PROPOSAL_PROMPT})
+    print(f"任务 ID：{task_id}\nLAPIS> 请描述你本轮想研究的材料问题。输入 /exit 退出。", flush=True)
+    while True:
+        try:
+            text = input("你> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+        if text in {"/exit", "退出"}:
+            return
+        if not text:
+            continue
+        operation_id = str(uuid4())
+        print(f"operation_id={operation_id}", flush=True)
+        while True:
+            try:
+                output = run_intake_turn(task_id, text, actor, client, model, prompt_hash, operation_id)
+                break
+            except Exception as error:
+                print(f"本轮失败：{error}")
+                try:
+                    retry = input("用同一操作 ID 重试本轮？[Y/n] ").strip().casefold()
+                except (EOFError, KeyboardInterrupt):
+                    print()
+                    return
+                if retry not in {"", "y", "yes", "是"}:
+                    return
+        result = output["result"]
+        if result["intake_status"] == "needs_confirmation":
+            print("研究请求草案：")
+            print(json.dumps(result["request"]["fields"], ensure_ascii=False, indent=2))
+        if result.get("next_question"):
+            print("LAPIS> " + result["next_question"])
+        elif result.get("ready_for_design"):
+            print("LAPIS> 研究请求已保存，可进入研究设计。输入 /exit 退出，或继续修改。")
+
+
 def main():
     parser = argparse.ArgumentParser(description="LAPIS 研究规约与执行门槛")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -80,6 +127,9 @@ def main():
     sub.add_parser("migrate")
     start = sub.add_parser("start")
     start.add_argument("--actor", default="researcher")
+    chat = sub.add_parser("chat", help="逐轮澄清并持久保存研究请求")
+    chat.add_argument("--task-id", help="继续已有任务；省略时新建任务")
+    chat.add_argument("--actor", default="researcher")
     turn = sub.add_parser("turn")
     turn.add_argument("task_id")
     turn.add_argument("text")
@@ -121,6 +171,8 @@ def main():
             print("数据库迁移已完成：" + (", ".join(f"{version:03d}" for version in applied) if applied else "无待应用版本"))
         elif args.command == "start":
             print(create_task(args.actor))
+        elif args.command == "chat":
+            run_chat(args.task_id, args.actor)
         elif args.command == "show":
             print(json.dumps(get_task(args.task_id), ensure_ascii=False, indent=2))
         elif args.command == "turn":

@@ -33,6 +33,9 @@ Set-Location 'F:\LAPIS'
 
 ```powershell
 $py='F:\LAPIS\.conda-lapis\python.exe'
+& $py 'F:\LAPIS\lapis.py' chat
+# 退出后可用程序打印的任务 ID 继续对话：
+& $py 'F:\LAPIS\lapis.py' chat --task-id <任务ID>
 & $py 'F:\LAPIS\lapis.py' start
 & $py 'F:\LAPIS\lapis.py' turn <任务ID> '我想筛选电解液……'
 & $py 'F:\LAPIS\lapis.py' turn <任务ID> '确认'
