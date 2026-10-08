@@ -72,7 +72,7 @@ Remove-Item Env:LAPIS_DB_NAME
 
 ## 开发基线
 
-本地 Git 基线提交为 `dd657fb`；尚未配置或推送远端。源码和设计材料受版本控制，`.gitignore` 排除本地凭据、数据库程序与数据、Conda 环境、备份、模拟产物和 `references/`。复现基础检查：
+项目仓库为 [jiamuOvO/LAPIS](https://github.com/jiamuOvO/LAPIS)。`origin` 已连接该仓库；`main` 保存已提交基线，未完成验证的改动使用 `codex/` 开发分支，验证通过后再合并。后续开发通过 Git 提交和推送保存。源码和设计材料受版本控制，`.gitignore` 排除本地凭据、数据库程序与数据、Conda 环境、备份、模拟产物和 `references/`。复现基础检查：
 
 ```powershell
 git status --short
