@@ -390,7 +390,7 @@ def _ground_actions(state, extraction):
         proposed = adopted.get(item.field)
         values = proposed if isinstance(proposed, list) else [proposed if isinstance(proposed, dict) else {"value": proposed}] if proposed is not None else []
         selection_only = re.fullmatch(r"(?:我)?(?:采用|选择|选|就用|用|按)(?:第?[一二三四1234](?:个|条)?|这个|该|上述)(?:方向|方案|建议|研究)?", item.quote.strip())
-        if proposed is not None and selection_only:
+        if "select" in extraction.actions and selection_only:
             continue
         if item.action != "remove" and item.value is not None and any(
                 item.value == e.get("value") and (item.field != "target_performance" or item.direction == e.get("direction"))

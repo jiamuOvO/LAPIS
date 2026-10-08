@@ -101,6 +101,15 @@ class DynamicProposalTest(unittest.TestCase):
         context = json.loads(client.create.call_args.kwargs["messages"][1]["content"])
         self.assertEqual(context["rejected"][0]["fields"], advice["recommendations"]["options"][0]["fields"])
 
+    def test_stale_selection_cannot_promote_model_expanded_text_to_user_fact(self):
+        state, advice, _ = self.advice()
+        with patch("lapis_intake.extract", return_value=Extraction(actions=["select"],selected_option=1,
+                updates=[Update(field="application",status="specified",value="旧模型虚构的用途",quote="采用第一个方向")])):
+            result = handle_turn(None,"test",state,"采用第一个方向",{"draft_id":"stale", "recommendation_ref":{"id":"old","version":1}})
+        self.assertEqual(state["fields"]["application"]["status"],"unknown")
+        self.assertIn("推荐已经变化",result["notice"])
+        self.assertFalse(result["ready_for_design"])
+
     def test_selection_does_not_swallow_cost_removal_against_unknown_proposal(self):
         state = new_state()
         state["fields"]["constraints"] = [
