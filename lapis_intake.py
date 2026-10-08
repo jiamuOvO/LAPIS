@@ -1,491 +1,524 @@
-"""LAPIS module 1: turn incomplete intent into a reviewable research request."""
-
+"""LAPIS intake: incomplete intent, bounded guidance, review and versioned confirmation."""
 from __future__ import annotations
 
-import argparse
 from copy import deepcopy
 import json
 import os
+import re
+import time
 from typing import Literal
+from uuid import uuid4
 
-import instructor
-from openai import OpenAI
 from pydantic import BaseModel, Field, model_validator
+from lapis_contract import (CONTRACT_VERSION, RULE_VERSION, FIELDS, LIST_FIELDS, CONFIRM_WORDS,
+                            content_hash, domain_from_fields, request_issues,
+                            validate_research_request_v3)
+from lapis_guidance import recommendations, explain_field
 
-from lapis_core import validate_research_request_v2
-
-
-SCALAR_FIELDS = (
-    "purpose", "research_object", "application", "work_conditions",
-    "research_scope", "material_function",
-)
-LIST_FIELDS = ("target_performance", "constraints")
-REQUEST_FIELDS = (
-    "purpose", "research_object", "application", "work_conditions",
-    "target_performance", "constraints", "research_scope", "material_function",
-)
-FieldName = Literal[
-    "task_type", "purpose", "research_object", "application", "work_conditions",
-    "target_performance", "constraints", "research_scope", "material_function",
-    "reference_note",
-]
-Status = Literal["specified", "none", "open", "unclear"]
-Action = Literal["add", "replace", "remove"]
+REQUEST_FIELDS = FIELDS
+SCALAR_FIELDS = tuple(x for x in FIELDS if x not in LIST_FIELDS)
 TASK_TYPES = {"screening", "comparison", "mechanism_validation", "mechanism_exploration", "other"}
-CONFIRM_WORDS = {"确认", "确认继续", "按此继续", "就按这个", "同意"}
-LABELS = {
-    "purpose": "研究目的", "research_object": "研究对象", "application": "应用场景",
-    "work_conditions": "工作条件", "target_performance": "目标性能",
-    "constraints": "约束条件", "research_scope": "研究范围",
-    "material_function": "材料功能",
-}
+LABELS = dict(zip(FIELDS, ("研究目的", "研究对象", "应用场景", "工作条件", "目标性能", "约束条件", "研究范围", "材料功能")))
 QUESTIONS = {
-    "purpose": "本轮具体希望作出什么研究判断：筛选、比较、探索原因，还是其他目标？",
-    "research_object": "本轮先研究哪类材料或体系？请尽量限定到可讨论的对象。",
-    "application": "这些材料用于什么使用或服役场景？纯基础研究目前先保留草稿。",
-    "research_scope": "本轮研究哪些对象或变化范围，明确暂不研究什么？",
-    "constraints": "这项要求是必须满足的硬约束，还是偏好？",
-    "target_performance": "请澄清本轮关注的性能目标或取消的目标；定性方向也可以。",
-    "task_type": "你提出了不同的研究任务；本轮先聚焦哪一个对象和目的？其他目标会保留在原话中。",
+    "purpose": "本轮希望筛选、比较还是探索什么判断？",
+    "research_object": "请限定研究的材料或具体体系。",
+    "application": "这些材料用于什么使用或服役场景？不确定时可以请求推荐。",
+    "research_scope": "本轮包含哪些对象或变化，暂不研究什么？",
+    "material_function": "材料在所选场景里承担什么作用？可以先请求解释或推荐。",
+    "target_performance": "希望比较或改善什么性能？定性方向也可以。",
+    "constraints": "请澄清冲突要求、含义，以及哪些是硬约束或偏好。",
+    "work_conditions": "请澄清工作条件的数值、单位或是否比较多种条件。",
 }
-BARE_REPLIES = {"没有", "无", "暂无"}
+
+
+class Temperature(BaseModel):
+    value: str
+    unit: Literal["K", "℃", "°C"]
+
+
+class Predicate(BaseModel):
+    target: str
+    operator: Literal["require", "forbid", "allow"]
+    scope: str = "current"
 
 
 class Update(BaseModel):
-    field: FieldName
-    status: Status
+    field: Literal["task_type", "purpose", "research_object", "application", "work_conditions",
+                   "target_performance", "constraints", "research_scope", "material_function", "reference_note"]
+    status: Literal["specified", "none", "open", "unclear"]
     value: str | None = None
-    quote: str = Field(min_length=1, description="当前用户原话里的连续片段")
-    action: Action = "add"
+    quote: str = Field(min_length=1)
+    action: Literal["add", "update", "replace", "remove"] = "add"
+    target_id: str | None = None
+    target_value: str | None = None
     direction: str | None = None
     strength: Literal["hard", "preference"] | None = None
     category: Literal["hypothesis", "method", "parameter", "other"] | None = None
+    predicate: Predicate | None = None
+    temperatures: list[Temperature] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def required_qualifiers(self):
-        if self.field == "target_performance" and self.status == "specified" and not self.direction:
-            raise ValueError("明确的目标性能须有方向；比较差异可填“比较”")
-        if self.field == "constraints" and self.status == "specified" and not self.strength:
-            raise ValueError("明确的约束须区分硬约束与偏好")
+    def qualifiers(self):
+        if self.status == "specified" and self.action != "remove":
+            if self.field == "target_performance" and not self.direction:
+                raise ValueError("性能须有定性方向")
+            if self.field == "constraints" and not self.strength:
+                raise ValueError("约束须区分硬约束与偏好")
         return self
 
 
+class Issue(BaseModel):
+    field: str
+    message: str
+    quote: str
+    kind: Literal["ambiguity", "conflict"] = "ambiguity"
+    entry_ids: list[str] = Field(default_factory=list)
+
+
 class Extraction(BaseModel):
+    actions: list[Literal["inform", "recommend", "explain", "unsure", "select", "reject",
+                         "edit", "pause", "confirm", "reaffirm"]] = Field(default_factory=lambda: ["inform"])
     updates: list[Update] = Field(default_factory=list)
+    selected_option: int | None = None
+    domain: Literal["materials_application", "drug_discovery", "basic_research", "non_research", "uncertain"] | None = None
+    domain_quote: str | None = None
+    issues: list[Issue] = Field(default_factory=list)
+    resolve_issue_ids: list[str] = Field(default_factory=list)
+    reaffirm_fields: list[str] = Field(default_factory=list)
 
 
+# Kept as a readable compatibility type, not an unconstrained scientific recommender.
 class SuggestedGoal(BaseModel):
-    value: str = Field(min_length=1)
-    direction: str = Field(min_length=1)
+    value: str
+    direction: str
 
 
 class IntakeSuggestion(BaseModel):
-    material_function: str = Field(min_length=1)
-    target_performance: list[SuggestedGoal] = Field(min_length=1, max_length=3)
-    limitation: str = Field(min_length=1)
+    material_function: str
+    target_performance: list[SuggestedGoal]
+    limitation: str
 
 
-SYSTEM_PROMPT = """你是 LAPIS 第一模块的用户原话提取器，只返回符合结构的 JSON。
-只提取本轮用户明确表达的信息，不补造候选、数值、方法或科学事实。quote 必须是原话连续片段。
-八项字段：purpose 研究目的；research_object 研究对象；application 应用场景；
-work_conditions 工作条件；target_performance 目标性能；constraints 约束条件；
-research_scope 本轮包含/排除的范围；material_function 材料在场景中承担的作用。
-target_performance 可为定性方向，如提高稳定性、比较传输能力；无需强求可计算代理指标。
-研究目的必须是本轮研究行动或判断；“设计高电压电池”只是上层意图，不是已明确的筛选/比较任务。
-研究对象是被研究的材料或体系，不要把整个器件误当成已确定的材料对象。
-例如“想设计高电压电池”：application=高电压电池，purpose=unclear，research_object 未提及；
-“高电压”是应用/工作背景，除非明确要提升工作电压，不要另造一个目标性能“提高电压”。
-后续“先只研究碳酸酯电解液，比较配方……”应更新 research_object 和 purpose，
-即使先前字段已有不准确或宽泛的解释。material_function 只提取用户明确说出的材料作用，
-不能把“电解液用于电池”改写成已指定的材料功能；不确定时让建议助手提出待确认解释。
-多个目标或约束各输出一条 update。明确的目标性能必须写 direction；
-只比较差异时 direction=比较，没有方向且不能判断时 status=unclear。
-明确的约束必须标 hard 或 preference，拿不准时 status=unclear。
-用户说“不使用”“必须”“不得”时不要颠倒含义。用户说“不知道数值”时保留已知的定性目标，
-工作条件数值可标 open。未提及的字段不要输出，不要把未知解释成明确没有预设值。
-status: specified=明确表达；none=明确说没有预设；open=交给后续研究设计；
-unclear=提到但含义有歧义。action: add=补充；replace=用户改成或只保留新内容；
-remove=明确撤回已有内容。用户修改列表时，同一轮可给多条 replace，系统会一次替换整个列表。
-task_type 仅作辅助分类：screening、comparison、mechanism_validation、
-mechanism_exploration（未知机制探索）、other、multiple_tasks（不同对象或目的的独立任务）、
-out_of_scope（非材料研究）。同一研究范围内的多项性能目标不是 multiple_tasks。
-只有用户给出可检验的作用路径，才分类为 mechanism_validation；没有假设仍可探索。
-用户主动给出的假设、计算方法或参数，作为 reference_note 记录，category 标明类别；
-它们不是已核验的研究设计。不要将方法建议放进八项请求字段。
-上一句问题对应字段和已保存原话仅用于理解短回复，不要把它们冒充本轮原话。"""
-
-PROPOSAL_PROMPT = """你是 LAPIS 第一模块的草稿建议助手，只提出材料功能和目标性能的
-暂定解释供用户修改或确认。保留用户的应用目标，目标性能可定性、多目标；为每项目标写方向
-（提高、降低、保持、比较或探索）。不要提出计算方法、物理模型、代理描述符、力场、
-具体参数、阈值、科研结果或已验证结论。不要把建议写成用户已给事实。
-如果用户目标与建议之间有推断跳跃，在 limitation 中说明。只返回结构化 JSON。"""
+SYSTEM_PROMPT = """你是 LAPIS 第一模块的结构化对话提取器。只从本轮原话提取，不编造事实。
+八项字段：purpose研究行动/判断；research_object具体材料或体系；application实际用途；
+work_conditions服役条件；target_performance性能与定性方向；constraints硬约束/偏好；
+research_scope包含/排除范围；material_function材料承担的作用。
+actions可同时有多个：inform、recommend请求推荐、explain请求解释、unsure不知道、
+select采用显示过的方向、reject拒绝、edit修改、pause先不确认、confirm确认、reaffirm重新核对。
+混合表达不能只保留一个动作：“采用第二个方向但先不考虑成本”=select+edit；
+“不研究氧化稳定性其他保留”只删除该目标；“确认但成本改为偏好”=confirm+edit。
+selected_option对应已有推荐的序号，采用时不要把推荐文本提取为用户原话字段。
+每项quote必须是本轮原话连续片段。未提及的字段不输出。已有字段用于理解不能冒充本轮原话。
+研究目的应是本轮行动。“设计高电压电池”只是上层意图：应用高电压电池，目的还不清楚，
+不要把整个电池当材料，不要造目标“提高电压”。
+目标可定性如比较稳定性，无需强求描述符或计算方法。每个目标和约束各一条。
+指定目标给direction，明确约束给hard/preference；不确定给unclear。
+status：none明确无预设，open交研究设计确定，unclear已表达但有歧义。未提供保持unknown。
+action：add新增、update更新指定条目、remove撤回；replace仅用户明确替换整个列表。
+局部修改用target_id或target_value指向已有条目，保留其他项。删除无需重新填方向/强度。
+数值温度写temperatures，unit必须来自原话；25 K和25℃不能擅自选择或混用。
+允许/必须/禁用组分写predicate(target,operator,scope)，保留原始否定句。
+任何无法可靠结构化的歧义或矛盾写issues，不用“确认”解决矛盾。
+reaffirm_fields仅在用户明确重核或沿用那些字段时给出；不能自行把旧条件认为还适用。
+具体机制、方法、力场、参数作为reference_note，category注明，未核验，不是执行许可。
+domain根据对象+目的+用途判断：材料应用materials_application；药物先导、药效、药物候选
+与靶蛋白结合筛选drug_discovery首版排除；不能仅凭“分子”判材料或“药”误拒医用材料。
+缺材料用途的基础问题先basic_research/uncertain，可引导，不能编造用途。
+task_type辅助：screening/comparison/mechanism_validation/mechanism_exploration/other。
+未知原因可探索不要求假设，多性能不是多独立任务。不同独立任务可标multiple_tasks。
+请求推荐/解释时保留原始对象和意图，不输出虚构推荐作为用户字段。
+输出结构化JSON。"""
+PROPOSAL_PROMPT = "仅从已核查本地目录展示有来源、有限制的待选择研究方向；不自由生成文献。"
 
 
-def _unknown() -> dict:
-    return {"status": "unknown", "value": None, "source": None, "quote": None, "turn": None}
+def _unknown(id=None):
+    result = {"status": "unknown", "value": None, "source": None, "quote": None, "turn": None}
+    if id:
+        result["id"] = id
+    return result
 
 
-def _new_fields() -> dict:
-    return {key: ([_unknown()] if key in LIST_FIELDS else _unknown())
-            for key in REQUEST_FIELDS}
+def new_state():
+    return {"contract_version": 3, "rule_version": RULE_VERSION,
+            "fields": {k: [_unknown(k + "-unknown")] if k in LIST_FIELDS else _unknown() for k in FIELDS},
+            "turns": [], "task_type": None, "domain": "uncertain", "asked_field": None,
+            "history": [], "reference_notes": [], "issues": [], "sources": {},
+            "recommendation_set": None, "recommendation_history": [], "stage": "clarifying",
+            "draft_revision": 0, "draft_id": "D0", "draft": None, "confirmed_request": None}
 
 
-def new_state() -> dict:
-    return {
-        "contract_version": 2, "fields": _new_fields(), "task_type": None,
-        "asked_field": None, "turns": [], "reference_notes": [], "history": [],
-        "stage": "clarifying", "draft": None, "suggestion": None,
-    }
-
-
-def normalize_state(state: dict) -> dict:
-    """Read old JSONB states without rewriting old request versions."""
-    if state.get("contract_version") == 2:
-        for key, value in _new_fields().items():
-            state.setdefault("fields", {}).setdefault(key, value)
-        state.setdefault("reference_notes", [])
-        state.setdefault("history", [])
+def normalize_state(state):
+    if state.get("contract_version") == 3:
+        for key, value in new_state().items():
+            state.setdefault(key, value)
         return state
-    legacy = deepcopy(state)
+    old = deepcopy(state)
     converted = new_state()
-    converted["turns"] = list(legacy.get("turns") or [])
-    converted["legacy_fields"] = legacy.get("fields", {})
-    old = legacy.get("fields", {})
-    for old_key, new_key in (
-        ("purpose", "purpose"), ("material", "research_object"),
-        ("application", "application"), ("conditions", "work_conditions"),
-    ):
-        if old_key in old:
-            converted["fields"][new_key] = {
-                **deepcopy(old[old_key]), "source": old[old_key].get("source", "legacy_unknown")
-            }
-    if "metric" in old:
-        goal = {**deepcopy(old["metric"]), "source": old["metric"].get("source", "legacy_unknown")}
-        goal["direction"] = (old.get("direction") or {}).get("value")
-        converted["fields"]["target_performance"] = [goal]
-    if "constraints" in old:
-        note = {**deepcopy(old["constraints"]), "source": old["constraints"].get("source", "legacy_unknown")}
-        converted["fields"]["constraints"] = [note]
-    converted["task_type"] = (old.get("task_type") or {}).get("value")
+    converted["turns"] = list(old.get("turns", []))
+    converted["legacy_fields"] = deepcopy(old.get("fields", {}))
+    converted["legacy_contract_version"] = old.get("contract_version", 1)
+    names = {"material": "research_object", "conditions": "work_conditions", "metric": "target_performance"}
+    for key, value in old.get("fields", {}).items():
+        field = names.get(key, key)
+        if field not in FIELDS:
+            continue
+        items = value if isinstance(value, list) else [value]
+        for i, entry in enumerate(items):
+            entry.setdefault("source", "legacy_unknown")
+            if field in LIST_FIELDS:
+                entry.setdefault("id", field + "-legacy-" + str(i))
+            if entry.get("status") == "specified":
+                entry["needs_review"] = True
+            if entry.get("source") == "confirmed_suggestion" and not entry.get("recommendation_ref"):
+                entry["source"] = "legacy_suggestion"
+        converted["fields"][field] = items if field in LIST_FIELDS else items[0]
+    converted["reference_notes"] = deepcopy(old.get("reference_notes", []))
+    converted["domain"] = domain_from_fields(converted["fields"])
     state.clear()
     state.update(converted)
     return state
 
 
-def extract(client, model: str, state: dict, text: str) -> Extraction:
-    context = {
-        "已有字段": state["fields"], "上一句问题": state.get("asked_field"),
-        "本轮用户原话": text,
-    }
-    options = {}
-    if os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com").startswith("https://api.deepseek.com"):
-        options["extra_body"] = {"thinking": {"type": "disabled"}}
-    return client.create(
-        model=model, response_model=Extraction,
-        messages=[{"role": "system", "content": SYSTEM_PROMPT},
-                  {"role": "user", "content": json.dumps(context, ensure_ascii=False)}],
-        max_retries=2, max_tokens=1800, temperature=0, **options,
-    )
+def extract(client, model, state, text):
+    context = {"fields": state["fields"], "issues": state["issues"],
+               "asked_field": state["asked_field"], "recommendations": state["recommendation_set"],
+               "reference_notes": state["reference_notes"], "input": text}
+    options = {"extra_body": {"thinking": {"type": "disabled"}}} if os.getenv(
+        "LAPIS_BASE_URL", "https://api.deepseek.com").startswith("https://api.deepseek.com") else {}
+    return client.create(model=model, response_model=Extraction,
+                         messages=[{"role": "system", "content": SYSTEM_PROMPT},
+                                   {"role": "user", "content": json.dumps(context, ensure_ascii=False)}],
+                         max_retries=2, max_tokens=2600, temperature=0, **options)
 
 
-def propose_intake(client, model: str, state: dict) -> IntakeSuggestion:
-    context = {"用户原话": state["turns"], "已有字段": state["fields"]}
-    options = {}
-    if os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com").startswith("https://api.deepseek.com"):
-        options["extra_body"] = {"thinking": {"type": "disabled"}}
-    return client.create(
-        model=model, response_model=IntakeSuggestion,
-        messages=[{"role": "system", "content": PROPOSAL_PROMPT},
-                  {"role": "user", "content": json.dumps(context, ensure_ascii=False)}],
-        max_retries=2, max_tokens=1000, temperature=0, **options,
-    )
-
-
-def contextual_reply(state: dict, text: str) -> Extraction | None:
+def contextual_reply(state, text):
     field = state.get("asked_field")
-    answer = text.strip()
-    if not field or field not in REQUEST_FIELDS:
-        return None
-    if answer in BARE_REPLIES:
-        return Extraction(updates=[Update(field=field, status="none", quote=answer)])
-    if answer in {"不知道", "不清楚", "不确定", "没想好", "交给研究设计确定"}:
-        return Extraction(updates=[Update(field=field, status="open", quote=answer)])
+    if field in FIELDS and text in {"没有", "无", "暂无", "不知道", "不清楚", "不确定", "没想好", "交给研究设计确定"}:
+        status = "none" if text in {"没有", "无", "暂无"} else "open"
+        return Extraction(actions=["unsure"] if status == "open" else ["inform"],
+                          updates=[Update(field=field, status=status, quote=text, action="update")])
     return None
 
 
-def _record(update: Update, turn: int) -> dict:
-    entry = {
-        "status": update.status, "value": update.value, "source": "user",
-        "quote": update.quote, "turn": turn,
-    }
-    if update.field == "target_performance":
-        entry["direction"] = update.direction
-    if update.field == "constraints":
-        entry["strength"] = update.strength
+def _fingerprint(state):
+    return content_hash({k: state[k] for k in ("fields", "reference_notes", "domain", "issues", "sources")})
+
+
+def _touch(state, before):
+    changed = _fingerprint(state) != before
+    if changed:
+        state["draft_revision"] += 1
+        state["draft_id"] = "D" + str(state["draft_revision"]) + "-" + _fingerprint(state)[:12]
+        state["stage"] = "clarifying"
+        state["draft"] = None
+    return changed
+
+
+def _record(item, turn, id=None):
+    entry = {"status": item.status, "value": item.value, "quote": item.quote, "source": "user", "turn": turn}
+    if id:
+        entry["id"] = id
+    if item.field == "target_performance":
+        entry["direction"] = item.direction
+    if item.field == "constraints":
+        entry["strength"] = item.strength
+        if item.predicate:
+            entry["predicate"] = item.predicate.model_dump()
+    if item.temperatures:
+        entry["temperatures"] = [x.model_dump() for x in item.temperatures]
     return entry
 
 
-def _valid_updates(state: dict, text: str, extraction: Extraction) -> dict[str, list[Update]]:
-    grouped: dict[str, list[Update]] = {}
-    bare = text in BARE_REPLIES
-    for item in extraction.updates:
-        if item.quote not in text or (bare and state.get("asked_field") and item.field != state["asked_field"]):
-            continue
-        if item.status == "specified" and not item.value:
-            continue
-        grouped.setdefault(item.field, []).append(item)
-    return grouped
+def _same(a, b):
+    return all(a.get(k) == b.get(k) for k in
+               ("status", "value", "direction", "strength", "predicate", "temperatures", "source")) and not a.get("needs_review")
 
 
-def _merge(state: dict, text: str, extraction: Extraction) -> None:
-    if state.get("stage") == "review" and state.get("draft"):
-        state["fields"] = deepcopy(state["draft"]["fields"])
-    grouped = _valid_updates(state, text, extraction)
+def _edit_issue(state, field, message, text):
+    id = "edit-" + str(uuid4())
+    state["issues"].append({"id": id, "field": field, "kind": "ambiguity",
+                            "message": message, "quote": text, "status": "open"})
+
+
+def _merge(state, text, extraction):
+    updates = [u for u in extraction.updates if u.quote in text]
+    grouped = {}
+    for update in updates:
+        grouped.setdefault(update.field, []).append(update)
+    major = any(field in grouped and any(
+        u.status == "specified" and u.value != state["fields"][field].get("value") for u in grouped[field])
+        for field in ("research_object", "application", "research_scope"))
+    if major:
+        for field in ("work_conditions", "target_performance", "material_function", "constraints"):
+            if field not in grouped:
+                value = state["fields"][field]
+                for entry in value if isinstance(value, list) else [value]:
+                    if entry.get("status") == "specified":
+                        entry["needs_review"] = True
     turn = len(state["turns"])
-    stale = ({"material_function", "target_performance"} if
-             {"research_object", "application"} & grouped.keys() else
-             {"target_performance"} if {"purpose", "research_scope"} & grouped.keys() else set())
-    for field in stale:
-        if field in grouped:
-            continue
-        before = deepcopy(state["fields"][field])
-        entries = before if isinstance(before, list) else [before]
-        kept = [x for x in entries if x.get("source") not in {"system_suggestion", "confirmed_suggestion"}]
-        after = (kept or [_unknown()]) if isinstance(before, list) else (kept[0] if kept else _unknown())
-        if after != before:
-            state["fields"][field] = after
-            state["history"].append({"field": field, "before": before,
-                                     "after": deepcopy(after), "turn": turn,
-                                     "reason": "research_context_changed"})
-    for field, updates in grouped.items():
+    for field, items in grouped.items():
         if field == "task_type":
-            value = updates[-1].value
+            value = items[-1].value
             if value in TASK_TYPES | {"multiple_tasks", "out_of_scope"}:
                 state["task_type"] = value
             continue
         if field == "reference_note":
-            for item in updates:
-                state["reference_notes"].append({
-                    "value": item.value, "category": item.category or "other",
-                    "status": "unverified_user_reference", "quote": item.quote, "turn": turn,
-                })
-            continue
-        if any(item.action != "remove" for item in updates):
-            state["unresolved_edits"] = [x for x in state.get("unresolved_edits", [])
-                                         if x["field"] != field]
-        before = deepcopy(state["fields"][field])
-        if field in SCALAR_FIELDS:
-            state["fields"][field] = _record(updates[-1], turn)
+            current = state["reference_notes"]
         else:
-            current = [x for x in state["fields"][field] if x["status"] != "unknown"]
-            replacing = any(item.action == "replace" for item in updates)
-            if replacing:
+            current = state["fields"][field]
+        before = deepcopy(current)
+        if field in SCALAR_FIELDS:
+            entry = _record(items[-1], turn)
+            if not _same(current, entry):
+                state["fields"][field] = entry
+        else:
+            current = deepcopy(current)
+            if any(item.action == "replace" for item in items):
                 current = []
-            for item in updates:
+            for item in items:
+                name = (item.target_value or item.value or "").strip().casefold()
+                matches = [e for e in current if (item.target_id and e.get("id") == item.target_id)
+                           or (not item.target_id and name and (e.get("value") or "").strip().casefold() == name)]
+                # A single unresolved placeholder is the answer to the previous question.
+                if item.action == "update" and not matches:
+                    pending = [e for e in current if e.get("status") in {"unknown", "unclear", "open", "none"}]
+                    if len(pending) == 1:
+                        matches = pending
                 if item.action == "remove":
-                    if replacing:
+                    if len(matches) != 1:
+                        if not matches and field == "constraints" and not any(e.get("status") == "specified" for e in current):
+                            continue
+                        _edit_issue(state, field, "撤回项无法唯一匹配，请指定条目 ID 或完整名称。", item.quote)
                         continue
-                    target = (item.value or "").casefold().strip()
-                    matches = [x for x in current if target and target in (x.get("value") or "").casefold()]
-                    if not matches:
-                        state.setdefault("unresolved_edits", []).append({"field": field, "quote": item.quote})
-                    current = [x for x in current if x not in matches]
+                    matched = matches[0]
+                    if field == "reference_note":
+                        matched["active"] = False
+                        matched["withdrawn_turn"] = turn
+                        matched["withdrawal_quote"] = item.quote
+                    else:
+                        current.remove(matched)
+                    continue
+                if len(matches) > 1:
+                    _edit_issue(state, field, "更新项无法唯一匹配，请指定条目 ID。", item.quote)
+                    continue
+                if item.action == "update" and not matches:
+                    _edit_issue(state, field, "没有找到要更新的项，请选择条目或明确新增。", item.quote)
+                    continue
+                id = matches[0].get("id") if matches else field + "-" + uuid4().hex[:10]
+                entry = _record(item, turn, id)
+                if field == "reference_note":
+                    entry.update(category=item.category or "other", active=True,
+                                 status="unverified_user_reference")
+                if matches:
+                    if not _same(matches[0], entry):
+                        current[current.index(matches[0])] = entry
                 else:
-                    entry = _record(item, turn)
-                    if not any(x.get("value") == entry["value"] and x.get("status") == entry["status"]
-                               and x.get("direction") == entry.get("direction") for x in current):
-                        current.append(entry)
-            state["fields"][field] = current or [_unknown()]
-        state["history"].append({"field": field, "before": before,
-                                 "after": deepcopy(state["fields"][field]), "turn": turn})
-    if grouped:
-        state["draft"] = None
-        state["suggestion"] = None
-        state["stage"] = "clarifying"
+                    current = [e for e in current if e.get("status") != "unknown"]
+                    current.append(entry)
+            if field == "reference_note":
+                state["reference_notes"] = current
+            else:
+                state["fields"][field] = current or [_unknown(field + "-unknown")]
+        after = state["reference_notes"] if field == "reference_note" else state["fields"][field]
+        if before != after:
+            state["history"].append({"field": field, "before": before, "after": deepcopy(after), "turn": turn})
+    for field in extraction.reaffirm_fields:
+        if field in FIELDS:
+            values = state["fields"][field]
+            for entry in values if isinstance(values, list) else [values]:
+                if entry.get("needs_review"):
+                    entry.pop("needs_review")
+                    entry["review_quote"] = text
+                    entry["review_turn"] = turn
+    for issue in state["issues"]:
+        if issue["id"] in extraction.resolve_issue_ids and grouped:
+            issue["status"] = "resolved"
+            issue["resolution_quote"] = text
+            issue["resolved_turn"] = turn
+    for issue in extraction.issues:
+        if issue.quote and issue.quote in text:
+            state["issues"].append({**issue.model_dump(), "id": "semantic-" + uuid4().hex,
+                                    "status": "open", "turn": turn})
+    proposed = extraction.domain if extraction.domain_quote and extraction.domain_quote in text else None
+    state["domain"] = domain_from_fields(state["fields"], proposed or (None if major or state["domain"] in {"uncertain", "basic_research"} else state["domain"]))
+    if state["task_type"] == "out_of_scope":
+        state["domain"] = "non_research"
 
 
-def _good_scalar(entry: dict, *, user_only: bool = False) -> bool:
-    sources = {"user"} if user_only else {"user", "confirmed_suggestion"}
-    return entry.get("status") == "specified" and bool(entry.get("value")) and entry.get("source") in sources
+def _select(state, extraction, text, context):
+    rec = state.get("recommendation_set")
+    expected = context.get("recommendation_ref")
+    if not rec or expected != {"id": rec["id"], "version": rec["version"]} or rec["draft_id"] != state["draft_id"]:
+        _edit_issue(state, "research_object", "推荐已经变化，请基于重新展示的方向选择。", text)
+        return
+    index = extraction.selected_option
+    if not index or not 1 <= index <= len(rec["options"]):
+        _edit_issue(state, "research_object", "请明确采用哪一个方向。", text)
+        return
+    option = rec["options"][index - 1]
+    if any(x["direction_id"] == option["id"] and x["status"] == "rejected"
+           for x in state["recommendation_history"]):
+        _edit_issue(state, "research_object", "这条方向曾被拒绝；请明确说明要重新采用。", text)
+        return
+    state["sources"].update(deepcopy(rec["sources"]))
+    for field, value in option["fields"].items():
+        before = deepcopy(state["fields"][field])
+        entries = value if isinstance(value, list) else [{"value": value}]
+        converted = []
+        for item in entries:
+            entry = {"status": "specified", "value": item["value"], "source": "confirmed_suggestion",
+                     "quote": None, "turn": None, "suggested_after_turn": len(state["turns"]) - 1,
+                     "selection_quote": text, "confirmed_turn": len(state["turns"]),
+                     "recommendation_ref": {"id": rec["id"], "version": rec["version"], "direction_id": option["id"]},
+                     "source_refs": list(option["source_refs"])}
+            if field in LIST_FIELDS:
+                entry.update(id=field + "-" + uuid4().hex[:10], direction=item.get("direction"))
+            converted.append(entry)
+        state["fields"][field] = converted if field in LIST_FIELDS else converted[0]
+        state["history"].append({"field": field, "before": before, "after": deepcopy(state["fields"][field]),
+                                 "turn": len(state["turns"]), "reason": "recommendation_selected"})
+    state["domain"] = "materials_application"
+    state["recommendation_history"].append({"set_id": rec["id"], "version": rec["version"],
+                                            "direction_id": option["id"], "status": "accepted", "quote": text})
 
 
-def _critical_gap(state: dict) -> str | None:
+def _reject(state, extraction, text):
+    rec = state.get("recommendation_set")
+    if not rec:
+        return
+    options = rec["options"]
+    if extraction.selected_option and 1 <= extraction.selected_option <= len(options):
+        options = [options[extraction.selected_option - 1]]
+    rejected = {x["id"] for x in options}
+    for option in options:
+        state["recommendation_history"].append({"set_id": rec["id"], "version": rec["version"],
+                                                "direction_id": option["id"], "status": "rejected", "quote": text})
+    for field, value in state["fields"].items():
+        entries = value if isinstance(value, list) else [value]
+        kept = [x for x in entries if (x.get("recommendation_ref") or {}).get("direction_id") not in rejected]
+        state["fields"][field] = (kept or [_unknown(field + "-unknown")]) if field in LIST_FIELDS else (kept[0] if kept else _unknown())
+    state["recommendation_set"] = None
+
+
+def make_draft(state):
+    return {"contract_version": 3, "rule_version": RULE_VERSION,
+            "original_intent": state["turns"][0] if state["turns"] else "",
+            "draft_revision": state["draft_revision"], "draft_id": state["draft_id"],
+            "fields": deepcopy(state["fields"]), "task_pattern": state["task_type"],
+            "domain": state["domain"], "issues": deepcopy(state["issues"]),
+            "reference_notes": deepcopy(state["reference_notes"]), "sources": deepcopy(state["sources"])}
+
+
+def _result(state, changed=False, guide=False, text="", notice=None):
+    draft = make_draft(state)
+    issues = request_issues(draft)
     if state.get("task_type") == "multiple_tasks":
-        return "task_type"
-    for field in ("purpose", "research_object", "application", "research_scope"):
-        if not _good_scalar(state["fields"][field], user_only=True):
-            return field
-    if state.get("unresolved_edits"):
-        return state["unresolved_edits"][-1]["field"]
-    for entry in state["fields"]["constraints"]:
-        if entry["status"] == "unclear":
-            return "constraints"
-    if any(item["status"] == "unclear" or
-           (item["status"] == "specified" and (not item.get("value") or not item.get("direction")))
-           for item in state["fields"]["target_performance"]):
-        return "target_performance"
-    return None
-
-
-def _needs_suggestion(fields: dict) -> bool:
-    function = fields["material_function"]
-    goals = fields["target_performance"]
-    return not (_good_scalar(function) or
-                function.get("status") == "specified" and function.get("source") == "system_suggestion" and function.get("value")) or not any(
-        item["status"] == "specified" and item.get("source") in {"user", "system_suggestion", "confirmed_suggestion"} and item.get("direction") and item.get("value")
-        for item in goals
-    )
-
-
-def _suggested(value: str, turn: int, direction: str | None = None) -> dict:
-    entry = {"status": "specified", "value": value, "source": "system_suggestion",
-             "quote": None, "turn": None, "suggested_after_turn": turn}
-    if direction is not None:
-        entry["direction"] = direction
-    return entry
-
-
-def make_draft(state: dict) -> dict:
-    fields = deepcopy(state["fields"])
-    suggestion = state.get("suggestion")
-    if suggestion:
-        if fields["material_function"].get("status") != "specified" or not fields["material_function"].get("value"):
-            fields["material_function"] = _suggested(suggestion["material_function"], len(state["turns"]))
-        if not any(item["status"] == "specified" and item.get("value") and item.get("direction")
-                   for item in fields["target_performance"]):
-            current = [x for x in fields["target_performance"] if x["status"] != "unknown"]
-            current.extend(_suggested(goal["value"], len(state["turns"]), goal["direction"])
-                           for goal in suggestion["target_performance"])
-            fields["target_performance"] = current
-    return {
-        "contract_version": 2, "original_intent": state["turns"][0],
-        "task_pattern": state.get("task_type"), "fields": fields,
-        "reference_notes": deepcopy(state["reference_notes"]),
-    }
-
-
-def process_turn(state: dict, text: str, extraction: Extraction) -> dict:
-    normalize_state(state)
-    text = text.strip()
-    state["turns"].append(text)
-    _merge(state, text, extraction)
-    if state.get("task_type") == "out_of_scope":
+        issues.insert(0, {"kind": "ambiguity", "field": "purpose", "message": "请先聚焦一个对象和研究目的。"})
+    if state["domain"] in {"drug_discovery", "non_research"}:
+        status = "unsupported"
+        question = "首版只受理材料应用研究，暂不支持药物筛选；原意图已保留。"
+    elif issues:
+        status = "needs_clarification"
+        actionable = [x for x in issues if x["kind"] != "missing"]
+        issue = (actionable or issues)[0]
+        state["asked_field"] = issue["field"]
+        question = issue["message"] + " " + QUESTIONS.get(issue["field"], "")
+    else:
+        status = "ready_for_design" if state["stage"] == "ready_for_design" else "needs_confirmation"
+        question = None if status == "ready_for_design" else "请核对八项、来源、限制及草稿 " + state["draft_id"] + "，确认只允许进入研究设计。"
         state["asked_field"] = None
-        return {"intake_status": "unsupported", "ready": False, "ready_for_design": False,
-                "request": make_draft(state), "next_question": "首版只受理材料应用研究；请描述材料研究问题。"}
-    gap = _critical_gap(state)
-    state["asked_field"] = gap
-    return {
-        "intake_status": "needs_clarification" if gap else "draft_available",
-        "ready": False, "ready_for_design": False, "request": make_draft(state),
-        "next_question": QUESTIONS.get(gap) if gap else None,
-    }
+        if status == "needs_confirmation":
+            state["stage"] = "review"
+            state["draft"] = deepcopy(draft)
+    rec = None
+    if guide and status != "unsupported":
+        rec = recommendations(state, text)
+        state["recommendation_set"] = rec
+        explanation = explain_field(state.get("asked_field"))
+        if rec:
+            question = explanation + " 已提供有来源的待选择方向，可采用序号、修改或拒绝；尚未写入研究需求。"
+            status = "needs_guidance"
+        else:
+            question = explanation + " 当前已核查资料没有覆盖合适方向；可以先限定具体分子/材料类别，说明已有用途或提供可核查资料。我不会据此编造性质或来源。"
+    result = {"intake_status": status, "ready": status == "ready_for_design",
+              "ready_for_design": status == "ready_for_design", "request": draft,
+              "calculation_status": "pending_research_design", "next_question": question,
+              "blocking_issues": issues, "recommendations": rec, "content_changed": changed,
+              "input_context": {"draft_id": state["draft_id"]}}
+    if state.get("recommendation_set"):
+        r = state["recommendation_set"]
+        result["input_context"]["recommendation_ref"] = {"id": r["id"], "version": r["version"]}
+    if status == "ready_for_design":
+        result["request"] = deepcopy(state["confirmed_request"])
+        result["already_confirmed"] = True
+    if notice:
+        result["notice"] = notice
+    return result
 
 
-def handle_turn(client, model: str, state: dict, text: str) -> dict:
+def _confirm(state, context):
+    if state["stage"] == "ready_for_design":
+        return _result(state)
+    if context.get("draft_id") != state["draft_id"] or state["stage"] != "review":
+        return _result(state, notice="请先查看当前完整草稿，再确认它的版本。")
+    draft = make_draft(state)
+    if request_issues(draft):
+        return _result(state)
+    validate_research_request_v3(draft)
+    state["confirmed_request"] = deepcopy(draft)
+    state["stage"] = "ready_for_design"
+    result = _result(state)
+    result["confirmation_event"] = True
+    return result
+
+
+def process_turn(state, text, extraction):
+    """Deterministic, testable update path without automatic confirmation."""
+    normalize_state(state)
+    before = _fingerprint(state)
+    state["turns"].append(text.strip())
+    _merge(state, text, extraction)
+    return _result(state, _touch(state, before))
+
+
+def handle_turn(client, model, state, text, input_context=None):
     normalize_state(state)
     text = text.strip()
     if not text:
         raise ValueError("输入不能为空")
-    if state.get("stage") == "review" and text in CONFIRM_WORDS:
-        draft = deepcopy(state["draft"])
-        confirmed_turn = len(state["turns"]) + 1
-        for value in draft["fields"].values():
-            entries = value if isinstance(value, list) else [value]
-            for entry in entries:
-                if entry.get("source") == "system_suggestion":
-                    entry["source"] = "confirmed_suggestion"
-                    entry["confirmed_turn"] = confirmed_turn
-        validate_research_request_v2(draft)
+    context = input_context or {}
+    started = time.perf_counter()
+    if text in CONFIRM_WORDS:
         state["turns"].append(text)
-        state["fields"] = deepcopy(draft["fields"])
-        state["draft"] = None
-        state["stage"] = "ready_for_design"
-        state["asked_field"] = None
-        return {
-            "intake_status": "ready_for_design", "ready": True, "ready_for_design": True,
-            "confirmation_event": True, "calculation_status": "pending_research_design",
-            "request": draft, "next_question": None,
-        }
-
-    if state.get("stage") == "review" and text in {"不采用", "不用建议", "先不确认"}:
-        for field in ("material_function", "target_performance"):
-            value = state["fields"][field]
-            if isinstance(value, list):
-                kept = [x for x in value if x.get("source") != "system_suggestion"]
-                state["fields"][field] = kept or [_unknown()]
-            elif value.get("source") == "system_suggestion":
-                state["fields"][field] = _unknown()
-        state["suggestion"] = None
-        state["draft"] = None
-        state["stage"] = "clarifying"
+        result = _confirm(state, context)
+    elif text in {"先不确认", "暂不确认", "暂停"}:
         state["turns"].append(text)
-        state["asked_field"] = "material_function"
-        return {"intake_status": "needs_clarification", "ready": False,
-                "ready_for_design": False, "request": make_draft(state),
-                "next_question": "请修改材料功能或目标性能的建议，再由我展示完整草稿。"}
-
-    extraction = contextual_reply(state, text) or extract(client, model, state, text)
-    result = process_turn(state, text, extraction)
-    if result["intake_status"] == "unsupported" or result["next_question"]:
-        return result
-    if _needs_suggestion(state["fields"]):
-        state["suggestion"] = propose_intake(client, model, state).model_dump()
-    draft = make_draft(state)
-    state["draft"] = draft
-    state["stage"] = "review"
-    state["asked_field"] = None
-    return {
-        "intake_status": "needs_confirmation", "ready": False, "ready_for_design": False,
-        "calculation_status": "pending_research_design", "request": draft,
-        "proposed_request": draft, "next_question": (
-            "请核对八项内容、原话来源、系统建议和未定事项。回复“确认”进入研究设计；"
-            "如需修改，请直接写出修改内容。此确认不批准任何计算。"
-        ),
-        "suggestion_limitation": (state.get("suggestion") or {}).get("limitation"),
-    }
+        result = _result(state, notice="草稿已保留，尚未新增确认；可以继续解释、修改或确认。")
+    else:
+        extraction = contextual_reply(state, text) or extract(client, model, state, text)
+        before = _fingerprint(state)
+        state["turns"].append(text)
+        if "select" in extraction.actions:
+            _select(state, extraction, text, context)
+        if "reject" in extraction.actions or text in {"不采用", "不用建议"}:
+            _reject(state, extraction, text)
+        _merge(state, text, extraction)
+        changed = _touch(state, before)
+        guide = bool(set(extraction.actions) & {"recommend", "explain", "unsure", "reject"})
+        result = _result(state, changed, guide, text)
+        if "confirm" in extraction.actions and not extraction.updates and not changed and not (set(extraction.actions) & {"select", "edit", "reaffirm", "reject"}):
+            result = _confirm(state, context)
+        elif "confirm" in extraction.actions:
+            result["notice"] = "本轮含修改或选择，请核对更新后的完整草稿，再确认。"
+    result["metadata"] = {"model": model, "rule_version": RULE_VERSION, "contract_version": 3,
+                          "elapsed_seconds": round(time.perf_counter() - started, 3),
+                          "catalog_version": (state.get("recommendation_set") or {}).get("catalog_version")}
+    return result
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="LAPIS 研究请求澄清原型")
-    parser.add_argument("--text", help="只处理一轮输入；省略后进入交互模式")
-    args = parser.parse_args()
-    key = os.getenv("LAPIS_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
-    if not key:
-        parser.error("请设置 LAPIS_API_KEY 或 DEEPSEEK_API_KEY")
-    client = instructor.from_openai(
-        OpenAI(api_key=key, base_url=os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com"), timeout=40),
-        mode=instructor.Mode.JSON,
-    )
-    model = os.getenv("LAPIS_MODEL", "deepseek-flash")
-    state = new_state()
-    pending_text = None
-    while True:
-        try:
-            text = pending_text if pending_text is not None else (
-                args.text if args.text is not None else input("研究需求> ")
-            )
-            pending_text = None
-        except (EOFError, KeyboardInterrupt):
-            break
-        if not text.strip():
-            if args.text is not None:
-                parser.error("输入不能为空")
-            continue
-        result = handle_turn(client, model, state, text)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-        if args.text is not None:
-            break
-        if result["ready_for_design"]:
-            print("研究请求已确认，可进入研究设计；如需修改继续输入，直接回车结束。")
-            try:
-                pending_text = input("修改> ")
-                if not pending_text.strip():
-                    break
-            except (EOFError, KeyboardInterrupt):
-                break
-        else:
-            print(result["next_question"])
+def main():
+    from lapis import run_chat
+    run_chat(None, "researcher")
 
 
 if __name__ == "__main__":

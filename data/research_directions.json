@@ -1,0 +1,92 @@
+{
+  "version": "directions-1.0",
+  "sources": {
+    "furan-polyketone-2021": {
+      "title": "Maleimide Self-Reaction in Furan/Maleimide-Based Reversibly Crosslinked Polyketones: Processing Limitation or Potential Advantage?",
+      "doi": "10.3390/molecules26082230",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8069175/",
+      "locator": "Abstract; sections 1 and 3",
+      "claim": "特定呋喃接枝聚酮/双马来酰亚胺网络可研究热可逆交联与再加工；文中同时报告了该体系的不可逆副反应。",
+      "object_scope": "文中呋喃接枝聚酮和所用双马来酰亚胺体系",
+      "limitations": "不能推广为所有呋喃分子都可自修复或耐热；具体体系、温度和副反应需要研究设计审核。",
+      "checked_at": "2026-10-08",
+      "access": "full_text",
+      "verification": "source_claim_checked"
+    },
+    "pef-co2-2015": {
+      "title": "Carbon Dioxide Sorption and Transport in Amorphous Poly(ethylene furanoate)",
+      "doi": "10.1021/acs.macromol.5b00333",
+      "url": "https://pubs.acs.org/doi/10.1021/acs.macromol.5b00333",
+      "locator": "Publisher abstract",
+      "claim": "研究了非晶 PEF 的二氧化碳吸附和传输，并与 PET 比较。",
+      "object_scope": "文中非晶 PEF/PET；不是任意含呋喃基分子",
+      "limitations": "此次只核查出版社摘要；不能由此直接预测用户材料的阻隔性能或指定计算参数。",
+      "checked_at": "2026-10-08",
+      "access": "abstract_only",
+      "verification": "source_claim_checked"
+    }
+  },
+  "directions": [
+    {
+      "id": "furan-reprocessable-networks",
+      "label": "呋喃功能化聚合物的可逆交联与再加工研究",
+      "aliases": [
+        "呋喃",
+        "furan",
+        "聚酮",
+        "可逆交联",
+        "再加工聚合物"
+      ],
+      "source_refs": [
+        "furan-polyketone-2021"
+      ],
+      "reason": "把宽泛的基团问题限定为有材料用途的特定聚合物网络；该方向已有可核查研究及副反应限制。",
+      "fields": {
+        "purpose": "比较或探索含呋喃功能团聚合物网络的再加工行为",
+        "research_object": "呋喃功能化聚合物/马来酰亚胺交联网络",
+        "application": "可再加工或可修复聚合物材料",
+        "research_scope": "先限定于呋喃/马来酰亚胺聚合物网络，具体聚合物与对照待选择",
+        "material_function": "通过可逆交联形成可再加工材料网络",
+        "target_performance": [
+          {
+            "value": "再加工能力",
+            "direction": "比较"
+          },
+          {
+            "value": "热循环后的性能保持",
+            "direction": "比较"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pef-packaging",
+      "label": "特定呋喃基聚酯的包装阻隔研究",
+      "aliases": [
+        "呋喃",
+        "furan",
+        "PEF",
+        "聚酯",
+        "气体阻隔",
+        "包装"
+      ],
+      "source_refs": [
+        "pef-co2-2015"
+      ],
+      "reason": "选择该方向会把对象限定为 PEF 等特定聚酯；文献支持提出阻隔比较问题，不证明用户材料性能。",
+      "fields": {
+        "purpose": "比较特定呋喃基聚酯的气体阻隔表现",
+        "research_object": "PEF 与适当对照聚酯",
+        "application": "聚酯包装材料",
+        "research_scope": "先比较特定聚酯的气体阻隔行为，具体结构、形态和对照待研究设计审核",
+        "material_function": "降低包装材料中的气体透过",
+        "target_performance": [
+          {
+            "value": "气体阻隔能力",
+            "direction": "比较"
+          }
+        ]
+      }
+    }
+  ]
+}

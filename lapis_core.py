@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
+from lapis_contract import validate_research_request_v3
 
 
 class Candidate(BaseModel):
@@ -147,6 +148,15 @@ def check_attempt_transition(current: str, target: str) -> None:
 def intake_is_confirmed(state: dict, result: dict) -> bool:
     """Only explicit review confirmation creates a versioned research request."""
     request = result.get("request")
+    if isinstance(request, dict) and request.get("contract_version") == 3:
+        try:
+            validate_research_request_v3(request)
+        except ValueError:
+            return False
+        return bool(result.get("ready_for_design") and (result.get("confirmation_event") or result.get("already_confirmed"))
+                    and result.get("calculation_status") == "pending_research_design"
+                    and state.get("stage") == "ready_for_design"
+                    and state.get("draft_id") == request.get("draft_id"))
     if isinstance(request, dict) and request.get("contract_version") == 2:
         try:
             validate_research_request_v2(request)

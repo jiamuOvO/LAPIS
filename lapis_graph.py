@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import hashlib
+import time
 from typing import TypedDict
 from uuid import uuid4
 
@@ -13,7 +14,7 @@ from langgraph.types import Command, interrupt
 from psycopg.conninfo import make_conninfo
 
 from lapis_intake import handle_turn
-from lapis_store import connect, db_config, get_intake_operation, get_task, save_turn
+from lapis_store import connect, db_config, get_intake_operation, get_task, save_turn, record_intake_run
 
 
 class IntakeState(TypedDict, total=False):
@@ -21,6 +22,7 @@ class IntakeState(TypedDict, total=False):
     actor: str
     user_text: str | None
     operation_id: str | None
+    input_context: dict | None
     next_question: str | None
     status: str
     request_version: int | None
@@ -41,10 +43,11 @@ def build_intake_graph(client, model: str, prompt_hash: str, checkpointer):
         else:
             task = get_task(task_id)
             intake_state = task["intake_state"]
-            result = handle_turn(client, model, intake_state, state["user_text"])
+            result = handle_turn(client, model, intake_state, state["user_text"],
+                                 input_context=state.get("input_context") or {})
             version = save_turn(task_id, task["revision"], intake_state, result,
-                                state["actor"], model, prompt_hash, operation_id)
-        return {"user_text": None, "operation_id": None, "status": result["intake_status"],
+                                state["actor"], model, prompt_hash, operation_id, state.get("input_context") or {})
+        return {"user_text": None, "operation_id": None, "input_context": None, "status": result["intake_status"],
                 "next_question": result.get("next_question"), "request_version": version}
 
     def route(state: IntakeState) -> str:
@@ -55,7 +58,7 @@ def build_intake_graph(client, model: str, prompt_hash: str, checkpointer):
         if not isinstance(answer, dict) or not answer.get("text") or not answer.get("operation_id"):
             raise ValueError("恢复输入必须包含非空文本和操作标识")
         return {"user_text": answer["text"], "operation_id": answer["operation_id"],
-                "actor": answer["actor"]}
+                "actor": answer["actor"], "input_context": answer.get("input_context") or {}}
 
     graph.add_node("process", process)
     graph.add_node("await_user", await_user)
@@ -65,11 +68,12 @@ def build_intake_graph(client, model: str, prompt_hash: str, checkpointer):
     return graph.compile(checkpointer=checkpointer)
 
 
-def run_intake_turn(task_id: str, text: str, actor: str, client, model: str, prompt_hash: str,
-                    operation_id: str | None = None) -> dict:
+def _run_intake_turn(task_id: str, text: str, actor: str, client, model: str, prompt_hash: str,
+                    operation_id: str | None = None, input_context: dict | None = None) -> dict:
     if not text.strip():
         raise ValueError("输入不能为空")
     text = text.strip()
+    input_context = input_context or {}
     operation_id = operation_id or str(uuid4())
     # Checkpoint data shares the local PostgreSQL instance but never authorizes a calculation.
     os.environ["LANGGRAPH_STRICT_MSGPACK"] = "true"
@@ -92,6 +96,8 @@ def run_intake_turn(task_id: str, text: str, actor: str, client, model: str, pro
                 raise ValueError("操作标识已属于其他任务")
             if previous and previous["input_sha256"] and previous["input_sha256"] != hashlib.sha256(text.encode("utf-8")).hexdigest():
                 raise ValueError("相同操作标识不能用于不同输入")
+            if previous and previous.get("input_context", {}) != input_context:
+                raise ValueError("相同操作标识不能用于不同确认或选择上下文")
             if pending == ("process",):
                 # The previous process node may have committed before its checkpoint failed.
                 graph.invoke(None, config)
@@ -100,20 +106,37 @@ def run_intake_turn(task_id: str, text: str, actor: str, client, model: str, pro
                     raise ValueError("操作标识已属于其他任务")
                 if previous and previous["input_sha256"] and previous["input_sha256"] != hashlib.sha256(text.encode("utf-8")).hexdigest():
                     raise ValueError("相同操作标识不能用于不同输入")
+                if previous and previous.get("input_context", {}) != input_context:
+                    raise ValueError("相同操作标识不能用于不同确认或选择上下文")
                 if not previous:
                     raise ValueError("已恢复上一轮受理；本轮输入尚未处理，请用原操作标识重试")
             elif not previous:
                 if pending == ("await_user",):
                     graph.invoke(Command(resume={"text": text, "operation_id": operation_id,
-                                                 "actor": actor}), config)
+                                                 "actor": actor, "input_context": input_context}), config)
                 elif pending:
                     raise ValueError("图中存在未知的待恢复步骤")
                 else:
                     graph.invoke({"task_id": task_id, "user_text": text, "operation_id": operation_id,
-                                  "actor": actor}, config)
+                                  "actor": actor, "input_context": input_context}, config)
             waiting = bool(graph.get_state(config).next)
         task = get_task(task_id)
     result = previous["result"] if previous else task["intake_result"]
     version = previous["request_version"] if previous else task["request_version"]
     return {"operation_id": operation_id, "result": result, "request_version": version,
             "graph_status": "waiting_for_user" if waiting else "idle"}
+
+
+def run_intake_turn(task_id: str, text: str, actor: str, client, model: str, prompt_hash: str,
+                    operation_id: str | None = None, input_context: dict | None = None) -> dict:
+    operation_id = operation_id or str(uuid4())
+    started = time.perf_counter()
+    try:
+        output = _run_intake_turn(task_id, text, actor, client, model, prompt_hash, operation_id, input_context)
+    except Exception as error:
+        record_intake_run(task_id, actor, operation_id, model, prompt_hash,
+                          time.perf_counter() - started, "failed", type(error).__name__)
+        raise
+    record_intake_run(task_id, actor, operation_id, model, prompt_hash,
+                      time.perf_counter() - started, "returned", None)
+    return output

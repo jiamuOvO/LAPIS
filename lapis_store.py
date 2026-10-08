@@ -16,6 +16,7 @@ from psycopg.types.json import Jsonb
 from lapis_core import (ExecutionPlan, check_attempt_transition, digest,
                         intake_is_confirmed, validate_research_request_v2, verify_artifact)
 from lapis_intake import new_state
+from lapis_contract import validate_research_request_v3
 
 
 ROOT = Path(__file__).resolve().parent
@@ -134,7 +135,7 @@ def get_task(task_id: str) -> dict:
     with connect() as db:
         with db.cursor(row_factory=dict_row) as cursor:
             cursor.execute(
-                "SELECT id, revision, intake_state, intake_result, status FROM research_tasks WHERE id=%s",
+                "SELECT id, revision, intake_state, intake_result, status, active_request_version FROM research_tasks WHERE id=%s",
                 (task_id,),
             )
             row = cursor.fetchone()
@@ -150,26 +151,29 @@ def get_task(task_id: str) -> dict:
 def get_intake_operation(operation_id: str) -> dict | None:
     with connect() as db:
         with db.cursor(row_factory=dict_row) as cursor:
-            cursor.execute("SELECT task_id, result, request_version, input_sha256 FROM intake_operations WHERE operation_id=%s", (operation_id,))
+            cursor.execute("SELECT task_id, result, request_version, input_sha256, input_context FROM intake_operations WHERE operation_id=%s", (operation_id,))
             return cursor.fetchone()
 
 
 def save_turn(task_id: str, expected_revision: int, state: dict, result: dict,
               actor: str, model: str, prompt_version: str = "intake-v1",
-              operation_id: str | None = None) -> int | None:
+              operation_id: str | None = None, input_context: dict | None = None) -> int | None:
     """Optimistic update prevents a slow LLM call from overwriting a newer turn."""
+    input_context = input_context or {}
     with connect() as db:
         with db.cursor(row_factory=dict_row) as cursor:
-            cursor.execute("SELECT revision FROM research_tasks WHERE id=%s FOR UPDATE", (task_id,))
+            cursor.execute("SELECT revision,active_request_version FROM research_tasks WHERE id=%s FOR UPDATE", (task_id,))
             row = cursor.fetchone()
             if operation_id:
-                cursor.execute("SELECT request_version,input_sha256 FROM intake_operations WHERE operation_id=%s AND task_id=%s",
+                cursor.execute("SELECT request_version,input_sha256,input_context FROM intake_operations WHERE operation_id=%s AND task_id=%s",
                                (operation_id, task_id))
                 previous = cursor.fetchone()
                 if previous:
                     input_sha = hashlib.sha256(state["turns"][-1].strip().encode("utf-8")).hexdigest()
                     if previous["input_sha256"] and previous["input_sha256"] != input_sha:
                         raise ValueError("相同操作标识不能用于不同输入")
+                    if _json(previous["input_context"]) != input_context:
+                        raise ValueError("相同操作标识不能用于不同确认或选择上下文")
                     return previous["request_version"]
             if row is None or row["revision"] != expected_revision:
                 raise ValueError("会话已被另一轮更新，请重新读取任务")
@@ -198,19 +202,41 @@ def save_turn(task_id: str, expected_revision: int, state: dict, result: dict,
                         "INSERT INTO request_versions (task_id,version,payload,payload_sha256,confirmed_by) VALUES (%s,%s,%s,%s,%s)",
                         (task_id, version, Jsonb(payload), payload_hash, actor),
                     )
+            active = row["active_request_version"]
+            if confirmed and result.get("request", {}).get("contract_version") == 3:
+                active = version
+            elif result.get("content_changed") or state.get("contract_version") != 3:
+                active = None
+            cursor.execute("UPDATE research_tasks SET active_request_version=%s WHERE id=%s", (active, task_id))
             _event(cursor, task_id, actor, "intake_turn", {
                 "model": model, "prompt_version": prompt_version, "revision": expected_revision + 1,
                 "request_version": version, "input": state["turns"][-1],
+                "input_context": input_context, "metadata": result.get("metadata", {}),
             })
             if operation_id:
                 input_sha = hashlib.sha256(state["turns"][-1].strip().encode("utf-8")).hexdigest()
                 cursor.execute(
-                    "INSERT INTO intake_operations (operation_id,task_id,revision,result,request_version,input_sha256) "
-                    "VALUES (%s,%s,%s,%s,%s,%s)",
-                    (operation_id, task_id, expected_revision + 1, Jsonb(result), version, input_sha),
+                    "INSERT INTO intake_operations (operation_id,task_id,revision,result,request_version,input_sha256,input_context) "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                    (operation_id, task_id, expected_revision + 1, Jsonb(result), version, input_sha, Jsonb(input_context)),
                 )
         db.commit()
     return version
+
+
+def _require_current_request(cursor, task_id: str, version: int) -> dict:
+    row = cursor.execute("SELECT status,active_request_version,intake_state FROM research_tasks WHERE id=%s FOR UPDATE",
+                         (task_id,)).fetchone()
+    if not row or row["status"] != "request_confirmed" or row["active_request_version"] != version:
+        raise ValueError("当前请求没有有效的 v3 确认版本，请先重新核对并确认")
+    record = cursor.execute("SELECT payload FROM request_versions WHERE task_id=%s AND version=%s",
+                            (task_id, version)).fetchone()
+    payload = _json(record["payload"])
+    validate_research_request_v3(payload)
+    state = _json(row["intake_state"])
+    if state.get("stage") != "ready_for_design" or state.get("draft_id") != payload["draft_id"]:
+        raise ValueError("当前草稿已经变化，请重新确认")
+    return payload
 
 
 def propose_design(task_id: str, payload: dict, actor: str) -> int:
@@ -222,13 +248,8 @@ def propose_design(task_id: str, payload: dict, actor: str) -> int:
             cursor.execute("SELECT id FROM research_tasks WHERE id=%s FOR UPDATE", (task_id,))
             if cursor.fetchone() is None:
                 raise ValueError("任务不存在")
-            cursor.execute("SELECT MAX(version) AS version FROM request_versions WHERE task_id=%s", (task_id,))
-            current = cursor.fetchone()["version"]
-            if current is None or payload.get("request_version") != current:
-                raise ValueError("设计必须引用当前已确认的研究请求版本")
-            cursor.execute("SELECT payload FROM request_versions WHERE task_id=%s AND version=%s",
-                           (task_id, current))
-            validate_research_request_v2(_json(cursor.fetchone()["payload"]))
+            current = payload.get("request_version")
+            _require_current_request(cursor, task_id, current)
             cursor.execute("SELECT COALESCE(MAX(version),0)+1 AS version FROM design_versions WHERE task_id=%s", (task_id,))
             version = cursor.fetchone()["version"]
             cursor.execute(
@@ -256,6 +277,7 @@ def approve_design(task_id: str, version: int, reviewer: str) -> None:
             row = cursor.fetchone()
             if row is None or row["status"] != "proposed" or row["request_version"] != current:
                 raise ValueError("设计不存在、已审批，或引用了过期请求")
+            _require_current_request(cursor, task_id, row["request_version"])
             ExecutionPlan.model_validate(_json(row["payload"]))
             cursor.execute(
                 "UPDATE design_versions SET status='approved', reviewer=%s, reviewed_at=NOW() WHERE task_id=%s AND version=%s",
@@ -281,6 +303,7 @@ def freeze_execution(task_id: str, version: int, actor: str) -> str:
             design = cursor.fetchone()
             if design is None or design["status"] != "approved" or design["request_version"] != current:
                 raise ValueError("仅能冻结引用当前请求且经审核的研究设计")
+            _require_current_request(cursor, task_id, design["request_version"])
             cursor.execute("SELECT id FROM execution_requests WHERE task_id=%s AND design_version=%s",
                            (task_id, version))
             existing = cursor.fetchone()
@@ -381,3 +404,22 @@ def verify_artifacts(execution_id: str) -> list[dict]:
         except (OSError, ValueError):
             row["valid"] = False
     return rows
+
+
+def record_intake_run(task_id, actor, operation_id, model, prompt_hash, elapsed, outcome, error_type):
+    """Failure telemetry does not change draft, task revision or confirmation. Never log credentials."""
+    try:
+        with connect() as db:
+            with db.cursor() as cursor:
+                if not cursor.execute("SELECT 1 FROM research_tasks WHERE id=%s", (task_id,)).fetchone():
+                    return
+                attempt = cursor.execute("SELECT count(*) FROM audit_events WHERE task_id=%s AND action='intake_run' "
+                                         "AND details->>'operation_id'=%s", (task_id, operation_id)).fetchone()[0] + 1
+                _event(cursor, task_id, actor, "intake_run", {
+                    "operation_id": operation_id, "model": model, "model_snapshot": "alias_unpinned",
+                    "prompt_version": prompt_hash, "elapsed_seconds": round(elapsed, 3),
+                    "attempt": attempt, "outcome": outcome, "error_type": error_type,
+                    "sdk_retries": "not_exposed", "usage": "unavailable"})
+    except psycopg.Error:
+        # A database failure must not replace the original exception; caller still sees failure.
+        pass
