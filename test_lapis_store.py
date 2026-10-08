@@ -27,6 +27,17 @@ def confirmed_v2_request():
     }
 
 
+def confirmed_v3_request():
+    from lapis_contract import RULE_VERSION
+    payload = confirmed_v2_request()
+    payload.update(contract_version=3, rule_version=RULE_VERSION, domain="materials_application",
+                   draft_revision=1, draft_id="draft-1", issues=[], sources={})
+    for field in ("target_performance", "constraints"):
+        for i, entry in enumerate(payload["fields"][field]):
+            entry["id"] = f"{field}-{i}"
+    return payload
+
+
 @unittest.skipUnless(os.getenv("LAPIS_TEST_PG") == "1" and
                      os.getenv("LAPIS_DB_NAME") == "lapis_test", "requires isolated lapis_test PostgreSQL")
 class StoreGateTest(unittest.TestCase):
@@ -34,8 +45,8 @@ class StoreGateTest(unittest.TestCase):
         initialize_schema()
         task = create_task("test")
         self.assertIsNone(get_task(task)["request_version"])
-        request = confirmed_v2_request()
-        state = {"contract_version": 2, "fields": request["fields"],
+        request = confirmed_v3_request()
+        state = {"contract_version": 3, "draft_id": request["draft_id"], "fields": request["fields"],
                  "turns": ["研究意图"], "stage": "clarifying"}
         draft_result = {"ready": False, "ready_for_design": False,
                         "intake_status": "needs_confirmation", "request": request}
@@ -89,7 +100,7 @@ class StoreGateTest(unittest.TestCase):
                   "calculation_status": "pending_research_design"}
         self.assertEqual(save_turn(task, 0, state, result, "test", "fake"), 1)
         self.assertEqual(get_task(task)["request_version"], 1)
-        with self.assertRaisesRegex(ValueError, "v2"):
+        with self.assertRaisesRegex(ValueError, "v3"):
             propose_design(task, {"request_version": 1}, "test")
 
     def test_replayed_operation_does_not_duplicate_a_turn(self):

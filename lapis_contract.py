@@ -134,6 +134,18 @@ def validate_research_request_v3(payload):
         raise ValueError("研究请求必须有原始意图及八项输出")
     if payload.get("rule_version") != RULE_VERSION:
         raise ValueError("研究请求需要按当前规则重新核对")
+    for field in FIELDS:
+        values = payload["fields"][field]
+        if field in LIST_FIELDS:
+            if not isinstance(values, list) or not values or not all(isinstance(e, dict) for e in values):
+                raise ValueError("列表字段记录无效")
+            ids = [e.get("id") for e in values]
+            if any(not i for i in ids) or len(ids) != len(set(ids)):
+                raise ValueError("条目缺少唯一 ID")
+        elif not isinstance(values, dict):
+            raise ValueError("标量字段记录无效")
+    if domain_from_fields(payload["fields"], payload.get("domain")) != "materials_application":
+        raise ValueError("研究对象与用途不在首版材料应用范围")
     issues = request_issues(payload)
     if issues:
         raise ValueError(issues[0]["message"])
@@ -147,10 +159,15 @@ def validate_research_request_v3(payload):
             if entry.get("source") == "user" and (not entry.get("quote") or not isinstance(entry.get("turn"), int)):
                 raise ValueError("缺少用户原话或轮次")
             if entry.get("source") == "confirmed_suggestion":
-                if not entry.get("recommendation_ref") or not entry.get("selection_quote"):
+                if not entry.get("recommendation_ref") or not entry.get("selection_quote") or not isinstance(entry.get("confirmed_turn"), int):
                     raise ValueError("缺少推荐选择记录")
                 refs = entry.get("source_refs", [])
                 if not refs or any(ref not in sources for ref in refs):
                     raise ValueError("缺少可追溯的推荐依据")
+                for ref in refs:
+                    source = sources[ref]
+                    body = {k: v for k, v in source.items() if k not in {"content_sha256", "catalog_version"}}
+                    if source.get("verification") != "source_claim_checked" or not source.get("limitations") or source.get("content_sha256") != content_hash(body):
+                        raise ValueError("推荐来源未经核查或快照校验失败")
     if not isinstance(payload.get("draft_revision"), int) or not payload.get("draft_id"):
         raise ValueError("请求缺少草稿修订标识")

@@ -15,7 +15,7 @@ from psycopg import sql
 from openai import OpenAI
 
 from lapis_core import digest
-from lapis_intake import PROPOSAL_PROMPT, SYSTEM_PROMPT
+from lapis_intake import LABELS, PROPOSAL_PROMPT, SYSTEM_PROMPT, preview_intake
 from lapis_graph import run_intake_turn
 from lapis_store import (ROOT, approve_design, artifact_root, create_simulation_attempt, create_task,
                          db_config, freeze_execution, get_task, initialize_schema,
@@ -73,6 +73,40 @@ def run_simulation(execution_id: str, actor: str, fail: bool) -> str:
     return attempt_id
 
 
+def render_intake_result(result):
+    if not result:
+        print("LAPIS> 请描述你本轮想研究的材料问题。")
+        return
+    if result.get("notice"):
+        print("LAPIS> " + result["notice"])
+    request = result.get("request") or {}
+    if request.get("fields"):
+        print("研究请求草稿 " + request.get("draft_id", "") + "：")
+        for field, value in request.get("fields", {}).items():
+            print(LABELS.get(field, field) + "：" + json.dumps(value, ensure_ascii=False))
+        for note in request.get("reference_notes", []):
+            print("未核验研究参考：" + json.dumps(note, ensure_ascii=False))
+    rec = result.get("recommendations")
+    if rec:
+        print("待选择研究方向（还未作为已确认需求）：")
+        for i, option in enumerate(rec["options"], 1):
+            print(f"{i}. {option['label']}：{option.get('reason', '')}")
+        print("推荐上下文：" + json.dumps(result.get("input_context"), ensure_ascii=False))
+    sources = rec.get("sources", {}) if rec else request.get("sources", {})
+    for source in sources.values():
+        print("依据：" + source.get("title", "") + " " + source.get("url", ""))
+        print("支持范围：" + source.get("claim", ""))
+        print("对象范围：" + source.get("object_scope", ""))
+        print("限制：" + json.dumps(source.get("limitations", []), ensure_ascii=False))
+    for issue in result.get("blocking_issues", []):
+        if issue.get("kind") != "missing":
+            print("待解决：" + issue["message"])
+    if result.get("next_question"):
+        print("LAPIS> " + result["next_question"])
+    elif result.get("ready_for_design"):
+        print("LAPIS> 研究请求已保存，可进入研究设计。输入 /exit 退出，或继续修改。")
+
+
 def run_chat(task_id: str | None, actor: str) -> None:
     key = os.getenv("LAPIS_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
     if not key:
@@ -86,16 +120,11 @@ def run_chat(task_id: str | None, actor: str) -> None:
     prompt_hash = digest({"extract": SYSTEM_PROMPT, "proposal": PROPOSAL_PROMPT})
     print(f"任务 ID：{task_id}\n输入 /exit 退出。", flush=True)
     result = task.get("intake_result")
+    if task.get("intake_state") and task["intake_state"].get("contract_version") != 3:
+        result = preview_intake(task["intake_state"])
     while True:
-        if not result:
-            print("LAPIS> 请描述你本轮想研究的材料问题。")
-        elif result["intake_status"] == "needs_confirmation":
-            print("研究请求草案：")
-            print(json.dumps(result["request"]["fields"], ensure_ascii=False, indent=2))
-        if result and result.get("next_question"):
-            print("LAPIS> " + result["next_question"])
-        elif result and result.get("ready_for_design"):
-            print("LAPIS> 研究请求已保存，可进入研究设计。输入 /exit 退出，或继续修改。")
+        render_intake_result(result)
+        input_context = (result or {}).get("input_context", {})
         try:
             text = input("你> ").strip()
         except (EOFError, KeyboardInterrupt):
@@ -109,7 +138,8 @@ def run_chat(task_id: str | None, actor: str) -> None:
         print(f"operation_id={operation_id}", flush=True)
         while True:
             try:
-                output = run_intake_turn(task_id, text, actor, client, model, prompt_hash, operation_id)
+                output = run_intake_turn(task_id, text, actor, client, model, prompt_hash, operation_id,
+                                         input_context=input_context)
                 break
             except Exception as error:
                 print(f"本轮失败：{error}")
@@ -138,6 +168,9 @@ def main():
     turn.add_argument("text")
     turn.add_argument("--actor", default="researcher")
     turn.add_argument("--operation-id", help="重试时复用同一标识，避免重复记录同一轮输入")
+    turn.add_argument("--draft-id", help="从上轮输出复制草稿 ID")
+    turn.add_argument("--recommendation-id", help="从上轮输出复制推荐集合 ID")
+    turn.add_argument("--recommendation-version", type=int, help="推荐集合版本")
     show = sub.add_parser("show")
     show.add_argument("task_id")
     design = sub.add_parser("propose-design")
@@ -189,8 +222,15 @@ def main():
             ), mode=instructor.Mode.JSON)
             prompt_hash = digest({"extract": SYSTEM_PROMPT, "proposal": PROPOSAL_PROMPT})
             print(f"operation_id={operation_id}", flush=True)
+            context = {}
+            if args.draft_id:
+                context["draft_id"] = args.draft_id
+            if args.recommendation_id or args.recommendation_version is not None:
+                if not args.recommendation_id or args.recommendation_version is None:
+                    raise ValueError("推荐 ID 和版本须同时提供")
+                context["recommendation_ref"] = {"id": args.recommendation_id, "version": args.recommendation_version}
             result = run_intake_turn(args.task_id, args.text, args.actor, client, model, prompt_hash,
-                                     operation_id)
+                                     operation_id, input_context=context)
             print(json.dumps(result, ensure_ascii=False, indent=2))
         elif args.command == "propose-design":
             payload = json.loads(args.file.read_text(encoding="utf-8"))

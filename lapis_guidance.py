@@ -27,9 +27,12 @@ def recommendations(state, user_text, catalog=None):
                     ("research_object", "purpose", "application")) + " " + user_text
     declined = {x["direction_id"] for x in state.get("recommendation_history", [])
                 if x["status"] == "rejected"}
+    object_text = fields["research_object"].get("value") or ""
     matches = []
     for direction in catalog["directions"]:
         if direction["id"] in declined:
+            continue
+        if object_text and not any(alias.casefold() in object_text.casefold() for alias in direction["aliases"]):
             continue
         score = sum(alias.casefold() in text.casefold() for alias in direction["aliases"])
         if score:

@@ -4,12 +4,12 @@ from copy import deepcopy
 from uuid import uuid4
 
 from lapis_contract import RULE_VERSION, request_issues, validate_research_request_v3
-from lapis_store import create_task, get_task, initialize_schema, propose_design, save_turn
-from test_lapis_store import confirmed_v2_request
+from lapis_store import create_task, get_task, initialize_schema, propose_design, save_turn, approve_design, freeze_execution
+from test_lapis_store import confirmed_v3_request
 
 
 def v3_request():
-    request = confirmed_v2_request()
+    request = confirmed_v3_request()
     request.update(contract_version=3, rule_version=RULE_VERSION, domain="materials_application",
                    draft_revision=1, draft_id="draft-1", issues=[], sources={})
     return request
@@ -70,6 +70,25 @@ class V3StoreTest(unittest.TestCase):
         self.assertEqual(get_task(task)["request_version"], 1)
         with self.assertRaisesRegex(ValueError, "v3"):
             propose_design(task, {"request_version": 1}, "test")
+
+    def test_stale_design_cannot_be_approved_or_frozen_after_edit(self):
+        initialize_schema()
+        task = create_task("test")
+        request = v3_request()
+        state = {"contract_version": 3, "fields": deepcopy(request["fields"]), "draft_id": "draft-1",
+                 "draft_revision": 1, "stage": "ready_for_design", "turns": ["研究意图", "确认"]}
+        result = {"request": request, "intake_status": "ready_for_design", "ready_for_design": True,
+                  "confirmation_event": True, "calculation_status": "pending_research_design"}
+        save_turn(task, 0, state, result, "test", "fake")
+        design = propose_design(task, {"request_version": 1}, "test")
+        state.update(stage="clarifying", draft_id="draft-2")
+        state["turns"].append("修改对象")
+        save_turn(task, 1, state, {"request": request, "intake_status": "needs_clarification", "content_changed": True}, "test", "fake")
+        with self.assertRaisesRegex(ValueError, "v3"):
+            approve_design(task, design, "reviewer")
+        with self.assertRaises(ValueError):
+            freeze_execution(task, design, "test")
+
 
 
 if __name__ == "__main__":

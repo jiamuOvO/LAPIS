@@ -42,7 +42,7 @@ class GraphIntakeTest(unittest.TestCase):
                 run_intake_turn(task_id, "测试", "test", None, "fake", "prompt-test")
 
     @staticmethod
-    def _needs_confirmation(client, model, state, text):
+    def _needs_confirmation(client, model, state, text, **kwargs):
         state["turns"].append(text)
         state["stage"] = "confirmation"
         return {"intake_status": "needs_confirmation", "ready": False,
@@ -52,7 +52,7 @@ class GraphIntakeTest(unittest.TestCase):
         initialize_schema()
         task_id = create_task("test")
 
-        def fake_handle_turn(client, model, state, text):
+        def fake_handle_turn(client, model, state, text, **kwargs):
             state["turns"].append(text)
             if text == "确认":
                 state["stage"] = None
@@ -101,10 +101,10 @@ class GraphIntakeTest(unittest.TestCase):
         task_id = create_task("test")
         entered, release = Event(), Event()
 
-        def slow_handle(*args):
+        def slow_handle(*args, **kwargs):
             entered.set()
             self.assertTrue(release.wait(10))
-            return self._needs_confirmation(*args)
+            return self._needs_confirmation(*args, **kwargs)
 
         with patch("lapis_graph.handle_turn", side_effect=slow_handle):
             with ThreadPoolExecutor(max_workers=2) as pool:
@@ -126,12 +126,12 @@ class GraphIntakeTest(unittest.TestCase):
         operation_id = "retry-" + task_id
         attempts = 0
 
-        def fail_once(*args):
+        def fail_once(*args, **kwargs):
             nonlocal attempts
             attempts += 1
             if attempts == 1:
                 raise RuntimeError("注入：写入前失败")
-            return self._needs_confirmation(*args)
+            return self._needs_confirmation(*args, **kwargs)
 
         with patch("lapis_graph.handle_turn", side_effect=fail_once):
             with self.assertRaisesRegex(RuntimeError, "写入前失败"):
@@ -143,7 +143,7 @@ class GraphIntakeTest(unittest.TestCase):
         self.assertEqual(get_task(task_id)["revision"], 1)
 
 
-    def test_v2_confirm_resumes_and_keeps_request_confirmed_status(self):
+    def test_v3_confirm_resumes_and_keeps_request_confirmed_status(self):
         from lapis_intake import Extraction, Update
         initialize_schema()
         task_id = create_task("test")
@@ -159,16 +159,31 @@ class GraphIntakeTest(unittest.TestCase):
                    quote="电解液稳定性"),
         ])
         with patch("lapis_intake.extract", return_value=updates):
-            first = run_intake_turn(task_id, text, "test", None, "fake", "prompt-v2")
+            first = run_intake_turn(task_id, text, "test", None, "fake", "prompt-v3")
         self.assertEqual(first["graph_status"], "waiting_for_user")
         self.assertIsNone(first["request_version"])
-        second = run_intake_turn(task_id, "确认", "test", None, "fake", "prompt-v2")
+        second = run_intake_turn(task_id, "确认", "test", None, "fake", "prompt-v3",
+                                 input_context=first["result"]["input_context"])
         self.assertEqual(second["graph_status"], "idle")
         self.assertEqual(second["request_version"], 1)
         saved = get_task(task_id)
         self.assertEqual(saved["status"], "request_confirmed")
-        self.assertEqual(saved["intake_result"]["request"]["contract_version"], 2)
+        self.assertEqual(saved["intake_result"]["request"]["contract_version"], 3)
         self.assertEqual(len(saved["intake_result"]["request"]["fields"]), 8)
+
+    def test_operation_replay_rejects_changed_context(self):
+        initialize_schema()
+        task_id = create_task("test")
+        operation = "context-" + task_id
+        with patch("lapis_graph.handle_turn", side_effect=self._needs_confirmation):
+            run_intake_turn(task_id, "研究意图", "test", None, "fake", "prompt-test", operation,
+                            input_context={"draft_id": "D1"})
+        with patch("lapis_graph.handle_turn", side_effect=AssertionError("no replayed model call")):
+            with self.assertRaisesRegex(ValueError, "不同确认或选择上下文"):
+                run_intake_turn(task_id, "研究意图", "test", None, "fake", "prompt-test", operation,
+                                input_context={"draft_id": "D2"})
+        self.assertEqual(get_task(task_id)["revision"], 1)
+
 
 
 if __name__ == "__main__":

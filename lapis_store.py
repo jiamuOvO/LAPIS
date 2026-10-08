@@ -205,7 +205,7 @@ def save_turn(task_id: str, expected_revision: int, state: dict, result: dict,
             active = row["active_request_version"]
             if confirmed and result.get("request", {}).get("contract_version") == 3:
                 active = version
-            elif result.get("content_changed") or state.get("contract_version") != 3:
+            elif result.get("content_changed") or state.get("contract_version") != 3 or state.get("stage") != "ready_for_design":
                 active = None
             cursor.execute("UPDATE research_tasks SET active_request_version=%s WHERE id=%s", (active, task_id))
             _event(cursor, task_id, actor, "intake_turn", {

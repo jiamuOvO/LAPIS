@@ -59,7 +59,8 @@ class Update(BaseModel):
 
     @model_validator(mode="after")
     def qualifiers(self):
-        if self.status == "specified" and self.action != "remove":
+        partial_update = self.action == "update" and (self.target_id or self.target_value)
+        if self.status == "specified" and self.action != "remove" and not partial_update:
             if self.field == "target_performance" and not self.direction:
                 raise ValueError("性能须有定性方向")
             if self.field == "constraints" and not self.strength:
@@ -201,7 +202,7 @@ def contextual_reply(state, text):
 
 
 def _fingerprint(state):
-    return content_hash({k: state[k] for k in ("fields", "reference_notes", "domain", "issues", "sources")})
+    return content_hash({k: state[k] for k in ("fields", "reference_notes", "domain", "issues", "sources", "task_type")})
 
 
 def _touch(state, before):
@@ -240,7 +241,7 @@ def _edit_issue(state, field, message, text):
                             "message": message, "quote": text, "status": "open"})
 
 
-def _merge(state, text, extraction):
+def _merge(state, text, extraction, context=None):
     updates = [u for u in extraction.updates if u.quote in text]
     grouped = {}
     for update in updates:
@@ -306,6 +307,10 @@ def _merge(state, text, extraction):
                     continue
                 id = matches[0].get("id") if matches else field + "-" + uuid4().hex[:10]
                 entry = _record(item, turn, id)
+                if item.action == "update" and matches and item.status == "specified":
+                    for key in ("value", "direction", "strength", "predicate", "temperatures"):
+                        if entry.get(key) is None and key in matches[0]:
+                            entry[key] = deepcopy(matches[0][key])
                 if field == "reference_note":
                     entry.update(category=item.category or "other", active=True,
                                  status="unverified_user_reference")
@@ -323,15 +328,24 @@ def _merge(state, text, extraction):
         if before != after:
             state["history"].append({"field": field, "before": before, "after": deepcopy(after), "turn": turn})
     for field in extraction.reaffirm_fields:
+        if (context or {}).get("draft_id") != state["draft_id"]:
+            continue
         if field in FIELDS:
             values = state["fields"][field]
+            before = deepcopy(values)
             for entry in values if isinstance(values, list) else [values]:
                 if entry.get("needs_review"):
                     entry.pop("needs_review")
                     entry["review_quote"] = text
                     entry["review_turn"] = turn
+                    if (entry.get("source") or "").startswith("legacy_"):
+                        entry["legacy_provenance"] = {k: entry.get(k) for k in ("source", "quote", "turn")}
+                        entry.update(source="user", quote=text, turn=turn)
+            if before != values:
+                state["history"].append({"field": field, "before": before, "after": deepcopy(values), "turn": turn, "reason": "explicit_reaffirmation"})
     for issue in state["issues"]:
-        if issue["id"] in extraction.resolve_issue_ids and grouped:
+        if issue["id"] in extraction.resolve_issue_ids and issue.get("field") in grouped and any(
+                h["field"] == issue["field"] and h["turn"] == turn for h in state["history"]):
             issue["status"] = "resolved"
             issue["resolution_quote"] = text
             issue["resolved_turn"] = turn
@@ -345,21 +359,49 @@ def _merge(state, text, extraction):
         state["domain"] = "non_research"
 
 
+def _ground_actions(state, extraction):
+    """Do not let model-expanded option text overwrite its catalog provenance."""
+    rec = state.get("recommendation_set")
+    adopted = {}
+    if "select" in extraction.actions and rec and extraction.selected_option and 1 <= extraction.selected_option <= len(rec["options"]):
+        adopted = rec["options"][extraction.selected_option - 1]["fields"]
+    retained = []
+    for item in extraction.updates:
+        proposed = adopted.get(item.field)
+        values = proposed if isinstance(proposed, list) else [{"value": proposed}] if proposed is not None else []
+        selection_only = re.fullmatch(r"(?:我)?(?:采用|选择|选|就用|用|按)(?:第?[一二三四1234](?:个|条)?|这个|该|上述)(?:方向|方案|建议|研究)?", item.quote.strip())
+        if proposed is not None and selection_only:
+            continue
+        if any(item.value == e["value"] and (item.field != "target_performance" or item.direction == e.get("direction")) for e in values):
+            continue
+        if item.field == "constraints":
+            match = re.search(r"(?:不再考虑|不考虑|撤回|取消)\s*([^，。；,;]+)", item.quote)
+            if match:
+                name = re.sub(r"(?:约束|限制|要求)$", "", match.group(1)).strip()
+                found = [e for e in state["fields"]["constraints"] if name and name in (e.get("value") or "")]
+                item = item.model_copy(update={"action": "remove", "status": "none", "target_value": name,
+                                              "target_id": found[0]["id"] if len(found) == 1 else None})
+        retained.append(item)
+    return extraction.model_copy(update={"updates": retained})
+
+
 def _select(state, extraction, text, context):
     rec = state.get("recommendation_set")
     expected = context.get("recommendation_ref")
     if not rec or expected != {"id": rec["id"], "version": rec["version"]} or rec["draft_id"] != state["draft_id"]:
-        _edit_issue(state, "research_object", "推荐已经变化，请基于重新展示的方向选择。", text)
-        return
+        return "推荐已经变化，请请求重新展示方向后再选择。"
     index = extraction.selected_option
     if not index or not 1 <= index <= len(rec["options"]):
-        _edit_issue(state, "research_object", "请明确采用哪一个方向。", text)
-        return
+        return "请明确采用哪一个方向。"
     option = rec["options"][index - 1]
     if any(x["direction_id"] == option["id"] and x["status"] == "rejected"
            for x in state["recommendation_history"]):
-        _edit_issue(state, "research_object", "这条方向曾被拒绝；请明确说明要重新采用。", text)
-        return
+        return "这条方向曾被拒绝，请先重新审查方向。"
+    for field in ("work_conditions", "constraints"):
+        values = state["fields"][field]
+        for entry in values if isinstance(values, list) else [values]:
+            if entry.get("status") == "specified":
+                entry["needs_review"] = True
     state["sources"].update(deepcopy(rec["sources"]))
     for field, value in option["fields"].items():
         before = deepcopy(state["fields"][field])
@@ -377,15 +419,20 @@ def _select(state, extraction, text, context):
         state["fields"][field] = converted if field in LIST_FIELDS else converted[0]
         state["history"].append({"field": field, "before": before, "after": deepcopy(state["fields"][field]),
                                  "turn": len(state["turns"]), "reason": "recommendation_selected"})
+        for issue in state["issues"]:
+            entries = before if isinstance(before, list) else [before]
+            if issue.get("status") != "resolved" and issue.get("kind") == "ambiguity" and issue.get("field") == field and all(e.get("status") != "specified" for e in entries):
+                issue.update(status="resolved", resolution_quote=text, resolved_turn=len(state["turns"]),
+                             resolution_reason="adopted_reviewed_direction")
     state["domain"] = "materials_application"
     state["recommendation_history"].append({"set_id": rec["id"], "version": rec["version"],
                                             "direction_id": option["id"], "status": "accepted", "quote": text})
 
 
-def _reject(state, extraction, text):
+def _reject(state, extraction, text, context):
     rec = state.get("recommendation_set")
-    if not rec:
-        return
+    if not rec or context.get("recommendation_ref") != {"id": rec["id"], "version": rec["version"]} or context.get("draft_id") != state["draft_id"]:
+        return "请先查看当前方向或草稿，再明确拒绝哪条建议。"
     options = rec["options"]
     if extraction.selected_option and 1 <= extraction.selected_option <= len(options):
         options = [options[extraction.selected_option - 1]]
@@ -394,9 +441,13 @@ def _reject(state, extraction, text):
         state["recommendation_history"].append({"set_id": rec["id"], "version": rec["version"],
                                                 "direction_id": option["id"], "status": "rejected", "quote": text})
     for field, value in state["fields"].items():
+        before = deepcopy(value)
         entries = value if isinstance(value, list) else [value]
         kept = [x for x in entries if (x.get("recommendation_ref") or {}).get("direction_id") not in rejected]
         state["fields"][field] = (kept or [_unknown(field + "-unknown")]) if field in LIST_FIELDS else (kept[0] if kept else _unknown())
+        if before != state["fields"][field]:
+            state["history"].append({"field": field, "before": before, "after": deepcopy(state["fields"][field]),
+                                     "turn": len(state["turns"]), "reason": "recommendation_rejected"})
     state["recommendation_set"] = None
 
 
@@ -437,7 +488,8 @@ def _result(state, changed=False, guide=False, text="", notice=None):
         explanation = explain_field(state.get("asked_field"))
         if rec:
             question = explanation + " 已提供有来源的待选择方向，可采用序号、修改或拒绝；尚未写入研究需求。"
-            status = "needs_guidance"
+            if status != "ready_for_design":
+                status = "needs_guidance"
         else:
             question = explanation + " 当前已核查资料没有覆盖合适方向；可以先限定具体分子/材料类别，说明已有用途或提供可核查资料。我不会据此编造性质或来源。"
     result = {"intake_status": status, "ready": status == "ready_for_design",
@@ -457,8 +509,10 @@ def _result(state, changed=False, guide=False, text="", notice=None):
 
 
 def _confirm(state, context):
+    if re.search(r"(?:不|别|不要|暂不|先不|不想)\s*(?:再|先|要|想|准备|打算|进行)?(?:确认|同意|继续)", state["turns"][-1]):
+        return _result(state, notice="本轮未授权确认，草稿已保留。")
     if state["stage"] == "ready_for_design":
-        return _result(state)
+        return _result(state, notice=None if context.get("draft_id") == state["draft_id"] else "当前请求已经确认，本轮没有新增确认。")
     if context.get("draft_id") != state["draft_id"] or state["stage"] != "review":
         return _result(state, notice="请先查看当前完整草稿，再确认它的版本。")
     draft = make_draft(state)
@@ -496,24 +550,36 @@ def handle_turn(client, model, state, text, input_context=None):
         result = _result(state, notice="草稿已保留，尚未新增确认；可以继续解释、修改或确认。")
     else:
         extraction = contextual_reply(state, text) or extract(client, model, state, text)
+        extraction = _ground_actions(state, extraction)
         before = _fingerprint(state)
         state["turns"].append(text)
+        notice = None
         if "select" in extraction.actions:
-            _select(state, extraction, text, context)
+            notice = _select(state, extraction, text, context)
         if "reject" in extraction.actions or text in {"不采用", "不用建议"}:
-            _reject(state, extraction, text)
-        _merge(state, text, extraction)
+            notice = _reject(state, extraction, text, context)
+        _merge(state, text, extraction, context)
         changed = _touch(state, before)
         guide = bool(set(extraction.actions) & {"recommend", "explain", "unsure", "reject"})
-        result = _result(state, changed, guide, text)
+        result = _result(state, changed, guide, text, notice)
         if "confirm" in extraction.actions and not extraction.updates and not changed and not (set(extraction.actions) & {"select", "edit", "reaffirm", "reject"}):
             result = _confirm(state, context)
         elif "confirm" in extraction.actions:
+            if result.get("ready_for_design"):
+                state["stage"] = "review"
+                result = _result(state, changed)
             result["notice"] = "本轮含修改或选择，请核对更新后的完整草稿，再确认。"
     result["metadata"] = {"model": model, "rule_version": RULE_VERSION, "contract_version": 3,
                           "elapsed_seconds": round(time.perf_counter() - started, 3),
                           "catalog_version": (state.get("recommendation_set") or {}).get("catalog_version")}
     return result
+
+
+def preview_intake(state):
+    """Render a legacy draft without rewriting its stored historical payload."""
+    preview = deepcopy(state)
+    normalize_state(preview)
+    return _result(preview, notice="旧版记录仍保留；进入新版设计前请逐项重新核对并确认。")
 
 
 def main():
