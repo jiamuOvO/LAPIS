@@ -1,0 +1,59 @@
+{
+  "implementation_commit": "b11c39220cd09f1f63ea86980282cf5d5545a924",
+  "software_tests": {
+    "passed": 61,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 16.355,
+    "database": "lapis_test"
+  },
+  "real_latest": {
+    "run_id": "c278aedc-78f2-4a69-a24e-9041474c992e",
+    "baseline_commit": "9d4c231bf80b2cbbeaa0c4e8cf6fdb0505314299",
+    "judgments": {
+      "passed": 16
+    },
+    "http_calls": 16,
+    "total_tokens": 65718,
+    "wall_seconds": 55.867,
+    "recommendation_seconds": [
+      9.756,
+      9.854,
+      7.164
+    ],
+    "code_sha256": {
+      "lapis.py": "85495cd03e9dda125948422db38dbc60c5472c34e6a973995515097a007a2a52",
+      "lapis_intake.py": "862f6f2e0757c83d731de3a84668dcf45f9b3bcf983fc8c6dcd5a2d2de55bdcc",
+      "lapis_contract.py": "a31b2785e456a3a63dce065b9c6316db9f431155c4d01890c6fd043be97873bb",
+      "lapis_proposals.py": "baa028b0f75d7446a29739564067689bc0f59e9a0c63b65df4825cf90c81806b",
+      "lapis_guidance.py": "4bbf7511e2e544f67a49fda68c25976219bec4118ced680f3f7ebc361b96220c",
+      "lapis_graph.py": "0eab715d30d9f7d4235ff500d26f17862de4d2fa3fc7342270b50e1f6bbbe0db",
+      "lapis_core.py": "ae3e1cf4ad8f9497b3955e43cc2d590722b500c97671652b93bd8426acbb24b5",
+      "lapis_store.py": "cd8ddd9ebb8b2ae08c2db0703294d9535beb1be68e8fab56f9fd61fa4b246dd9"
+    }
+  },
+  "mock_latest": {
+    "run_id": "ff553887-093d-44dd-832b-e58ad2d0c45d",
+    "judgments": {
+      "passed": 16
+    }
+  },
+  "all_real_runs": {
+    "dfafa612-f28f-444d-ae5e-cfb077aedb56": {
+      "passed": 10,
+      "error": 4
+    },
+    "90975901-8c83-4993-8fdc-cacab6ea59bb": {
+      "passed": 14,
+      "failed": 2
+    },
+    "74cbd736-5009-4394-a897-247a8284119e": {
+      "passed": 16
+    },
+    "c278aedc-78f2-4a69-a24e-9041474c992e": {
+      "passed": 16
+    }
+  },
+  "boundary": "synthetic dialogue and software acceptance only; no materials computation or scientific conclusions",
+  "final_patch": "b11c392 changes only deterministic filtering of pure selection updates; full 61-test regression covers it. Real 16-round run is pinned to 9d4c231 before this patch."
+}
