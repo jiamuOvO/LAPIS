@@ -78,14 +78,24 @@ def run_chat(task_id: str | None, actor: str) -> None:
     if not key:
         raise ValueError("请先设置 LAPIS_API_KEY 或 DEEPSEEK_API_KEY")
     task_id = task_id or create_task(actor)
-    get_task(task_id)
+    task = get_task(task_id)
     model = os.getenv("LAPIS_MODEL", "deepseek-flash")
     client = instructor.from_openai(OpenAI(
         api_key=key, base_url=os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com"), timeout=40,
     ), mode=instructor.Mode.JSON)
     prompt_hash = digest({"extract": SYSTEM_PROMPT, "proposal": PROPOSAL_PROMPT})
-    print(f"任务 ID：{task_id}\nLAPIS> 请描述你本轮想研究的材料问题。输入 /exit 退出。", flush=True)
+    print(f"任务 ID：{task_id}\n输入 /exit 退出。", flush=True)
+    result = task.get("intake_result")
     while True:
+        if not result:
+            print("LAPIS> 请描述你本轮想研究的材料问题。")
+        elif result["intake_status"] == "needs_confirmation":
+            print("研究请求草案：")
+            print(json.dumps(result["request"]["fields"], ensure_ascii=False, indent=2))
+        if result and result.get("next_question"):
+            print("LAPIS> " + result["next_question"])
+        elif result and result.get("ready_for_design"):
+            print("LAPIS> 研究请求已保存，可进入研究设计。输入 /exit 退出，或继续修改。")
         try:
             text = input("你> ").strip()
         except (EOFError, KeyboardInterrupt):
@@ -111,13 +121,6 @@ def run_chat(task_id: str | None, actor: str) -> None:
                 if retry not in {"", "y", "yes", "是"}:
                     return
         result = output["result"]
-        if result["intake_status"] == "needs_confirmation":
-            print("研究请求草案：")
-            print(json.dumps(result["request"]["fields"], ensure_ascii=False, indent=2))
-        if result.get("next_question"):
-            print("LAPIS> " + result["next_question"])
-        elif result.get("ready_for_design"):
-            print("LAPIS> 研究请求已保存，可进入研究设计。输入 /exit 退出，或继续修改。")
 
 
 def main():
