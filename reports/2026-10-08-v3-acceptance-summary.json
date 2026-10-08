@@ -1,0 +1,81 @@
+{
+  "implementation_commit": "ab9b372b1511bfdba921af41d40331704a21124e",
+  "python": "3.11.16",
+  "packages": {
+    "instructor": "1.17.1",
+    "langgraph": "1.2.12",
+    "langgraph-checkpoint-postgres": "3.1.2",
+    "psycopg": "3.3.6",
+    "pydantic": "2.13.5",
+    "openai": "3.3.0",
+    "httpx": "0.28.1"
+  },
+  "contract_version": 3,
+  "rule_version": "intake-rules-3.1",
+  "catalog_version": "directions-1.0",
+  "prompt_sha256": "6a07022c8e98bd46a278793344d2d27e94c2027f96aebce7cf2372d24bb051c6",
+  "code_sha256": {
+    "lapis.py": "3e80bf2e5801017b381ecfe93136e3f6fd6a8eece0cbaccb8c96033fcf364eff",
+    "lapis_intake.py": "957bada7bdc5de4fbd450c76ffb97220f55321020acafe2b6806b8b4be72a543",
+    "lapis_contract.py": "a4e4f39268e93add929b120929439d4a382a5a6b808ad5ab351f02365b7e77c8",
+    "lapis_guidance.py": "79f3dbc086638eaf2cde4dec18d043b2206d1839704911c650b6fff3e74c68b9",
+    "lapis_graph.py": "dfeb28e8a7a5b0c3dd54911141a734e0e88233b491c108679dd1e3e702da790e",
+    "lapis_store.py": "987c9bcf0ca2c99b10d740a71a71de16b4439035fb6ee1b6d5722a79a7e4c16d"
+  },
+  "software_tests": {
+    "passed": 51,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "production_migrations": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "isolated_migrations": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "scope": "intake software only; no real scientific calculation or result acceptance",
+  "real": {
+    "final_counts": {
+      "passed": 14
+    },
+    "all_attempt_counts": {
+      "passed": 40,
+      "failed": 4,
+      "error": 1
+    },
+    "elapsed_seconds": 28.955,
+    "http_calls": 10,
+    "retry_count": 1,
+    "total_tokens": 32912,
+    "run_ids": [
+      "cb469bc5-63a2-448f-9a00-e821e6ef2ec0",
+      "e8bd2243-b421-45b1-861c-eb1235ffc10a",
+      "ee32c2b4-0f02-4af0-9083-4754ab27e8bf"
+    ]
+  },
+  "mock": {
+    "final_counts": {
+      "passed": 14
+    },
+    "all_attempt_counts": {
+      "passed": 28
+    },
+    "elapsed_seconds": 5.351,
+    "http_calls": 0,
+    "retry_count": 0,
+    "total_tokens": 0,
+    "run_ids": [
+      "1b5558e0-e057-4ff5-804a-db3a76c9677a",
+      "1f955aed-875b-43f4-af4e-c4ea640dc6e9",
+      "e5a5f64d-f1f7-466a-852d-1cdb044d710e"
+    ]
+  }
+}
