@@ -6,8 +6,8 @@ import hashlib
 import json
 import re
 
-CONTRACT_VERSION = 3
-RULE_VERSION = "intake-rules-3.1"
+CONTRACT_VERSION = 4
+RULE_VERSION = "intake-rules-4.0"
 FIELDS = ("purpose", "research_object", "application", "work_conditions",
           "target_performance", "constraints", "research_scope", "material_function")
 LIST_FIELDS = {"target_performance", "constraints"}
@@ -89,6 +89,8 @@ def request_issues(payload):
                     add("missing", field, "明确的信息不能为空。")
                 if field == "constraints" and entry.get("strength") not in {"hard", "preference"}:
                     add("qualifier", field, "请区分硬约束与偏好。", [entry.get("id")])
+                if payload.get("contract_version", 0) >= 4 and field == "target_performance" and "性价比" in (entry.get("value") or ""):
+                    add("ambiguity", field, "性价比需要拆分：按什么口径评估成本，以及优先比较传输、稳定性还是其他性能？", [entry.get("id")])
                 if field == "target_performance" and not (entry.get("direction") or "").strip():
                     add("qualifier", field, "请明确性能方向，定性方向也可以。", [entry.get("id")])
         if field in {"purpose", "research_object", "application", "research_scope", "material_function"}:
@@ -127,12 +129,12 @@ def request_issues(payload):
     return issues
 
 
-def validate_research_request_v3(payload):
-    if not isinstance(payload, dict) or payload.get("contract_version") != CONTRACT_VERSION:
-        raise ValueError("进入新版研究设计前须重新核对并确认 v3 研究请求")
+def _validate_request(payload, version, rule):
+    if not isinstance(payload, dict) or payload.get("contract_version") != version:
+        raise ValueError("进入新版研究设计前须重新核对并确认当前版本研究请求")
     if set(payload.get("fields", {})) != set(FIELDS) or not payload.get("original_intent"):
         raise ValueError("研究请求必须有原始意图及八项输出")
-    if payload.get("rule_version") != RULE_VERSION:
+    if payload.get("rule_version") != rule:
         raise ValueError("研究请求需要按当前规则重新核对")
     for field in FIELDS:
         values = payload["fields"][field]
@@ -162,7 +164,18 @@ def validate_research_request_v3(payload):
                 if not entry.get("recommendation_ref") or not entry.get("selection_quote") or not isinstance(entry.get("confirmed_turn"), int):
                     raise ValueError("缺少推荐选择记录")
                 refs = entry.get("source_refs", [])
-                if not refs or any(ref not in sources for ref in refs):
+                if version == 4:
+                    proposal = payload.get("proposals", {}).get(entry["recommendation_ref"]["id"])
+                    if not proposal or proposal.get("version") != entry["recommendation_ref"].get("version") or entry["recommendation_ref"].get("direction_id") not in proposal.get("direction_ids", []):
+                        raise ValueError("缺少匹配的提案生成记录")
+                    if entry.get("suggestion_origin") == "model":
+                        if entry.get("evidence_status") != "unverified" or proposal.get("generation", {}).get("origin") != "model":
+                            raise ValueError("模型研究提案不得标为已核验")
+                        if not proposal["generation"].get("model") or not proposal["generation"].get("prompt_sha256"):
+                            raise ValueError("提案缺少模型和提示词版本")
+                    elif entry.get("suggestion_origin") != "catalogue" or entry.get("evidence_status") != "source_checked":
+                        raise ValueError("提案来源类别无效")
+                if (not refs and (version == 3 or entry.get("suggestion_origin") != "model")) or any(ref not in sources for ref in refs):
                     raise ValueError("缺少可追溯的推荐依据")
                 for ref in refs:
                     source = sources[ref]
@@ -171,3 +184,29 @@ def validate_research_request_v3(payload):
                         raise ValueError("推荐来源未经核查或快照校验失败")
     if not isinstance(payload.get("draft_revision"), int) or not payload.get("draft_id"):
         raise ValueError("请求缺少草稿修订标识")
+
+
+def validate_research_request_v3(payload):
+    """Historical validator remains pinned to its original contract."""
+    _validate_request(payload, 3, "intake-rules-3.1")
+
+def validate_research_request_v4(payload):
+    allowed = {"contract_version", "rule_version", "original_intent", "draft_revision", "draft_id",
+               "fields", "task_pattern", "domain", "issues", "reference_notes", "sources", "proposals"}
+    if not isinstance(payload, dict) or set(payload) - allowed:
+        raise ValueError("研究请求含未知字段")
+    records_allowed = {"status", "value", "source", "quote", "turn", "id", "direction", "strength",
+                       "predicate", "temperatures", "suggested_after_turn", "selection_quote", "confirmed_turn",
+                       "recommendation_ref", "source_refs", "suggestion_origin", "evidence_status", "needs_review",
+                       "review_quote", "review_turn", "legacy_provenance"}
+    for field, values in payload.get("fields", {}).items():
+        for record in values if isinstance(values, list) else [values]:
+            if not isinstance(record, dict) or set(record) - records_allowed:
+                raise ValueError("字段记录含未知键")
+            if record.get("value") is not None and not isinstance(record["value"], str):
+                raise ValueError("字段值必须为字符串或空值")
+            if record.get("status") == "specified" and record.get("source") not in {"user", "confirmed_suggestion"}:
+                raise ValueError("明确字段缺少有效来源")
+            if record.get("source") not in {None, "user", "confirmed_suggestion"}:
+                raise ValueError("字段来源未经重新核对")
+    _validate_request(payload, CONTRACT_VERSION, RULE_VERSION)

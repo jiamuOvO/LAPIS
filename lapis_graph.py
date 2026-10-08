@@ -44,7 +44,7 @@ def build_intake_graph(client, model: str, prompt_hash: str, checkpointer):
             task = get_task(task_id)
             intake_state = task["intake_state"]
             result = handle_turn(client, model, intake_state, state["user_text"],
-                                 input_context=state.get("input_context") or {})
+                                 input_context=state.get("input_context") or {}, operation_id=operation_id)
             version = save_turn(task_id, task["revision"], intake_state, result,
                                 state["actor"], model, prompt_hash, operation_id, state.get("input_context") or {})
         return {"user_text": None, "operation_id": None, "input_context": None, "status": result["intake_status"],

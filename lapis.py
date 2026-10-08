@@ -91,6 +91,10 @@ def render_intake_result(result):
         print("待选择研究方向（还未作为已确认需求）：")
         for i, option in enumerate(rec["options"], 1):
             print(f"{i}. {option['label']}：{option.get('reason', '')}")
+            print("来源／证据：" + option.get("suggestion_origin", "catalogue") + " / " + option.get("evidence_status", "source_checked"))
+            for key, label in (("assumptions", "假设"), ("limitations", "限制"), ("clarifications", "待澄清")):
+                if option.get(key):
+                    print(label + "：" + "；".join(option[key]))
         print("推荐上下文：" + json.dumps(result.get("input_context"), ensure_ascii=False))
     sources = rec.get("sources", {}) if rec else request.get("sources", {})
     for source in sources.values():
@@ -115,12 +119,12 @@ def run_chat(task_id: str | None, actor: str) -> None:
     task = get_task(task_id)
     model = os.getenv("LAPIS_MODEL", "deepseek-flash")
     client = instructor.from_openai(OpenAI(
-        api_key=key, base_url=os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com"), timeout=40,
+        api_key=key, base_url=os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com"), timeout=40, max_retries=0,
     ), mode=instructor.Mode.JSON)
     prompt_hash = digest({"extract": SYSTEM_PROMPT, "proposal": PROPOSAL_PROMPT})
     print(f"任务 ID：{task_id}\n输入 /exit 退出。", flush=True)
     result = task.get("intake_result")
-    if task.get("intake_state") and task["intake_state"].get("contract_version") != 3:
+    if task.get("intake_state") and task["intake_state"].get("contract_version") != 4:
         result = preview_intake(task["intake_state"])
     while True:
         render_intake_result(result)
@@ -218,7 +222,7 @@ def main():
                 raise ValueError("请先设置 LAPIS_API_KEY 或 DEEPSEEK_API_KEY")
             model = os.getenv("LAPIS_MODEL", "deepseek-flash")
             client = instructor.from_openai(OpenAI(
-                api_key=key, base_url=os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com"), timeout=40,
+                api_key=key, base_url=os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com"), timeout=40, max_retries=0,
             ), mode=instructor.Mode.JSON)
             prompt_hash = digest({"extract": SYSTEM_PROMPT, "proposal": PROPOSAL_PROMPT})
             print(f"operation_id={operation_id}", flush=True)

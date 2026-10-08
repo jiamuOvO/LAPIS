@@ -1,5 +1,5 @@
 {
-  "version": "directions-1.0",
+  "version": "directions-1.1",
   "sources": {
     "furan-polyketone-2021": {
       "title": "Maleimide Self-Reaction in Furan/Maleimide-Based Reversibly Crosslinked Polyketones: Processing Limitation or Potential Advantage?",
@@ -21,6 +21,18 @@
       "claim": "研究了非晶 PEF 的二氧化碳吸附和传输，并与 PET 比较。",
       "object_scope": "文中非晶 PEF/PET；不是任意含呋喃基分子",
       "limitations": "此次只核查出版社摘要；不能由此直接预测用户材料的阻隔性能或指定计算参数。",
+      "checked_at": "2026-10-08",
+      "access": "abstract_only",
+      "verification": "source_claim_checked"
+    },
+    "electrolyte-transport-2015": {
+      "title": "Lithium Ion Solvation and Diffusion in Bulk Organic Electrolytes from First Principles and Classical Reactive Molecular Dynamics",
+      "doi": "10.1021/jp508184f",
+      "url": "https://arxiv.org/abs/1502.07708v1",
+      "locator": "Author abstract, arXiv v1",
+      "claim": "作者研究了 EC、EMC 及混合溶剂中锂离子的溶剂化和扩散；支持将体相输运作为有限研究方向。",
+      "object_scope": "论文中的有机碳酸酯锂离子电解液；不适用于所有电池体系",
+      "limitations": "只核查作者摘要；不证明配方更便宜或性价比更高。扩散不等于寿命、安全或完整器件性能；组分、盐浓度、模型和质量标准仍须审核。",
       "checked_at": "2026-10-08",
       "access": "abstract_only",
       "verification": "source_claim_checked"
@@ -83,6 +95,38 @@
         "target_performance": [
           {
             "value": "气体阻隔能力",
+            "direction": "比较"
+          }
+        ]
+      }
+    },
+    {
+      "id": "lithium-electrolyte-transport",
+      "label": "可选起点：锂离子电池电解液的成本偏好与体相输运比较",
+      "aliases": [
+        "电池液",
+        "电解液",
+        "electrolyte"
+      ],
+      "exclude_aliases": [
+        "铅酸",
+        "水系",
+        "钠离子",
+        "锂硫"
+      ],
+      "source_refs": [
+        "electrolyte-transport-2015"
+      ],
+      "reason": "先由你选择锂离子体系，再比较候选电解液的离子输运；性价比需要另定义成本口径、预算和性能底线。这不是最优配方推荐。",
+      "fields": {
+        "purpose": "比较锂离子电池候选电解液的体相输运表现，保留成本偏好",
+        "research_object": "锂离子电池有机碳酸酯候选电解液",
+        "application": "锂离子电池；具体电极体系与用途待澄清",
+        "research_scope": "先限定体相输运与溶剂化；成本口径、预算及性能底线待澄清，不推断寿命或器件表现",
+        "material_function": "传导锂离子",
+        "target_performance": [
+          {
+            "value": "锂离子体相输运能力",
             "direction": "比较"
           }
         ]

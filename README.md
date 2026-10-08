@@ -49,7 +49,7 @@ $py='F:\LAPIS\.conda-lapis\python.exe'
 
 `turn` 使用现有 Instructor 进行结构化受理；设置 `LAPIS_API_KEY` 或 `DEEPSEEK_API_KEY`，可另设 `LAPIS_BASE_URL`、`LAPIS_MODEL`。LangGraph 仅编排受理中的**追问、人工确认、跨进程暂停和继续**，使用同一 PostgreSQL 实例保存 checkpoint。研究请求、审批、作业和审计以 LAPIS 表为准。命令在调用 LLM 前打印 `operation_id`；若响应丢失或进程失败，重试**同一输入**时传回原 ID。图节点重放会查操作记录，不重复写入已提交的轮次；同一 ID 用于不同输入或不同确认／推荐上下文会被拒绝，同一任务的并发输入也会被拒绝。若出现“已恢复上一轮受理”，先用上一轮 ID 查询/重试，再提交新输入。计算提交、质量判断和结论均由确定性代码及人工审核控制，不由图节点直接决定。
 
-受理草案分别呈现研究目的、研究对象、应用场景、工作条件、目标性能、约束条件、研究范围和材料功能，并保留来源与用户原话。未知条件保持未知；系统建议经用户确认后保留原建议出处。`ready_for_design` 只表示整份 v3 研究请求经用户确认，可进入研究设计；数据库任务状态仍为 `request_confirmed`。旧版 v1/v2 请求可读取；转换成草稿时指定字段标为待重新核对，进入新版设计前须重新核对并确认。修改当前请求立即清除 `active_request_version`，历史 `request_version` 仍可读取，不能用于新设计。设计草案可不完整，审批时必须符合 [执行计划契约](lapis_core.py)：候选、实验、条件与单位、方法和模型版本、参数、质量规则、预期原始文件与资源上限。冻结是幂等的，不启动真实计算。结构校验不能代替对模型适用性和质量阈值的科研审核。
+受理草案分别呈现研究目的、研究对象、应用场景、工作条件、目标性能、约束条件、研究范围和材料功能，并保留来源与用户原话。未知条件保持未知；系统建议经用户确认后保留原建议出处。`ready_for_design` 只表示整份 v4 研究请求经用户确认，可进入研究设计；数据库任务状态仍为 `request_confirmed`。旧版 v1/v2/v3 请求可读取；转换成草稿时指定字段标为待重新核对，进入新版设计前须重新核对并确认。修改当前请求立即清除 `active_request_version`，历史 `request_version` 仍可读取，不能用于新设计。设计草案可不完整，审批时必须符合 [执行计划契约](lapis_core.py)：候选、实验、条件与单位、方法和模型版本、参数、质量规则、预期原始文件与资源上限。冻结是幂等的，不启动真实计算。结构校验不能代替对模型适用性和质量阈值的科研审核。
 
 当前 `approve-design --reviewer` 只记录调用者填写的字符串，**没有身份认证**。这个记录可用于软件流程测试，不能单独作为真实高成本计算的可信授权。接入真实适配器前必须建立可验证的研究人员身份、审批权限和审批记录，并在提交点再次核验。
 
@@ -82,26 +82,29 @@ $env:LAPIS_DB_NAME='lapis_test'
 & 'F:\LAPIS\.conda-lapis\python.exe' -X utf8 -m unittest discover -s 'F:\LAPIS' -p 'test_*.py'
 ```
 
-## v3 受理升级与验收
+## v4 动态受理与验收
 
-当前开发分支已接入八字段 v3 契约、显式领域判断、列表条目 ID、温度／组分矛盾检查、局部修改、来源快照和草稿绑定确认。第一次升级必须先备份，再对目标数据库执行 `lapis.py migrate`；migration 005 增加有效请求指针和操作上下文，不重写旧请求。此轮自动写库验收只使用 `lapis_test`，正式库迁移状态以实施报告为准。
+当前使用八字段 v4 契约及 `intake-rules-4.0`。复用原数据库与迁移 005，不新增服务或 SQL 迁移。已有数据库若尚未应用迁移 005，仍需先备份再迁移。
 
-`chat` 自动展示并携带当前草稿和推荐版本，退出后可用任务 ID 恢复；重试复用同一操作 ID 和上下文。单轮 `turn` 必须显式带回上轮 JSON 的上下文，例如：
+推荐由 Instructor 调用模型动态生成，材料类别不依赖本地目录白名单。`data/research_directions.json` 只提供可选、已核查的参考上下文；目录未覆盖时仍能提出研究提案。提案展示理由、假设、限制、待澄清事项，并标记 `suggestion_origin=model`、`evidence_status=unverified`。用户采用只确认研究意图，不核验性质、文献或计算结果。模型不能自行生成来源 ID、URL 或 DOI；有参考资料也不会把整项提案升级为已验证。
+
+提案用推荐集合版本、草稿 ID 和方向 ID 绑定选择。确认后的请求记录模型、提示词哈希、生成操作标识和提案快照哈希；完整原提案保存在对应 `intake_operations.result`，无需新事实库。修改清除有效请求指针，旧版请求保持历史可读，使用前需要重新审查。抽取或生成失败整轮回滚；重试沿用原操作 ID。推荐多一次模型调用，耗时及费用会增加。
+
+`chat` 自动携带当前草稿和推荐上下文。单轮 `turn` 示例：
 
 ```powershell
 & $py 'F:\LAPIS\lapis.py' turn <任务ID> '采用第二个，但先不考虑成本' --draft-id <草稿ID> --recommendation-id <推荐集合ID> --recommendation-version <版本>
 & $py 'F:\LAPIS\lapis.py' turn <任务ID> '确认' --draft-id <最新草稿ID>
 ```
 
-推荐来自 `data/research_directions.json` 的有版本本地目录。目前只收录两条已核查的呋喃材料方向；代码可通过增加目录项覆盖其他对象，但新增来源仍须人工核查。无覆盖时明确说明资料缺口，不生成文献或科研事实。采用建议后继续保留来源、对象范围和限制；采用方向只确认研究规约，不批准力场、方法或真实计算。“确认但修改”会展示新草稿，等待另一次确认。歧义与矛盾不能被一句“确认”消除。
-
-可复现验收脚本只允许隔离测试库，默认 mock；真实模式会把新建测试对话、公开目录及提示词发送给配置的模型服务，应在获准后执行：
+隔离验收：
 
 ```powershell
 $env:LAPIS_TEST_PG='1'
 $env:LAPIS_DB_NAME='lapis_test'
-& $py .\scripts\verify_intake_v3.py --case furan --mode mock --output .\reports\local-mock.jsonl
-# --case 可取 furan / edits / boundaries；经授权用 --mode real 验证真实模型。
+& $py -X utf8 -m unittest discover -v
+& $py .\scripts\verify_intake_v4.py --mode mock --output .\reports\local-v4-mock.jsonl
+# 经授权用 --mode real；会发送合成对话、提示词和公开参考上下文。
 ```
 
-mock 只验收软件行为。真实模型对话也不等于真实材料计算或科学结论。
+`scripts/verify_intake_v3.py` 及 v3 报告仅记录旧版目录方案的验收；复现旧版应检出其报告中的基线，不用于评价动态推荐。测试替身及真实模型对话均不是材料计算或科研结论的验收。

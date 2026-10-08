@@ -84,6 +84,7 @@ class ChatDatabaseTest(unittest.TestCase):
         with patch.dict(os.environ, {"LAPIS_API_KEY": "test"}), \
              patch("lapis.OpenAI"), patch("lapis.instructor.from_openai"), \
              patch("lapis_intake.extract", side_effect=replies), \
+             patch("lapis_intake.generate_recommendations", side_effect=__import__("test_lapis_intake").catalogue_fixture), \
              patch("builtins.input", side_effect=["呋喃基有什么推荐", "采用第二个，不考虑成本", "/exit"]), redirect_stdout(printed):
             run_chat(task, "cli-test")
         saved = get_task(task)

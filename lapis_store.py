@@ -16,7 +16,7 @@ from psycopg.types.json import Jsonb
 from lapis_core import (ExecutionPlan, check_attempt_transition, digest,
                         intake_is_confirmed, validate_research_request_v2, verify_artifact)
 from lapis_intake import new_state
-from lapis_contract import validate_research_request_v3
+from lapis_contract import validate_research_request_v4
 
 
 ROOT = Path(__file__).resolve().parent
@@ -203,9 +203,9 @@ def save_turn(task_id: str, expected_revision: int, state: dict, result: dict,
                         (task_id, version, Jsonb(payload), payload_hash, actor),
                     )
             active = row["active_request_version"]
-            if confirmed and result.get("request", {}).get("contract_version") == 3:
+            if confirmed and result.get("request", {}).get("contract_version") == 4:
                 active = version
-            elif result.get("content_changed") or state.get("contract_version") != 3 or state.get("stage") != "ready_for_design":
+            elif result.get("content_changed") or state.get("contract_version") != 4 or state.get("stage") != "ready_for_design":
                 active = None
             cursor.execute("UPDATE research_tasks SET active_request_version=%s WHERE id=%s", (active, task_id))
             _event(cursor, task_id, actor, "intake_turn", {
@@ -228,11 +228,11 @@ def _require_current_request(cursor, task_id: str, version: int) -> dict:
     row = cursor.execute("SELECT status,active_request_version,intake_state FROM research_tasks WHERE id=%s FOR UPDATE",
                          (task_id,)).fetchone()
     if not row or row["status"] != "request_confirmed" or row["active_request_version"] != version:
-        raise ValueError("当前请求没有有效的 v3 确认版本，请先重新核对并确认")
+        raise ValueError("当前请求没有有效的 v4 确认版本，请先重新核对并确认")
     record = cursor.execute("SELECT payload FROM request_versions WHERE task_id=%s AND version=%s",
                             (task_id, version)).fetchone()
     payload = _json(record["payload"])
-    validate_research_request_v3(payload)
+    validate_research_request_v4(payload)
     state = _json(row["intake_state"])
     if state.get("stage") != "ready_for_design" or state.get("draft_id") != payload["draft_id"]:
         raise ValueError("当前草稿已经变化，请重新确认")

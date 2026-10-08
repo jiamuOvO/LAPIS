@@ -20,7 +20,7 @@ import instructor
 from openai import OpenAI
 import lapis_intake
 from lapis import render_intake_result
-from lapis_contract import RULE_VERSION, content_hash
+from lapis_contract import CONTRACT_VERSION, RULE_VERSION, content_hash
 from lapis_core import digest
 from lapis_guidance import load_catalog
 from lapis_graph import run_intake_turn
@@ -30,10 +30,12 @@ from lapis_store import create_task, get_task, initialize_schema
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--case", choices=["furan", "edits", "boundaries"], required=True)
+    parser.add_argument("--case", choices=["furan", "edits", "boundaries", "battery"], required=True)
     parser.add_argument("--mode", choices=["real", "mock"], default="mock")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if CONTRACT_VERSION != 3:
+        parser.error("Historical v3 harness: check out its recorded baseline, or use verify_intake_v4.py.")
     if os.getenv("LAPIS_TEST_PG") != "1" or os.getenv("LAPIS_DB_NAME") != "lapis_test":
         parser.error("Requires LAPIS_TEST_PG=1 and LAPIS_DB_NAME=lapis_test.")
     initialize_schema()
@@ -118,7 +120,18 @@ def main():
     def update(field, value, quote=None, **kwargs):
         return dict(field=field, status="specified", value=value, quote=quote or value, **kwargs)
 
-    if args.case == "furan":
+    if args.case == "battery":
+        reset()
+        step("battery-value-intent", "我想要找到一种性价比高的电池液", "Retain broad intent and block automatic execution.",
+             lambda r,s: not r["ready_for_design"] and "电" in str(r["request"]["fields"]["research_object"]["value"]))
+        step("battery-recommendation", "你帮我推荐吧", "Offer bounded lithium electrolyte starting point with explicit economic limitations.",
+             lambda r,s: r["intake_status"] == "needs_guidance" and
+             any(x["id"] == "lithium-electrolyte-transport" for x in r["recommendations"]["options"]) and
+             "不证明" in r["recommendations"]["sources"]["electrolyte-transport-2015"]["limitations"])
+        step("battery-selection", "采用第一个方向", "Selection retains literature provenance; cost basis remains pending.",
+             lambda r,s: r["request"]["fields"]["research_object"]["source"] == "confirmed_suggestion" and
+             "成本口径" in r["request"]["fields"]["research_scope"]["value"])
+    elif args.case == "furan":
         reset()
         step("original-question", "我想知道呋喃基 分子有什么特性", "Keep object; no material use means blocked.",
              lambda r,s: not r["ready_for_design"] and "呋喃" in str(r["request"]["fields"]["research_object"]["value"]),

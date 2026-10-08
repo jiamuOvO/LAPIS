@@ -30,6 +30,8 @@ def recommendations(state, user_text, catalog=None):
     object_text = fields["research_object"].get("value") or ""
     matches = []
     for direction in catalog["directions"]:
+        if any(x.casefold() in text.casefold() for x in direction.get("exclude_aliases", [])):
+            continue
         if direction["id"] in declined:
             continue
         if object_text and not any(alias.casefold() in object_text.casefold() for alias in direction["aliases"]):

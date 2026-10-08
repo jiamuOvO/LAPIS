@@ -10,7 +10,7 @@ from test_lapis_store import confirmed_v3_request
 
 def v3_request():
     request = confirmed_v3_request()
-    request.update(contract_version=3, rule_version=RULE_VERSION, domain="materials_application",
+    request.update(contract_version=3, rule_version="intake-rules-3.1", domain="materials_application",
                    draft_revision=1, draft_id="draft-1", issues=[], sources={})
     return request
 
@@ -52,8 +52,9 @@ class V3StoreTest(unittest.TestCase):
     def test_edit_revokes_active_version_and_old_records_remain_readable(self):
         initialize_schema()
         task = create_task("test")
-        request = v3_request()
-        state = {"contract_version": 3, "fields": deepcopy(request["fields"]),
+        from test_lapis_store import confirmed_v4_request
+        request = confirmed_v4_request()
+        state = {"contract_version": 4, "fields": deepcopy(request["fields"]),
                  "draft_id": "draft-1", "draft_revision": 1, "stage": "ready_for_design",
                  "turns": ["研究意图", "确认"]}
         result = {"request": request, "intake_status": "ready_for_design", "ready_for_design": True,
@@ -68,14 +69,15 @@ class V3StoreTest(unittest.TestCase):
         save_turn(task, 1, state, changed, "test", "fake")
         self.assertIsNone(get_task(task)["active_request_version"])
         self.assertEqual(get_task(task)["request_version"], 1)
-        with self.assertRaisesRegex(ValueError, "v3"):
+        with self.assertRaisesRegex(ValueError, "v4"):
             propose_design(task, {"request_version": 1}, "test")
 
     def test_stale_design_cannot_be_approved_or_frozen_after_edit(self):
         initialize_schema()
         task = create_task("test")
-        request = v3_request()
-        state = {"contract_version": 3, "fields": deepcopy(request["fields"]), "draft_id": "draft-1",
+        from test_lapis_store import confirmed_v4_request
+        request = confirmed_v4_request()
+        state = {"contract_version": 4, "fields": deepcopy(request["fields"]), "draft_id": "draft-1",
                  "draft_revision": 1, "stage": "ready_for_design", "turns": ["研究意图", "确认"]}
         result = {"request": request, "intake_status": "ready_for_design", "ready_for_design": True,
                   "confirmation_event": True, "calculation_status": "pending_research_design"}
@@ -84,7 +86,7 @@ class V3StoreTest(unittest.TestCase):
         state.update(stage="clarifying", draft_id="draft-2")
         state["turns"].append("修改对象")
         save_turn(task, 1, state, {"request": request, "intake_status": "needs_clarification", "content_changed": True}, "test", "fake")
-        with self.assertRaisesRegex(ValueError, "v3"):
+        with self.assertRaisesRegex(ValueError, "v4"):
             approve_design(task, design, "reviewer")
         with self.assertRaises(ValueError):
             freeze_execution(task, design, "test")

@@ -3,7 +3,7 @@ from copy import deepcopy
 from unittest.mock import patch
 
 from lapis_core import intake_is_confirmed
-from lapis_contract import validate_research_request_v3
+from lapis_contract import validate_research_request_v4
 from lapis_guidance import load_catalog, recommendations
 from lapis_intake import Extraction, Update, handle_turn, new_state, normalize_state, process_turn
 
@@ -27,8 +27,13 @@ def full_updates():
     ])
 
 
+def catalogue_fixture(client, model, state, text, operation_id=None):
+    """Historical catalogue fixture ONLY; production always calls the model."""
+    return recommendations(state, text)
+
+
 def turn(state, text, extraction, context=None):
-    with patch("lapis_intake.extract", return_value=extraction):
+    with patch("lapis_intake.extract", return_value=extraction), patch("lapis_intake.generate_recommendations", side_effect=catalogue_fixture):
         return handle_turn(None, "mock", state, text, input_context=context)
 
 
@@ -56,7 +61,7 @@ class IntakeV3Test(unittest.TestCase):
         self.assertFalse(stale["ready_for_design"])
         confirmed = handle_turn(None, "mock", state, "确认", input_context=draft["input_context"])
         self.assertTrue(intake_is_confirmed(state, confirmed))
-        validate_research_request_v3(confirmed["request"])
+        validate_research_request_v4(confirmed["request"])
         repeated = handle_turn(None, "mock", state, "确认", input_context=confirmed["input_context"])
         self.assertEqual(repeated["request"], confirmed["request"])
         self.assertFalse(repeated.get("confirmation_event", False))
@@ -75,7 +80,7 @@ class IntakeV3Test(unittest.TestCase):
         payload = deepcopy(selected["request"])
         payload["sources"]["pef-co2-2015"]["claim"] = "changed without provenance"
         with self.assertRaisesRegex(ValueError, "快照校验"):
-            validate_research_request_v3(payload)
+            validate_research_request_v4(payload)
 
 
     def test_unknown_mechanism_does_not_require_hypothesis(self):
@@ -137,6 +142,27 @@ class IntakeV3Test(unittest.TestCase):
             Update(field="constraints", status="specified", value="先不考虑成本", strength="preference", quote="先不考虑成本")]))
         self.assertEqual(len(result["request"]["fields"]["constraints"]), 1)
         self.assertEqual(result["request"]["fields"]["constraints"][0]["strength"], "hard")
+
+
+    def test_battery_liquid_guidance_and_economic_ambiguity(self):
+        state = new_state()
+        first = turn(state, "我想要找到一种性价比高的电池液", Extraction(updates=[
+            Update(field="purpose",status="specified",value="找电池液",quote="找到一种性价比高的电池液"),
+            Update(field="research_object",status="specified",value="电池液",quote="电池液"),
+            Update(field="target_performance",status="specified",value="性价比高",direction="提高",quote="性价比高")]))
+        self.assertTrue(any("性价比需要拆分" in x["message"] for x in first["blocking_issues"]))
+        advice = turn(state, "你帮我推荐吧", Extraction(actions=["recommend"]))
+        self.assertEqual(advice["intake_status"],"needs_guidance")
+        self.assertEqual([x["id"] for x in advice["recommendations"]["options"]],["lithium-electrolyte-transport"])
+        self.assertIn("不证明", advice["recommendations"]["sources"]["electrolyte-transport-2015"]["limitations"])
+        selected = turn(state,"采用第一个",Extraction(actions=["select"],selected_option=1),advice["input_context"])
+        self.assertEqual(selected["request"]["fields"]["research_object"]["source"],"confirmed_suggestion")
+        self.assertIn("成本口径", selected["request"]["fields"]["research_scope"]["value"])
+
+    def test_battery_direction_not_offered_for_explicit_lead_acid(self):
+        state = new_state()
+        state["fields"]["research_object"].update(status="specified",value="铅酸电池液")
+        self.assertIsNone(recommendations(state,"推荐"))
 
 
     def test_stale_selection_cannot_adopt_or_poison_new_draft(self):
@@ -312,7 +338,8 @@ class IntakeV3Test(unittest.TestCase):
         handle_turn(None, "mock", state, "没有")
         self.assertEqual(state["fields"]["work_conditions"]["status"], "none")
         state["asked_field"] = "work_conditions"
-        handle_turn(None, "mock", state, "交给研究设计确定")
+        with patch("lapis_intake.generate_recommendations", side_effect=catalogue_fixture):
+            handle_turn(None, "mock", state, "交给研究设计确定")
         self.assertEqual(state["fields"]["work_conditions"]["status"], "open")
 
 
