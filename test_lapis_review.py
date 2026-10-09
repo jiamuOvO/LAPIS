@@ -136,6 +136,22 @@ class ReviewTest(unittest.TestCase):
         self.assertNotIn('撤回参考',stream.getvalue())
         self.assertNotIn('active',stream.getvalue())
 
+    def test_show_receipt_can_confirm_current_complete_guidance_but_not_old_version(self):
+        state=new_state(); initial=advice(state); selected=select(state,initial['input_context'])
+        guidance=advice(state,context=selected['input_context'])
+        context={**guidance['input_context'],'reviewed_draft_id':'old'}
+        before=deepcopy(state)
+        self.assertFalse(handle_turn(None,'test',state,'确认',context)['ready_for_design'])
+        state=before
+        self.assertTrue(handle_turn(None,'test',state,'确认',{**guidance['input_context'],'reviewed_draft_id':state['draft_id']})['ready_for_design'])
+
+    def test_chat_show_carries_display_receipt_without_changing_default_retry_context(self):
+        state=new_state(); initial=advice(state); selected=select(state,initial['input_context'])
+        guidance=advice(state,context=selected['input_context'])
+        with patch.dict('os.environ',{'LAPIS_API_KEY':'test'}),patch('lapis.get_task',return_value={'intake_result':guidance}),patch('lapis.OpenAI'),patch('lapis.instructor.from_openai'),patch('lapis.run_intake_turn',return_value={'result':{'ready_for_design':True,'intake_status':'ready_for_design'}}) as turn,patch('builtins.input',side_effect=['/show','确认','/exit']),redirect_stdout(io.StringIO()):
+            run_chat('test-task','test')
+        self.assertEqual(turn.call_args.kwargs['input_context']['reviewed_draft_id'],guidance['request']['draft_id'])
+
     def test_show_sources_debug_commands_do_not_call_model_or_repeat_review(self):
         state=new_state(); initial=advice(state); review=select(state,initial['input_context'])
         stream=io.StringIO()

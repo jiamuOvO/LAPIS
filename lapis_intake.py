@@ -573,7 +573,7 @@ def _confirm(state, context):
         return _result(state, notice="本轮未授权确认，草稿已保留。")
     if state["stage"] == "ready_for_design":
         return _result(state, notice=None if context.get("draft_id") == state["draft_id"] else "当前请求已经确认，本轮没有新增确认。")
-    if context.get("draft_id") != state["draft_id"] or state["stage"] != "review":
+    if context.get("draft_id") != state["draft_id"] or (state["stage"] != "review" and context.get("reviewed_draft_id") != state["draft_id"]):
         return _result(state, notice="请先查看当前完整草稿，再确认它的版本。")
     draft = make_draft(state)
     if request_issues(draft):

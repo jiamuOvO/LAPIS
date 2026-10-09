@@ -224,12 +224,15 @@ def run_chat(task_id: str | None, actor: str) -> None:
     if task.get("intake_state") and task["intake_state"].get("contract_version") != 4:
         result = preview_intake(task["intake_state"])
     display = True
+    reviewed_draft_id = None
     while True:
         if display:
             result = hydrate_review(result)
             render_intake_result(result)
             display = False
-        input_context = (result or {}).get("input_context", {})
+        input_context = dict((result or {}).get("input_context", {}))
+        if reviewed_draft_id and reviewed_draft_id == input_context.get("draft_id"):
+            input_context["reviewed_draft_id"] = reviewed_draft_id
         try:
             text = input("你> ").strip()
         except (EOFError, KeyboardInterrupt):
@@ -241,6 +244,7 @@ def run_chat(task_id: str | None, actor: str) -> None:
         if text in {"/show", "/sources", "/debug"}:
             if text == "/show":
                 render_intake_result(result, full=True)
+                reviewed_draft_id = ((result or {}).get("request") or {}).get("draft_id")
             elif text == "/sources":
                 render_sources(result)
             else:
