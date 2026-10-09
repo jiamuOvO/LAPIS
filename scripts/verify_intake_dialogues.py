@@ -92,6 +92,11 @@ def main():
     if text=='没有约束条件' and not any(c.get('status')=='specified' and c.get('strength')=='hard' for c in (old.get('constraints') or [])) and not any(c.get('status')=='none' for c in previous['constraints']):fresh_errors.append('明确无约束没有记录为none')
     if text=='没有不研究的' and previous['research_scope'].get('value')==text:fresh_errors.append('正式范围脱离已有上下文')
     if text.startswith(('假设：','限制：','拟研究：')) and old and previous!=old:fresh_errors.append('复制提案改变研究字段')
+    old_ids={g['id']:g for g in old.get('target_performance',[]) if g.get('status')=='specified'}
+    new_ids={g.get('id') for g in goals}
+    edits=[d['operation'] for d in last.get('operation_decisions',[]) if d.get('decision')=='accepted' and d['operation']['field']=='target_performance' and d['operation']['action'] in {'remove','replace'}]
+    for gid in old_ids.keys()-new_ids:
+     if not any(e['action']=='replace' or e.get('target_id')==gid or e.get('target_value')==old_ids[gid].get('value') for e in edits):fresh_errors.append('目标条目消失但没有接受的撤回/替换操作')
     diff={f:{'before':old.get(f),'after':v} for f,v in previous.items() if old.get(f)!=v}
     row={'run_id':run,'scenario':scene['id'],'task_id':task,'turn':n+1,'input':text,'actual_display':view,'interpretation':last.get('interpretation'),'operation_decisions':last.get('operation_decisions'),'field_diff':diff,'request':last['request'],'result_status':last['intake_status'],'context':context,'seconds':time.perf_counter()-start,'errors':fresh_errors,'user_decisions':user_decisions,'mode':('hybrid_fixed_recommendation_real_extraction' if a.mode=='fixed' and scene['id']=='long_additive' else a.mode)}
     with (a.output/'turns.jsonl').open('a',encoding='utf-8') as f:f.write(json.dumps(row,ensure_ascii=False,default=str)+'\n')

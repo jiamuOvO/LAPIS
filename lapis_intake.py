@@ -125,7 +125,7 @@ class IntakeSuggestion(BaseModel):
     limitation: str
 
 
-SYSTEM_PROMPT = """你是 LAPIS 第一模块的结构化语义解释器。一次调用输出简短可检查的理解、意图和拟修改，禁止隐藏思维链、虚构科学事实。固定八项：purpose研究行动/判断，research_object材料类别/体系，application基本用途，work_conditions条件，target_performance关注点和方向，constraints硬约束/偏好，research_scope本轮边界，material_function拟承担作用。
+SYSTEM_PROMPT = """你是 LAPIS 第一模块的结构化语义解释器。一次调用输出简短可检查的理解、意图和拟修改，禁止隐藏思维链、虚构科学事实。一句话可以同时明确对象、用途和目标；务必分拆隐含但清楚的使用背景，不只把整个短语塞进研究对象后再问用户已说过的用途。明确命名其他字段是独立inform/edit，不要绑到正在回答的另一问题。固定八项：purpose研究行动/判断，research_object材料类别/体系，application基本用途，work_conditions条件，target_performance关注点和方向，constraints硬约束/偏好，research_scope本轮边界，material_function拟承担作用。
 所有原话quote必须来自本轮连续片段。上下文用于解释省略，不冒充原话。intents每条有id/kind/quote；回答必须以question_ref指向current_question.id；修改指向target_refs。updates逐条intent_ref，引用当前条目ID或字段作为basis_refs。不重复输出未修改字段。
 kind:answer回答当前问题；inform新信息；edit主动修改/撤回；adopt采用提案；reject拒绝；quote引用原提案；delegate委托建议；progress查询下一步；confirm明确批准；pause暂停。用户混合编辑可以有多条意图；回答某字段不能改另一个字段，独立主动编辑须另列意图。actions维持inform/edit/select/recommend/explain/unsure/reaffirm/reject/progress/confirm/pause/quote/delegate调用分工。
 “比较吧”回答目标方向时，更新现有目标direction，不改value，不删除具体指标；也可独立明确研究目的但不要再重复追问已知目标。研究/考察/探索本身是合法目的，无需强选筛选或比较。定性关注点可以进入研究设计，无需具体指标、公式、单位、模型或计算路线。
@@ -648,6 +648,7 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
         result = _result(state, notice="草稿已保留，尚未新增确认；可以继续解释、修改或确认。")
     else:
         extraction = contextual_reply(state, text) or extract(client, model, state, text)
+        state["_raw_interpretation"] = extraction.model_dump()
         extraction = _ground_actions(state, extraction)
         before = _fingerprint(state)
         state["turns"].append(text)
@@ -670,14 +671,14 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
                 notice = "已有方向已保留；当前可以核对规约。若要换方向，请明确说明。"
         generated = generate_recommendations(client, model, state, text, operation_id) if guide and state["domain"] not in {"drug_discovery", "non_research"} else None
         result = _result(state, changed, guide, text, notice, generated)
-        result["interpretation"] = extraction.model_dump()
+        result["interpretation"] = state.get("_raw_interpretation", extraction.model_dump())
         result["operation_decisions"] = state.get("_operation_decisions", [])
         result["important_changes"] = [LABELS.get(d["operation"]["field"],d["operation"]["field"]) + "：" + d["operation"]["action"] + "；原话：" + d["operation"]["quote"] for d in result["operation_decisions"] if d["decision"] == "accepted" and (d["operation"]["action"] in {"remove","replace"} or d["operation"]["field"] == "research_scope")]
         if "quote" in extraction.actions:
             result["notice"] = "已识别为原提案引用，未新增用户要求或重新选择方向。"
         if extraction.clarification_question and any(i.get("field") == extraction.clarification_field for i in result["blocking_issues"]) and not guide:
             state["asked_field"] = extraction.clarification_field
-            result["next_question"] = LABELS.get(extraction.clarification_field, "研究信息") + "：" + extraction.clarification_question
+            result["next_question"] = extraction.clarification_question if extraction.clarification_question.startswith(LABELS.get(extraction.clarification_field, "研究信息") + "：") else LABELS.get(extraction.clarification_field, "研究信息") + "：" + extraction.clarification_question
             state["clarification_question"] = {"draft_id":state["draft_id"], "field":extraction.clarification_field, "question":result["next_question"]}
         if "progress" in extraction.actions:
             result = _result(state, changed, notice="确认规约后才进入研究设计，当前没有授权计算。" if not request_issues(make_draft(state)) else None)
@@ -692,7 +693,7 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
                 result = _result(state, changed)
             result["notice"] = "本轮含修改或选择，请核对更新后的完整草稿，再确认。"
     if "extraction" in locals():
-        result["interpretation"] = extraction.model_dump()
+        result["interpretation"] = state.get("_raw_interpretation", extraction.model_dump())
         result["operation_decisions"] = state.get("_operation_decisions", [])
         result["important_changes"] = [LABELS.get(d["operation"]["field"],d["operation"]["field"]) + "：" + d["operation"]["action"] + "；原话：" + d["operation"]["quote"] for d in result["operation_decisions"] if d["decision"] == "accepted" and (d["operation"]["action"] in {"remove","replace"} or d["operation"]["field"] == "research_scope")]
     result["metadata"] = {"model": model, "rule_version": RULE_VERSION, "contract_version": CONTRACT_VERSION,

@@ -91,13 +91,15 @@ def check_operations(state,text,extraction):
         elif intent and intent.quote not in text:reason='意图依据不属于本轮'
         elif intent and intent.kind=='quote':reason='引用不是新增用户要求'
         elif intent and intent.kind=='answer' and (intent.question_ref!=question.get('id') or item.field not in question.get('fields',[])):
-            reason='回答操作不属于当前问题；跨字段编辑须有独立意图'
+            labels=dict(zip(FIELDS,('研究目的','研究对象','应用场景','工作条件','目标性能','约束条件','研究范围','材料功能')))
+            explicit=item.field in intent.target_refs and intent.quote.startswith(labels.get(item.field,'\0'))
+            if not explicit:reason='回答操作不属于当前问题；跨字段编辑须有独立意图'
         if item.field in LIST_FIELDS:
             current=state['fields'][item.field]
             existing=[e for e in current if e.get('status')=='specified']
             destructive=item.action in {'remove','replace'} or (item.action=='update' and any((e.get('id')==item.target_id or e.get('value')==item.target_value) and (item.status!='specified' or e.get('value')!=item.value) for e in existing))
             if destructive and existing:
-                if intent and intent.kind not in {'edit','adopt'}:reason='该意图没有授权撤回或替换既有条目'
+                if intent and intent.kind != 'edit':reason='该意图没有授权撤回或替换既有条目'
                 elif not intent and item.action=='replace' and not re.search(r'目标.*(?:只|仅|改为|替换)|只(?:比较|保留)|没有.*约束|不设置.*约束',item.quote):
                     reason='整体替换缺少明确修改依据'
                 if intent and item.action=='remove' and not (item.target_id in intent.target_refs or item.target_value in intent.target_refs):

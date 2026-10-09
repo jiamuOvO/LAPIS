@@ -136,6 +136,7 @@ def render_sources(result, detail=True, stream=None):
     active = {(e.get("recommendation_ref") or {}).get("direction_id") for value in request.get("fields", {}).values()
               for e in (value if isinstance(value, list) else [value])}
     shown = False
+    displayed_notes=set()
     if detail:
         for option in ((result or {}).get("recommendations") or {}).get("options", []):
             print("当前提案：" + option["label"])
@@ -148,6 +149,10 @@ def render_sources(result, detail=True, stream=None):
         for direction, detail in proposal.get("review", {}).items():
             if direction not in active:
                 continue
+            note_key=digest(detail)
+            if note_key in displayed_notes:
+                continue
+            displayed_notes.add(note_key)
             shown = True
             pending = any(e.get("source") == "system_suggestion" and (e.get("recommendation_ref") or {}).get("direction_id") == direction for v in request.get("fields", {}).values() for e in (v if isinstance(v,list) else [v]))
             print(("待核对摘要：" if pending else "已采用提案：") + str(detail.get("label", "")))
