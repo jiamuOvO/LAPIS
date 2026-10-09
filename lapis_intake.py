@@ -120,7 +120,7 @@ selected_option由上下文识别序号、名称或功能，不能猜测多个�
 短答要结合当前推荐解释；只选多目标中的一项时用replace目标列表，排除未选择的目标。定性功能如“耐磨作用”已足以将目标性能specified（比较/考察），没有量化指标不应标open。区分研究目的（探索/比较/筛选）、性能（欲考察性质）、材料功能（用途中的角色）和用途（具体场景）。上下文足以明确探索行动时更新旧unclear目的，并resolve_issue_ids；不可仅更新性能而遗留已解决目的问题。不能将选定研究方向当作科学事实。
 例如旧目的“研究某材料的生活用途”是unclear，本轮从推荐选定某个功能时，目的可明确为“探索该材料在所选功能中的应用”，这只是行动意图；必须更新purpose、material_function和单一目标，并解决旧目的issue。“包装材料的抗氧化应用”“表面涂层的耐磨应用”已经足以限定第一模块用途，不强求具体包装品种、基材或配方；更细条件交研究设计。不要反复要求用户在未选择的其他功能（如阻隔或再加工）之间重新选择。具体用途尚未选时仍追问，不要把所有候选用途写成specified。不要等用户再次说“探索”才更新已明确的目的。
 多个匹配不能select，给出clarification_field及clarification_question，点名可选差别。仍缺具体用途时不自动填所有用途，提问具体用途选择；问题只能采用当前推荐和已知意图，不添加事实断言。clarification_question是一个可回答的问题；不能泛称“这项信息”。若仍有问题，clarification_field对应当前最优先实质缺口，clarification_question带已知意图和具体可选差别，例如材料用途仍宽泛时给已有推荐中的用途选项。
-用户在回答asked_field时优先解释为该字段的补充；功能问题的回答“拟提高某性能”应更新material_function，不仅更新性能或目的。带“待验证意图/不假定有效”的说明是证据限制，不是用户硬约束，不写constraints。必要时用reference_note记录。
+用户在回答asked_field时优先解释为该字段的补充；研究对象可为有边界的材料类别，不要求此时确定小分子/聚合物/具体配方。不因缺具体模型或形态反复新增首模块歧义。功能问题的回答“拟提高某性能”应更新material_function，不仅更新性能或目的。带“待验证意图/不假定有效”的说明是证据限制，不是用户硬约束，不写constraints。必要时用reference_note记录。
 “可以下一步了吗”等进度询问用progress（不是confirm，不自动确认）。
 selected_option用于定位当前方向；“用途采用刚才的X”“功能沿用X”是字段补充或reaffirm，不是重新select。
 采用方向时不要把推荐文本提取为用户原话字段。
@@ -378,7 +378,7 @@ def _merge(state, text, extraction, context=None):
                 state["history"].append({"field": field, "before": before, "after": deepcopy(values), "turn": turn, "reason": "explicit_reaffirmation"})
     for issue in state["issues"]:
         field = issue.get("field")
-        superseded = issue.get("kind") == "ambiguity" and field in SCALAR_FIELDS and field in grouped and state["fields"][field].get("status") == "specified" and any(h["field"] == field and h["turn"] == turn for h in state["history"])
+        superseded = issue.get("kind") == "ambiguity" and field in SCALAR_FIELDS and field in grouped and state["fields"][field].get("status") == "specified" and any(u.status == "specified" for u in grouped[field])
         if superseded:
             issue.update(status="resolved", resolution_quote=text, resolved_turn=turn, resolution_reason="explicit_scalar_replacement")
         if issue["id"] in extraction.resolve_issue_ids and issue.get("field") in grouped and any(
@@ -406,7 +406,9 @@ def _ground_actions(state, extraction):
     for item in extraction.updates:
         # Partial function choices cannot silently authorize unrelated proposed context.
         if extraction.selection_mode == "partial" and item.field in {"application", "research_object", "research_scope", "work_conditions", "constraints"} and item.value and item.value not in item.quote:
-            if item.field == "research_scope" and state.get("asked_field") == "research_scope":
+            if item.field == "research_object" and state.get("asked_field") == "research_object" and item.value == state["fields"]["research_object"].get("value"):
+                pass
+            elif item.field == "research_scope" and state.get("asked_field") == "research_scope":
                 item = item.model_copy(update={"value":item.quote})
             else:
                 continue

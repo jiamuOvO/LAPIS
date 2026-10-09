@@ -61,6 +61,13 @@ class ShortReplyTest(unittest.TestCase):
         self.assertEqual(state["issues"][0]["status"],"resolved")
         self.assertEqual(state["issues"][1]["status"],"open")
 
+    def test_same_explicit_value_can_resolve_later_ambiguity(self):
+        state=new_state();state["fields"]["application"].update(status="specified",value="包装材料",source="user",quote="包装材料",turn=1)
+        state["issues"]=[{"id":"later","field":"application","kind":"ambiguity","status":"open","message":"用途未明确"}]
+        with patch("lapis_intake.extract",return_value=Extraction(updates=[Update(field="application",status="specified",value="包装材料",quote="包装材料")])):
+            handle_turn(None,"test",state,"包装材料",{})
+        self.assertEqual(state["issues"][0]["status"],"resolved")
+
     def test_excluding_drug_screening_is_not_drug_discovery(self):
         from lapis_contract import domain_from_fields
         fields={'purpose':{'value':'探索涂层抗氧化'},'application':{'value':'包装涂层'},'research_scope':{'value':'不做药物筛选'}}
