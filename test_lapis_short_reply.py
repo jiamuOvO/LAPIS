@@ -26,6 +26,9 @@ class ShortReplyTest(unittest.TestCase):
             result=handle_turn(None,'test',state,'保护作用吧',r['input_context'])
         self.assertFalse(state['proposals'])
         self.assertIn('包装材料还是表面涂层',result['next_question'])
+        with patch('lapis_intake.extract',return_value=Extraction(actions=['progress'])):
+            progress=handle_turn(None,'test',state,'可以下一步了吗',result['input_context'])
+        self.assertIn('包装材料还是表面涂层',progress['next_question'])
 
     def test_actual_gap_precedes_display_gate(self):
         state=new_state();state['domain']='materials_application';state['fields']['purpose'].update(status='unclear',value='研究生活用途',source='user')
@@ -42,6 +45,14 @@ class ShortReplyTest(unittest.TestCase):
         self.assertEqual(result['intake_status'],'needs_confirmation')
         self.assertIn('当前研究规约',shown(result))
         self.assertFalse(result.get('confirmation_event'))
+
+    def test_scalar_clarification_supersedes_old_ambiguity_not_conflict(self):
+        state=new_state();state["fields"]["purpose"].update(status="unclear",value="生活用途",source="user")
+        state["issues"]=[{"id":"old","field":"purpose","kind":"ambiguity","status":"open","message":"旧目的过宽"},{"id":"conflict","field":"purpose","kind":"conflict","status":"open","message":"独立矛盾"}]
+        with patch("lapis_intake.extract",return_value=Extraction(updates=[Update(field="purpose",status="specified",value="探索抗氧化材料应用",quote="抗氧化作用吧")])):
+            handle_turn(None,"test",state,"抗氧化作用吧",{})
+        self.assertEqual(state["issues"][0]["status"],"resolved")
+        self.assertEqual(state["issues"][1]["status"],"open")
 
     def test_excluding_drug_screening_is_not_drug_discovery(self):
         from lapis_contract import domain_from_fields

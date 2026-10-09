@@ -118,7 +118,7 @@ select选择方向（整体或局部）、reject拒绝、edit修改、pause先�
 “不研究氧化稳定性其他保留”只删除该目标；“确认但成本改为偏好”=confirm+edit。
 selected_option由上下文识别序号、名称或功能，不能猜测多个匹配。selection_mode=full仅用户明确采用整个方向；短答或只选功能必须partial，不能自动采用推荐所有用途、对象、假设和其他目标。partial用updates只记录本轮已明确的意图，未明确字段保持原状。
 短答要结合当前推荐解释；只选多目标中的一项时用replace目标列表，排除未选择的目标。定性功能如“耐磨作用”已足以将目标性能specified（比较/考察），没有量化指标不应标open。区分研究目的（探索/比较/筛选）、性能（欲考察性质）、材料功能（用途中的角色）和用途（具体场景）。上下文足以明确探索行动时更新旧unclear目的，并resolve_issue_ids；不可仅更新性能而遗留已解决目的问题。不能将选定研究方向当作科学事实。
-例如旧目的“研究某材料的生活用途”是unclear，本轮从推荐选定某个功能时，目的可明确为“探索该材料在所选功能中的应用”，这只是行动意图；必须更新purpose、material_function和单一目标，并解决旧目的issue。具体用途尚未选时仍追问，不要把所有候选用途写成specified。不要等用户再次说“探索”才更新已明确的目的。
+例如旧目的“研究某材料的生活用途”是unclear，本轮从推荐选定某个功能时，目的可明确为“探索该材料在所选功能中的应用”，这只是行动意图；必须更新purpose、material_function和单一目标，并解决旧目的issue。“包装材料的抗氧化应用”“表面涂层的耐磨应用”已经足以限定第一模块用途，不强求具体包装品种、基材或配方；更细条件交研究设计。不要反复要求用户在未选择的其他功能（如阻隔或再加工）之间重新选择。具体用途尚未选时仍追问，不要把所有候选用途写成specified。不要等用户再次说“探索”才更新已明确的目的。
 多个匹配不能select，给出clarification_field及clarification_question，点名可选差别。仍缺具体用途时不自动填所有用途，提问具体用途选择；问题只能采用当前推荐和已知意图，不添加事实断言。clarification_question是一个可回答的问题；不能泛称“这项信息”。若仍有问题，clarification_field对应当前最优先实质缺口，clarification_question带已知意图和具体可选差别，例如材料用途仍宽泛时给已有推荐中的用途选项。
 用户在回答asked_field时优先解释为该字段的补充；功能问题的回答“拟提高某性能”应更新material_function，不仅更新性能或目的。带“待验证意图/不假定有效”的说明是证据限制，不是用户硬约束，不写constraints。必要时用reference_note记录。
 “可以下一步了吗”等进度询问用progress（不是confirm，不自动确认）。
@@ -377,6 +377,10 @@ def _merge(state, text, extraction, context=None):
             if before != values:
                 state["history"].append({"field": field, "before": before, "after": deepcopy(values), "turn": turn, "reason": "explicit_reaffirmation"})
     for issue in state["issues"]:
+        field = issue.get("field")
+        superseded = issue.get("kind") == "ambiguity" and field in SCALAR_FIELDS and field in grouped and state["fields"][field].get("status") == "specified" and any(h["field"] == field and h["turn"] == turn for h in state["history"])
+        if superseded:
+            issue.update(status="resolved", resolution_quote=text, resolved_turn=turn, resolution_reason="explicit_scalar_replacement")
         if issue["id"] in extraction.resolve_issue_ids and issue.get("field") in grouped and any(
                 h["field"] == issue["field"] and h["turn"] == turn for h in state["history"]):
             issue["status"] = "resolved"
@@ -565,6 +569,10 @@ def _result(state, changed=False, guide=False, text="", notice=None, generated=N
                 status = "needs_guidance"
                 state["stage"] = "clarifying"
                 state["draft"] = None
+    pending_question = state.get("clarification_question") or {}
+    if issues and not guide and pending_question.get("draft_id") == state["draft_id"] and any(i.get("field") == pending_question.get("field") for i in issues):
+        state["asked_field"] = pending_question["field"]
+        question = pending_question["question"]
     result = {"intake_status": status, "ready": status == "ready_for_design",
               "ready_for_design": status == "ready_for_design", "request": draft,
               "calculation_status": "pending_research_design", "next_question": question,
@@ -643,6 +651,7 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
         if extraction.clarification_question and any(i.get("field") == extraction.clarification_field for i in result["blocking_issues"]) and not guide:
             state["asked_field"] = extraction.clarification_field
             result["next_question"] = LABELS.get(extraction.clarification_field, "研究信息") + "：" + extraction.clarification_question
+            state["clarification_question"] = {"draft_id":state["draft_id"], "field":extraction.clarification_field, "question":result["next_question"]}
         if "progress" in extraction.actions:
             result = _result(state, changed, notice="确认规约后才进入研究设计，当前没有授权计算。" if not request_issues(make_draft(state)) else None)
         if "confirm" in extraction.actions and not extraction.updates and not changed and not (set(extraction.actions) & {"select", "edit", "reaffirm", "reject"}):
