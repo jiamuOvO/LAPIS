@@ -26,6 +26,7 @@ class ScalarProposal(StrictModel):
         return self
 
 class GoalProposal(ScalarProposal):
+    value: str | None = Field(description="性能名称必须显式填写；specified不能为null，unknown可以为null")
     direction: str | None = None
 
     @model_validator(mode="after")
@@ -78,7 +79,7 @@ fields只能补充八项相关字段，其余不要填。不要为了完整而�
 status描述研究意图是否明确，不表示科学真实性已验证。方向中明确提出的purpose、application、
 research_scope、material_function和目标通常用specified；这些只是待用户采用的意图。
 未知科学效果放limitations，不要因此把明确的研究行动标open。条件和参数不确定时保持unknown/open。
-明确指定的标量value非空；目标指定direction；约束指定hard/preference。
+所有指定项都必须有value：包括列表中的每个目标和约束。目标value是性能名称，direction是比较/考察/提高等方向，不能只填direction。示例target_performance=[{"status":"specified","value":"性能名称","direction":"比较"}]。未知目标value显式为null。约束指定hard/preference。
 source_refs只可引用输入提供的资料ID；无资料也可提出未核验研究提案，使用空数组。
 不要生成文献名称、DOI或URL，不得自称资料已核查、计算已完成或性能已证明。
 已提供的资料只支持其明示对象与范围，不可推广。所有模型新提案均未核验，

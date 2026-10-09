@@ -29,13 +29,16 @@ def main():
  if os.getenv('LAPIS_TEST_PG')!='1' or os.getenv('LAPIS_DB_NAME')!='lapis_test':p.error('Requires isolated lapis_test')
  initialize_schema();run=str(uuid4());calls=[];current_role='product';tokens=0
  def before(request):
-  if len(calls)>=a.max_calls or tokens>=a.max_tokens:raise RuntimeError('Acceptance budget exhausted')
+  reserve=len(request.content)+json.loads(request.content).get('max_tokens',2600)
+  if len(calls)>=a.max_calls or tokens+reserve>a.max_tokens:raise RuntimeError('Acceptance budget exhausted before request')
   calls.append({'role':current_role,'started':time.perf_counter()})
  def after(response):
   nonlocal tokens
   response.read();row=calls[-1];row['seconds']=time.perf_counter()-row.pop('started');row['status']=response.status_code
   if response.status_code==200:
-   body=response.json();row['usage']=body.get('usage');row['server_model']=body.get('model');tokens+=(body.get('usage') or {}).get('total_tokens',0)
+   body=response.json()
+   with (a.output/'http-completions.jsonl').open('a',encoding='utf-8') as f:f.write(json.dumps({'role':current_role,'model':body.get('model'),'content':((body.get('choices') or [{}])[0].get('message') or {}).get('content'),'usage':body.get('usage')},ensure_ascii=False)+'\n')
+   row['usage']=body.get('usage');row['server_model']=body.get('model');tokens+=(body.get('usage') or {}).get('total_tokens',0)
  key=os.getenv('LAPIS_API_KEY') or os.getenv('DEEPSEEK_API_KEY')
  if not key:p.error('API credential unavailable')
  client=instructor.from_openai(OpenAI(api_key=key,base_url=os.getenv('LAPIS_BASE_URL','https://api.deepseek.com'),timeout=45,max_retries=0,http_client=httpx.Client(event_hooks={'request':[before],'response':[after]})),mode=instructor.Mode.JSON)
@@ -111,7 +114,10 @@ def main():
     good=child.returncode==0 and all(x+'：' in child.stdout for x in LABELS.values()) and (not metric_id or '氧化诱导期' in child.stdout)
     (a.output/(scene['id']+'-resume.txt')).write_text(child.stdout+child.stderr,encoding='utf-8')
    verdicts.append({'scenario':scene['id'],'task_id':task,'verdict':'passed' if good else 'failed','errors':failed,'active_request_version':get_task(task)['active_request_version']})
-  except Exception as e:verdicts.append({'scenario':scene['id'],'verdict':'error','error_type':type(e).__name__,'error':str(e)[:400]})
+  except Exception as e:
+   error={'scenario':scene['id'],'verdict':'error','error_type':type(e).__name__,'error':str(e).replace(key,'[REDACTED]')[:400],'failed_input':locals().get('text'),'turn':locals().get('n',-1)+1,'task_id':task}
+   verdicts.append(error)
+   with (a.output/'failures.jsonl').open('a',encoding='utf-8') as f:f.write(json.dumps(error,ensure_ascii=False)+'\n')
   with (a.output/'private-user-decisions.jsonl').open('a',encoding='utf-8') as f:f.write(json.dumps({'scenario':scene['id'],'background':scene['background'],'decisions':decisions},ensure_ascii=False)+'\n')
   summary={'run_id':run,'verdicts':verdicts,'calls':calls,'total_tokens':tokens,'semantic_review':'requires_human_review','not_scientific_evidence':True}
   (a.output/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding='utf-8')

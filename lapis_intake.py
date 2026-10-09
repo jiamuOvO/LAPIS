@@ -692,6 +692,9 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
                 state["stage"] = "review"
                 result = _result(state, changed)
             result["notice"] = "本轮含修改或选择，请核对更新后的完整草稿，再确认。"
+    if text in {"先不确认", "暂不确认", "暂停"} or ("extraction" in locals() and "pause" in extraction.actions):
+        state["stage"] = "paused"
+        result.update(intake_status="paused", ready=False, ready_for_design=False, next_question=None, notice="草稿已保存，当前暂停；恢复后可继续补充或核对，没有新增确认。")
     if "extraction" in locals():
         result["interpretation"] = state.get("_raw_interpretation", extraction.model_dump())
         result["operation_decisions"] = state.get("_operation_decisions", [])

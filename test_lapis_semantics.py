@@ -92,6 +92,12 @@ class SemanticTest(unittest.TestCase):
         r=self.send(state,'研究传输',Extraction(updates=[Update(field='purpose',status='specified',value='研究传输',quote='研究传输')]),old)
         self.assertFalse(handle_turn(None,'test',state,'确认',old)['ready_for_design'])
 
+    def test_pause_is_acknowledged_without_confirmation(self):
+        state,r=self.base()
+        result=self.send(state,'先暂停',Extraction(actions=['pause']),r['input_context'])
+        self.assertEqual(result['intake_status'],'paused');self.assertIsNone(result['next_question'])
+        self.assertFalse(result['ready_for_design'])
+
     def test_model_confirm_misclassification_cannot_approve_progress(self):
         state,r=self.base()
         e=Extraction(actions=['confirm'],intents=[Intent(id='I',kind='confirm',quote='可以了，进行下一步吧')])
