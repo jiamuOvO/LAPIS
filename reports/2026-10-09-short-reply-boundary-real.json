@@ -1,0 +1,312 @@
+{
+  "kind": "controlled_recommendation_real_extraction",
+  "data_origin": "synthetic",
+  "commit": "093739c73a741457b59a79036e40a919f6f067e1",
+  "prompt_hash": "0c0cf08def98018d9559644a61414ca54b2b8e81d60be03401bf0c7cee1e9c17",
+  "model": "deepseek-flash",
+  "input": "保护作用吧",
+  "recommendation_fixture": {
+    "id": "3c1a312f-a6c1-4e2f-81a2-02f0472c3461",
+    "version": 1,
+    "draft_id": "D0",
+    "explanation": "这是待审查的研究方向，不能推断已具备性能。",
+    "generation": {
+      "origin": "model",
+      "model": "review-test",
+      "prompt_sha256": "7d4bea71f592e6db3e22c61a1eca75c6fab82340c7f758cdf7e605f05e71b4fd",
+      "operation_id": null
+    },
+    "options": [
+      {
+        "id": "3c1a312f-a6c1-4e2f-81a2-02f0472c3461-option-1",
+        "label": "包装薄膜保护功能研究",
+        "reason": "测试用途差异",
+        "assumptions": [
+          "仅为合成推荐"
+        ],
+        "limitations": [
+          "没有科研证据"
+        ],
+        "clarifications": [
+          "温度范围和成本口径待定"
+        ],
+        "source_refs": [],
+        "fields": {
+          "purpose": {
+            "status": "specified",
+            "value": "比较陶瓷基板"
+          },
+          "research_object": {
+            "status": "specified",
+            "value": "陶瓷基板"
+          },
+          "application": {
+            "status": "specified",
+            "value": "包装薄膜"
+          },
+          "work_conditions": {
+            "status": "open"
+          },
+          "target_performance": [
+            {
+              "status": "specified",
+              "value": "热传导",
+              "direction": "比较"
+            }
+          ],
+          "constraints": [
+            {
+              "status": "unknown"
+            }
+          ],
+          "research_scope": {
+            "status": "specified",
+            "value": "仅比较候选基板材料，不验证器件"
+          },
+          "material_function": {
+            "status": "specified",
+            "value": "保护功能"
+          }
+        },
+        "suggestion_origin": "model",
+        "evidence_status": "unverified",
+        "reconsidered": false
+      },
+      {
+        "id": "3c1a312f-a6c1-4e2f-81a2-02f0472c3461-option-2",
+        "label": "表面涂层保护功能研究",
+        "reason": "测试用途差异",
+        "assumptions": [
+          "仅为合成推荐"
+        ],
+        "limitations": [
+          "没有科研证据"
+        ],
+        "clarifications": [
+          "温度范围和成本口径待定"
+        ],
+        "source_refs": [],
+        "fields": {
+          "purpose": {
+            "status": "specified",
+            "value": "比较陶瓷基板"
+          },
+          "research_object": {
+            "status": "specified",
+            "value": "陶瓷基板"
+          },
+          "application": {
+            "status": "specified",
+            "value": "表面涂层"
+          },
+          "work_conditions": {
+            "status": "open"
+          },
+          "target_performance": [
+            {
+              "status": "specified",
+              "value": "热传导",
+              "direction": "比较"
+            }
+          ],
+          "constraints": [
+            {
+              "status": "unknown"
+            }
+          ],
+          "research_scope": {
+            "status": "specified",
+            "value": "仅比较候选基板材料，不验证器件"
+          },
+          "material_function": {
+            "status": "specified",
+            "value": "保护功能"
+          }
+        },
+        "suggestion_origin": "model",
+        "evidence_status": "unverified",
+        "reconsidered": false
+      }
+    ],
+    "sources": {},
+    "catalog_version": null
+  },
+  "extraction": {
+    "actions": [
+      "select"
+    ],
+    "updates": [
+      {
+        "field": "material_function",
+        "status": "specified",
+        "value": "保护功能",
+        "quote": "保护作用吧",
+        "action": "add",
+        "target_id": null,
+        "target_value": null,
+        "direction": null,
+        "strength": null,
+        "category": null,
+        "predicate": null,
+        "temperatures": []
+      }
+    ],
+    "selected_option": null,
+    "selection_mode": "partial",
+    "clarification_field": "application",
+    "clarification_question": "你选择了保护功能，但当前有两个候选用途：包装薄膜和表面涂层，请问具体采用哪一个？",
+    "domain": "materials_application",
+    "domain_quote": "保护作用吧",
+    "issues": [],
+    "resolve_issue_ids": [],
+    "reaffirm_fields": []
+  },
+  "result": {
+    "intake_status": "needs_clarification",
+    "ready": false,
+    "ready_for_design": false,
+    "request": {
+      "contract_version": 4,
+      "rule_version": "intake-rules-4.0",
+      "original_intent": "请推荐",
+      "draft_revision": 1,
+      "draft_id": "D1-554d20cb8f7c",
+      "fields": {
+        "purpose": {
+          "status": "unknown",
+          "value": null,
+          "source": null,
+          "quote": null,
+          "turn": null
+        },
+        "research_object": {
+          "status": "unknown",
+          "value": null,
+          "source": null,
+          "quote": null,
+          "turn": null
+        },
+        "application": {
+          "status": "unknown",
+          "value": null,
+          "source": null,
+          "quote": null,
+          "turn": null
+        },
+        "work_conditions": {
+          "status": "unknown",
+          "value": null,
+          "source": null,
+          "quote": null,
+          "turn": null
+        },
+        "target_performance": [
+          {
+            "status": "unknown",
+            "value": null,
+            "source": null,
+            "quote": null,
+            "turn": null,
+            "id": "target_performance-unknown"
+          }
+        ],
+        "constraints": [
+          {
+            "status": "unknown",
+            "value": null,
+            "source": null,
+            "quote": null,
+            "turn": null,
+            "id": "constraints-unknown"
+          }
+        ],
+        "research_scope": {
+          "status": "unknown",
+          "value": null,
+          "source": null,
+          "quote": null,
+          "turn": null
+        },
+        "material_function": {
+          "status": "specified",
+          "value": "保护功能",
+          "quote": "保护作用吧",
+          "source": "user",
+          "turn": 2
+        }
+      },
+      "task_pattern": null,
+      "domain": "materials_application",
+      "issues": [],
+      "reference_notes": [],
+      "sources": {},
+      "proposals": {}
+    },
+    "calculation_status": "pending_research_design",
+    "next_question": "应用场景：你选择了保护功能，但当前有两个候选用途：包装薄膜和表面涂层，请问具体采用哪一个？",
+    "blocking_issues": [
+      {
+        "id": "missing:purpose",
+        "kind": "missing",
+        "field": "purpose",
+        "message": "请明确或采用这项研究信息。",
+        "entry_ids": [],
+        "status": "open"
+      },
+      {
+        "id": "missing:research_object",
+        "kind": "missing",
+        "field": "research_object",
+        "message": "请明确或采用这项研究信息。",
+        "entry_ids": [],
+        "status": "open"
+      },
+      {
+        "id": "missing:application",
+        "kind": "missing",
+        "field": "application",
+        "message": "请明确或采用这项研究信息。",
+        "entry_ids": [],
+        "status": "open"
+      },
+      {
+        "id": "missing:research_scope",
+        "kind": "missing",
+        "field": "research_scope",
+        "message": "请明确或采用这项研究信息。",
+        "entry_ids": [],
+        "status": "open"
+      },
+      {
+        "id": "missing:target_performance",
+        "kind": "missing",
+        "field": "target_performance",
+        "message": "请明确本轮性能目标及方向。",
+        "entry_ids": [],
+        "status": "open"
+      }
+    ],
+    "recommendations": null,
+    "content_changed": true,
+    "input_context": {
+      "draft_id": "D1-554d20cb8f7c",
+      "recommendation_ref": {
+        "id": "3c1a312f-a6c1-4e2f-81a2-02f0472c3461",
+        "version": 1
+      }
+    },
+    "changes": [
+      "material_function"
+    ],
+    "needs_review_fields": [],
+    "metadata": {
+      "model": "deepseek-flash",
+      "rule_version": "intake-rules-4.0",
+      "contract_version": 4,
+      "elapsed_seconds": 0.001,
+      "catalog_version": null
+    }
+  },
+  "display": "LAPIS> 已更新：材料功能为保护功能。\nLAPIS> 应用场景：你选择了保护功能，但当前有两个候选用途：包装薄膜和表面涂层，请问具体采用哪一个？\n",
+  "verdict": "passed"
+}

@@ -1,0 +1,105 @@
+{
+  "runtime_commit": "093739c",
+  "latest_code_commit": "6d08428",
+  "final_real_run": "ca3ff7b4-2224-4407-b56a-5594f7d7b5c4",
+  "real_dialogue_verdicts": [
+    {
+      "run": "ca3ff7b4-2224-4407-b56a-5594f7d7b5c4",
+      "case": "furan",
+      "verdict": "passed",
+      "task_id": "d032d840-be68-4e04-9346-22592c9a2fa2",
+      "resume_no_model_call": true
+    },
+    {
+      "run": "ca3ff7b4-2224-4407-b56a-5594f7d7b5c4",
+      "case": "silica",
+      "verdict": "passed",
+      "task_id": "f6957aa4-7d78-4c7c-8995-2fc8c89f6976",
+      "resume_no_model_call": true
+    }
+  ],
+  "real_dialogue_turns": 17,
+  "software_tests": {
+    "passed": 84,
+    "skipped": 0,
+    "elapsed_seconds": 14.437
+  },
+  "boundary_test": {
+    "kind": "controlled_fixture_real_model_extraction",
+    "verdict": "passed"
+  },
+  "all_run_verdicts": [
+    {
+      "run": "7eccc1bc-14ff-4346-8a60-ff4d514a6f1f",
+      "case": "furan",
+      "verdict": "failed",
+      "error": "模型方向超出材料应用受理范围"
+    },
+    {
+      "run": "7eccc1bc-14ff-4346-8a60-ff4d514a6f1f",
+      "case": "silica",
+      "verdict": "failed",
+      "error": "must present complete current review"
+    },
+    {
+      "run": "6c15a7f6-5fba-4e69-ab26-13163392ea87",
+      "case": "furan",
+      "verdict": "passed",
+      "error": null
+    },
+    {
+      "run": "6c15a7f6-5fba-4e69-ab26-13163392ea87",
+      "case": "silica",
+      "verdict": "failed",
+      "error": "short answer must keep one goal"
+    },
+    {
+      "run": "ed7c1fab-66ee-4d60-8a03-589ab8bcab44",
+      "case": "furan",
+      "verdict": "failed",
+      "error": "must present complete current review"
+    },
+    {
+      "run": "ed7c1fab-66ee-4d60-8a03-589ab8bcab44",
+      "case": "silica",
+      "verdict": "passed",
+      "error": null
+    },
+    {
+      "run": "7652d510-1301-40b9-b9df-89a811b76478",
+      "case": "furan",
+      "verdict": "passed",
+      "error": null
+    },
+    {
+      "run": "7652d510-1301-40b9-b9df-89a811b76478",
+      "case": "silica",
+      "verdict": "passed",
+      "error": null
+    },
+    {
+      "run": "62b8ff50-dfbd-4168-9c7e-3bc660a429fd",
+      "case": "furan",
+      "verdict": "failed",
+      "error": "must present complete current review"
+    },
+    {
+      "run": "62b8ff50-dfbd-4168-9c7e-3bc660a429fd",
+      "case": "silica",
+      "verdict": "passed",
+      "error": null
+    },
+    {
+      "run": "ca3ff7b4-2224-4407-b56a-5594f7d7b5c4",
+      "case": "furan",
+      "verdict": "passed",
+      "error": null
+    },
+    {
+      "run": "ca3ff7b4-2224-4407-b56a-5594f7d7b5c4",
+      "case": "silica",
+      "verdict": "passed",
+      "error": null
+    }
+  ]
+}
