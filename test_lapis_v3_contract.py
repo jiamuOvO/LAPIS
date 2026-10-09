@@ -69,7 +69,7 @@ class V3StoreTest(unittest.TestCase):
         save_turn(task, 1, state, changed, "test", "fake")
         self.assertIsNone(get_task(task)["active_request_version"])
         self.assertEqual(get_task(task)["request_version"], 1)
-        with self.assertRaisesRegex(ValueError, "v4"):
+        with self.assertRaisesRegex(ValueError, "确认版本"):
             propose_design(task, {"request_version": 1}, "test")
 
     def test_stale_design_cannot_be_approved_or_frozen_after_edit(self):
@@ -86,7 +86,7 @@ class V3StoreTest(unittest.TestCase):
         state.update(stage="clarifying", draft_id="draft-2")
         state["turns"].append("修改对象")
         save_turn(task, 1, state, {"request": request, "intake_status": "needs_clarification", "content_changed": True}, "test", "fake")
-        with self.assertRaisesRegex(ValueError, "v4"):
+        with self.assertRaisesRegex(ValueError, "确认版本"):
             approve_design(task, design, "reviewer")
         with self.assertRaises(ValueError):
             freeze_execution(task, design, "test")

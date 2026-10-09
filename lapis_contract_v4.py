@@ -1,4 +1,4 @@
-"""Current intake contract and small deterministic semantic gates."""
+"""Frozen v3/v4 intake validation; never used to authorize current design."""
 from __future__ import annotations
 
 from decimal import Decimal
@@ -6,8 +6,8 @@ import hashlib
 import json
 import re
 
-CONTRACT_VERSION = 5
-RULE_VERSION = "intake-rules-5.0"
+CONTRACT_VERSION = 4
+RULE_VERSION = "intake-rules-4.0"
 FIELDS = ("purpose", "research_object", "application", "work_conditions",
           "target_performance", "constraints", "research_scope", "material_function")
 LIST_FIELDS = {"target_performance", "constraints"}
@@ -96,7 +96,7 @@ def request_issues(payload):
                     add("qualifier", field, "请明确性能方向，定性方向也可以。", [entry.get("id")])
         if field in {"purpose", "research_object", "application", "research_scope", "material_function"}:
             entry = entries[0]
-            if entry.get("status") != "specified" or entry.get("source") not in {"user", "confirmed_suggestion", "system_suggestion"}:
+            if entry.get("status") != "specified" or entry.get("source") not in {"user", "confirmed_suggestion"}:
                 add("missing", field, "请明确或采用这项研究信息。")
     goals = fields.get("target_performance") or []
     if not any(x.get("status") == "specified" for x in goals if isinstance(x, dict)):
@@ -165,7 +165,7 @@ def _validate_request(payload, version, rule):
                 if not entry.get("recommendation_ref") or not entry.get("selection_quote") or not isinstance(entry.get("confirmed_turn"), int):
                     raise ValueError("缺少推荐选择记录")
                 refs = entry.get("source_refs", [])
-                if version >= 4:
+                if version == 4:
                     proposal = payload.get("proposals", {}).get(entry["recommendation_ref"]["id"])
                     if not proposal or proposal.get("version") != entry["recommendation_ref"].get("version") or entry["recommendation_ref"].get("direction_id") not in proposal.get("direction_ids", []):
                         raise ValueError("缺少匹配的提案生成记录")
@@ -174,12 +174,9 @@ def _validate_request(payload, version, rule):
                             raise ValueError("模型研究提案不得标为已核验")
                         if not proposal["generation"].get("model") or not proposal["generation"].get("prompt_sha256"):
                             raise ValueError("提案缺少模型和提示词版本")
-                    elif version == 5 and entry.get("suggestion_origin") == "context":
-                        if proposal.get("generation", {}).get("origin") != "context" or not entry.get("basis_refs") or entry.get("evidence_status") != "unverified":
-                            raise ValueError("上下文摘要缺少来源或未经用户采用")
                     elif entry.get("suggestion_origin") != "catalogue" or entry.get("evidence_status") != "source_checked":
                         raise ValueError("提案来源类别无效")
-                if (not refs and (version == 3 or entry.get("suggestion_origin") not in ({"model","context"} if version == 5 else {"model"}))) or any(ref not in sources for ref in refs):
+                if (not refs and (version == 3 or entry.get("suggestion_origin") != "model")) or any(ref not in sources for ref in refs):
                     raise ValueError("缺少可追溯的推荐依据")
                 for ref in refs:
                     source = sources[ref]
@@ -190,7 +187,11 @@ def _validate_request(payload, version, rule):
         raise ValueError("请求缺少草稿修订标识")
 
 
-def validate_research_request_v5(payload):
+def validate_research_request_v3(payload):
+    """Historical validator remains pinned to its original contract."""
+    _validate_request(payload, 3, "intake-rules-3.1")
+
+def validate_research_request_v4(payload):
     allowed = {"contract_version", "rule_version", "original_intent", "draft_revision", "draft_id",
                "fields", "task_pattern", "domain", "issues", "reference_notes", "sources", "proposals"}
     if not isinstance(payload, dict) or set(payload) - allowed:
@@ -198,7 +199,7 @@ def validate_research_request_v5(payload):
     records_allowed = {"status", "value", "source", "quote", "turn", "id", "direction", "strength",
                        "predicate", "temperatures", "suggested_after_turn", "selection_quote", "confirmed_turn",
                        "recommendation_ref", "source_refs", "suggestion_origin", "evidence_status", "needs_review",
-                       "review_quote", "review_turn", "legacy_provenance", "basis_refs"}
+                       "review_quote", "review_turn", "legacy_provenance"}
     for field, values in payload.get("fields", {}).items():
         for record in values if isinstance(values, list) else [values]:
             if not isinstance(record, dict) or set(record) - records_allowed:
@@ -210,9 +211,3 @@ def validate_research_request_v5(payload):
             if record.get("source") not in {None, "user", "confirmed_suggestion"}:
                 raise ValueError("字段来源未经重新核对")
     _validate_request(payload, CONTRACT_VERSION, RULE_VERSION)
-
-
-from lapis_contract_v4 import validate_research_request_v3, validate_research_request_v4
-
-def validate_current_request(payload):
-    validate_research_request_v5(payload)

@@ -68,7 +68,7 @@ class Guidance(StrictModel):
 
 GUIDANCE_PROMPT = """你是LAPIS材料研究规约助手。根据本轮意图和当前八项草稿动态提出研究方向，
 不限于参考目录中的材料。不是计算执行器，也不提供已验证性能、最优配方或实算结论。
-求推荐或不懂时给2到3个可选择方向；解释已有问题可以只给解释和空options。
+初次方向推荐或明确换方向时给2到3个可选择方向；context.focus_field非空时只针对该缺口给简洁选择，fields只补focus_field，不重开已有方向。已有对象/用途/目标、已采用指标与硬约束保持。解释已有问题可以只给解释和空options。
 方向必须是材料应用研究；排除药物筛选。基础性质问题帮助限定材料用途。
 fields只能补充八项相关字段，其余不要填。不要为了完整而生成温度、电压、结构、浓度、阈值。
 不要复制无关旧场景。保留用户的硬约束；已拒绝方向不要仅换个名字再提出。
@@ -95,7 +95,8 @@ def generate_recommendations(client, model, state, text, operation_id=None):
     except FileNotFoundError:
         reference = None
     references = reference["sources"] if reference else {}
-    context = {"input": text, "fields": state["fields"], "domain": state["domain"],
+    focus = state.get("asked_field") if any(h.get("status")=="accepted" for h in state.get("recommendation_history",[])) and state.get("guidance_mode") != "new_direction" else None
+    context = {"focus_field": focus, "input": text, "fields": state["fields"], "domain": state["domain"],
                "issues": state["issues"], "asked_field": state["asked_field"],
                "current_options": (state.get("recommendation_set") or {}).get("options", []),
                "rejected": [e for e in state["recommendation_history"] if e["status"] == "rejected"],
@@ -116,6 +117,8 @@ def generate_recommendations(client, model, state, text, operation_id=None):
         if any(ref not in references for ref in option.source_refs):
             raise ValueError("模型提案引用了未提供或未核查的资料 ID")
         fields = option.fields.model_dump(exclude_none=True)
+        if focus:
+            fields = {focus: fields[focus]} if focus in fields else {}
         if not fields:
             raise ValueError("研究方向没有提出任何八项字段补充")
         if domain_from_fields({**state["fields"], **fields}) == "drug_discovery":
@@ -141,5 +144,5 @@ def generate_recommendations(client, model, state, text, operation_id=None):
             "draft_id": state["draft_id"], "explanation": output.explanation,
             "generation": {"origin": "model", "model": model, "prompt_sha256": content_hash(GUIDANCE_PROMPT),
                            "operation_id": operation_id},
-            "options": directions, "sources": {ref: deepcopy(references[ref]) for ref in used},
+            "focus_field": focus, "options": directions, "sources": {ref: deepcopy(references[ref]) for ref in used},
             "catalog_version": reference["catalog_version"] if reference else None}

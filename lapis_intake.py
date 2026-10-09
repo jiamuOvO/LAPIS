@@ -12,7 +12,8 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from lapis_contract import (CONTRACT_VERSION, RULE_VERSION, FIELDS, LIST_FIELDS, CONFIRM_WORDS,
                             content_hash, domain_from_fields, request_issues,
-                            validate_research_request_v4)
+                            validate_current_request)
+from lapis_semantics import (build_context, proposal_echo, check_operations, prepare_summaries, adopt_summaries, runtime_fingerprint)
 from lapis_proposals import generate_recommendations, GUIDANCE_PROMPT, direction_fingerprint
 
 class StrictModel(BaseModel):
@@ -52,6 +53,10 @@ class Update(StrictModel):
     value: str | None = None
     quote: str = Field(min_length=1)
     action: Literal["add", "update", "replace", "remove"] = "add"
+    intent_ref: str | None = None
+    basis_refs: list[str] = Field(default_factory=list)
+    scope_mode: Literal["unspecified", "current_scope", "no_extra_exclusions", "expand"] = "unspecified"
+    change_relation: Literal["unspecified", "restatement", "refinement", "switch", "uncertain"] = "unspecified"
     target_id: str | None = None
     target_value: str | None = None
     direction: str | None = None
@@ -81,8 +86,20 @@ class Issue(StrictModel):
     entry_ids: list[str] = Field(default_factory=list)
 
 
+class Intent(StrictModel):
+    id: str
+    kind: Literal["answer", "inform", "edit", "adopt", "reject", "quote", "delegate", "progress", "confirm", "pause"]
+    quote: str = Field(min_length=1)
+    question_ref: str | None = None
+    target_refs: list[str] = Field(default_factory=list)
+
+
 class Extraction(StrictModel):
-    actions: list[Literal["inform", "recommend", "explain", "unsure", "select", "reject",
+    summary: str = ""
+    intents: list[Intent] = Field(default_factory=list)
+    context_change: Literal["unspecified", "restatement", "refinement", "switch", "uncertain"] = "unspecified"
+    guidance_mode: Literal["auto", "fill_gap", "new_direction", "explain"] = "auto"
+    actions: list[Literal["quote", "delegate", "inform", "recommend", "explain", "unsure", "select", "reject",
                          "edit", "pause", "confirm", "reaffirm", "progress"]] = Field(default_factory=lambda: ["inform"])
     updates: list[Update] = Field(default_factory=list)
     selected_option: int | None = None
@@ -108,48 +125,22 @@ class IntakeSuggestion(BaseModel):
     limitation: str
 
 
-SYSTEM_PROMPT = """你是 LAPIS 第一模块的结构化对话提取器。只从本轮原话提取，不编造事实。
-八项字段：purpose研究行动/判断；research_object具体材料或体系；application实际用途；
-work_conditions服役条件；target_performance性能与定性方向；constraints硬约束/偏好；
-research_scope包含/排除范围；material_function材料承担的作用。
-actions可同时有多个：inform、recommend请求推荐、explain请求解释、unsure不知道、
-select选择方向（整体或局部）、reject拒绝、edit修改、pause先不确认、confirm确认、reaffirm重新核对。
-混合表达不能只保留一个动作：“采用第二个方向但先不考虑成本”=select+edit；
-“不研究氧化稳定性其他保留”只删除该目标；“确认但成本改为偏好”=confirm+edit。
-selected_option由上下文识别序号、名称或功能，不能猜测多个匹配。selection_mode=full仅用户明确采用整个方向；短答或只选功能必须partial，不能自动采用推荐所有用途、对象、假设和其他目标。partial用updates只记录本轮已明确的意图，未明确字段保持原状。
-短答要结合当前推荐解释；只选多目标中的一项时用replace目标列表，排除未选择的目标。定性功能如“耐磨作用”已足以将目标性能specified（比较/考察），没有量化指标不应标open。区分研究目的（探索/比较/筛选）、性能（欲考察性质）、材料功能（用途中的角色）和用途（具体场景）。上下文足以明确探索行动时更新旧unclear目的，并resolve_issue_ids；不可仅更新性能而遗留已解决目的问题。不能将选定研究方向当作科学事实。
-例如旧目的“研究某材料的生活用途”是unclear，本轮从推荐选定某个功能时，目的可明确为“探索该材料在所选功能中的应用”，这只是行动意图；必须更新purpose、material_function和单一目标，并解决旧目的issue。“包装材料的抗氧化应用”“表面涂层的耐磨应用”已经足以限定第一模块用途，不强求具体包装品种、基材或配方；更细条件交研究设计。不要反复要求用户在未选择的其他功能（如阻隔或再加工）之间重新选择。具体用途尚未选时仍追问，不要把所有候选用途写成specified。不要等用户再次说“探索”才更新已明确的目的。
-多个匹配不能select，给出clarification_field及clarification_question，点名可选差别。仍缺具体用途时不自动填所有用途，提问具体用途选择；问题只能采用当前推荐和已知意图，不添加事实断言。clarification_question是一个可回答的问题；不能泛称“这项信息”。若仍有问题，clarification_field对应当前最优先实质缺口，clarification_question带已知意图和具体可选差别，例如材料用途仍宽泛时给已有推荐中的用途选项。
-用户在回答asked_field时优先解释为该字段的补充；研究对象可为有边界的材料类别，不要求此时确定小分子/聚合物/具体配方。不因缺具体模型或形态反复新增首模块歧义。功能问题的回答“拟提高某性能”应更新material_function，不仅更新性能或目的。带“待验证意图/不假定有效”的说明是证据限制，不是用户硬约束，不写constraints。必要时用reference_note记录。
-“可以下一步了吗”等进度询问用progress（不是confirm，不自动确认）。
-selected_option用于定位当前方向；“用途采用刚才的X”“功能沿用X”是字段补充或reaffirm，不是重新select。
-采用方向时不要把推荐文本提取为用户原话字段。
-每项quote必须是本轮原话连续片段。未提及的字段不输出。已有字段用于理解不能冒充本轮原话。
-研究目的应是本轮行动。“设计高电压电池”只是上层意图：应用高电压电池，目的还不清楚，
-不要把整个电池当材料，不要造目标“提高电压”。
-目标可定性如比较稳定性，无需强求描述符或计算方法。每个目标和约束各一条。
-“性价比高”不是单一可计算性能：成本作为待澄清偏好，性能保持unclear，询问优先性能和成本口径；不能自动认定最便宜配方。
-指定目标给direction，明确约束给hard/preference；不确定给unclear。
-status：none明确无预设，open交研究设计确定，unclear已表达但有歧义。未提供保持unknown。
-action：add新增、update更新指定条目、remove撤回；replace仅用户明确替换整个列表。
-局部修改用target_id或target_value指向已有条目，保留其他项。删除无需重新填方向/强度。
-指定信息必须有value，不能把目标名称只放direction。仅修改已有非空条目的方向/强度可省value。
-“目标只比较X/只保留X”是明确替换整个目标列表，用replace，value=X，direction=比较。
-“先不考虑X”明确撤回本轮X，不需要询问是否永久撤回。不存在该约束时不新增歧义。
-“暂不设置X限制”是本轮撤回X，不是新增X偏好。不要仅因其他限制未知就新增issues。
-当前issues若已由本轮明确修改解决，输出其ID到resolve_issue_ids；不能漏掉已解决的旧问题。
-数值温度写temperatures，unit必须来自原话；25 K和25℃不能擅自选择或混用。
-允许/必须/禁用组分写predicate(target,operator,scope)，保留原始否定句。
-任何无法可靠结构化的歧义或矛盾写issues，不用“确认”解决矛盾。
-reaffirm_fields仅在用户明确重核或沿用那些字段时给出；不能自行把旧条件认为还适用。
-具体机制、方法、力场、参数作为reference_note，category注明，未核验，不是执行许可。
-domain根据对象+目的+用途判断：材料应用materials_application；药物先导、药效、药物候选
-与靶蛋白结合筛选drug_discovery首版排除；不能仅凭“分子”判材料或“药”误拒医用材料。
-缺材料用途的基础问题先basic_research/uncertain，可引导，不能编造用途。
-task_type辅助：screening/comparison/mechanism_validation/mechanism_exploration/other。
-未知原因可探索不要求假设，多性能不是多独立任务。不同独立任务可标multiple_tasks。
-请求推荐/解释时保留原始对象和意图，不输出虚构推荐作为用户字段。
-输出结构化JSON。"""
+SYSTEM_PROMPT = """你是 LAPIS 第一模块的结构化语义解释器。一次调用输出简短可检查的理解、意图和拟修改，禁止隐藏思维链、虚构科学事实。固定八项：purpose研究行动/判断，research_object材料类别/体系，application基本用途，work_conditions条件，target_performance关注点和方向，constraints硬约束/偏好，research_scope本轮边界，material_function拟承担作用。
+所有原话quote必须来自本轮连续片段。上下文用于解释省略，不冒充原话。intents每条有id/kind/quote；回答必须以question_ref指向current_question.id；修改指向target_refs。updates逐条intent_ref，引用当前条目ID或字段作为basis_refs。不重复输出未修改字段。
+kind:answer回答当前问题；inform新信息；edit主动修改/撤回；adopt采用提案；reject拒绝；quote引用原提案；delegate委托建议；progress查询下一步；confirm明确批准；pause暂停。用户混合编辑可以有多条意图；回答某字段不能改另一个字段，独立主动编辑须另列意图。actions维持inform/edit/select/recommend/explain/unsure/reaffirm/reject/progress/confirm/pause/quote/delegate调用分工。
+“比较吧”回答目标方向时，更新现有目标direction，不改value，不删除具体指标；也可独立明确研究目的但不要再重复追问已知目标。研究/考察/探索本身是合法目的，无需强选筛选或比较。定性关注点可以进入研究设计，无需具体指标、公式、单位、模型或计算路线。
+add增加，update唯一指向现有项只改明确属性，remove需撤回意图并指向target_refs，replace只在明确整个字段替换时使用。已采用的目标/指标默认保留。仅选推荐中一子目标不加入未选提案目标，但不能删除此前用户已选项。推荐之外的新指标可以add，即使当前追问其他字段；用inform或edit独立意图。
+“都研究/都包含”结合实际问题理解，范围回答不能修改目标。指代多个层级则不修改并问具体差别；已选范围内“无额外排除”要归纳有界范围，basis_refs指已有对象/用途/目标，并标scope_mode=current_scope或no_extra_exclusions；扩到新对象/用途为expand。真正指代歧义不输出updates。不写脱离上下文的短句，不扩大到未选方向。
+quote区分复制拟研究/假设/限制与采用；原提案内容保持来源，不能写成用户constraints或reference_note。只有用户明确将某项作为要求才是用户约束。“随便你”委托提出方案，不代表撤回约束；“之前不是选过了吗”核对采用记录，不一次解除所有冲突。重贴已采用内容不是重新select陈旧推荐。
+对象/用途/范围变化标change_relation:restatement同义，refinement兼容细化/补未知，switch真正改变，uncertain不确定。首次明确用途不应要求重核原目标。真正换用途时重核受影响项，但原值保留。context_change用于完整方向选择；不按字符串不同判断换场景。
+selected_option按当前推荐序号/名称/功能定位。selection_mode=full只明确整个方向采用；partial仅局部。采用方向的字段来自提案，不提取成用户updates。拒绝/采用的引用必须来自当前展示版本；多个匹配问差别不能冒选。
+推荐初次方向可以完整；已采用后guidance_mode=fill_gap仅补当前缺口，用户明确换方向才new_direction。解释可explain。“可以下一步了吗”用progress，不自动confirm。确认伴修改先展示新版本。
+unknown没提供，none明确无预设，open交后续设计确定，unclear真实歧义。不能因为科学效果未核验把清楚意图标unclear。约束区分hard/preference；没有约束不自动撤回现有硬约束。性价比需要成本口径和性能关注点，不能保证最优。
+完整度：对象/基本用途/关注点清楚即可整理研究目的、粗范围和拟功能；候选/基体/条件/评价方法留研究设计。不要添加“必须明确指标/候选才能继续”的issue。独立矛盾、对象用途歧义和未同意扩大仍阻断。resolve_issue_ids只指已解决的问题；reaffirm_fields只对应明确重核，不由progress自动批准。
+温度temperatures数值单位来自原话，禁止混用℃/K；组分要求predicate保留否定。具体机制/方法/参数主动输入可reference_note未核验，引用提案不能变用户参考。
+domain按对象+用途+目的：materials_application材料用途；drug_discovery药物先导/药效/靶蛋白筛选首版不支持；basic_research无用途保持草稿；uncertain缺信息。不能凭单一材料词下领域结论。task_type只辅助，可other，不强加范式。
+clarification_field/question点名实际缺口并给一个能回答的问题；不索取已可后续设计的细节。输出固定JSON，不追加科学结果或文献。"""
+
 PROPOSAL_PROMPT = GUIDANCE_PROMPT
 
 
@@ -197,6 +188,8 @@ def normalize_state(state):
         converted["fields"][field] = items if field in LIST_FIELDS else items[0]
     converted["reference_notes"] = deepcopy(old.get("reference_notes", []))
     converted["sources"] = deepcopy(old.get("sources", {}))
+    converted["proposals"] = deepcopy(old.get("proposals", {}))
+    converted["history"] = deepcopy(old.get("history", []))
     converted["issues"] = deepcopy(old.get("issues", []))
     converted["task_type"] = old.get("task_type")
     for value in converted["fields"].values():
@@ -211,9 +204,7 @@ def normalize_state(state):
 
 
 def extract(client, model, state, text):
-    context = {"fields": state["fields"], "issues": state["issues"],
-               "asked_field": state["asked_field"], "recommendations": state["recommendation_set"],
-               "reference_notes": state["reference_notes"], "input": text}
+    context = build_context(state, text)
     options = {"extra_body": {"thinking": {"type": "disabled"}}} if os.getenv(
         "LAPIS_BASE_URL", "https://api.deepseek.com").startswith("https://api.deepseek.com") else {}
     return client.create(model=model, response_model=Extraction,
@@ -223,6 +214,8 @@ def extract(client, model, state, text):
 
 
 def contextual_reply(state, text):
+    if proposal_echo(state, text):
+        return Extraction(actions=["quote"], summary="引用原提案；来源及当前已采用内容保持不变")
     field = state.get("asked_field")
     if field in FIELDS and text in {"没有", "无", "暂无", "不知道", "不清楚", "不确定", "没想好", "交给研究设计确定"}:
         status = "none" if text in {"没有", "无", "暂无"} else "open"
@@ -232,7 +225,7 @@ def contextual_reply(state, text):
 
 
 def _fingerprint(state):
-    return content_hash({k: state[k] for k in ("fields", "reference_notes", "domain", "issues", "sources", "task_type")})
+    return content_hash({k: state[k] for k in ("fields", "reference_notes", "domain", "issues", "sources", "task_type", "proposals")})
 
 
 def _touch(state, before):
@@ -255,6 +248,8 @@ def _record(item, turn, id=None):
         entry["strength"] = item.strength
         if item.predicate:
             entry["predicate"] = item.predicate.model_dump()
+    if item.basis_refs:
+        entry["basis_refs"] = list(item.basis_refs)
     if item.temperatures:
         entry["temperatures"] = [x.model_dump() for x in item.temperatures]
     return entry
@@ -276,8 +271,8 @@ def _merge(state, text, extraction, context=None):
     grouped = {}
     for update in updates:
         grouped.setdefault(update.field, []).append(update)
-    major = any(field in grouped and any(
-        u.status == "specified" and u.value != state["fields"][field].get("value") for u in grouped[field])
+    major = any(field in grouped and state["fields"][field].get("status") == "specified" and any(
+        u.status == "specified" and u.value != state["fields"][field].get("value") and u.change_relation not in {"restatement", "refinement"} for u in grouped[field])
         for field in ("research_object", "application", "research_scope"))
     if major:
         for field in ("work_conditions", "target_performance", "material_function", "constraints"):
@@ -365,6 +360,8 @@ def _merge(state, text, extraction, context=None):
             before = deepcopy(values)
             for entry in values if isinstance(values, list) else [values]:
                 intent_reaffirmed = field not in {"work_conditions", "constraints"} and entry.get("status") == "open" and entry.get("value") and (field != "target_performance" or entry.get("direction"))
+                if entry.get("source") == "system_suggestion":
+                    entry.update(source="confirmed_suggestion", selection_quote=text, confirmed_turn=turn)
                 if entry.get("needs_review") or intent_reaffirmed:
                     entry.pop("needs_review", None)
                     if intent_reaffirmed:
@@ -398,6 +395,8 @@ def _merge(state, text, extraction, context=None):
 
 def _ground_actions(state, extraction):
     """Do not let model-expanded option text overwrite its catalog provenance."""
+    extraction, decisions = check_operations(state, state.get("_input_text", ""), extraction)
+    state["_operation_decisions"] = decisions
     rec = state.get("recommendation_set")
     adopted = {}
     if "select" in extraction.actions and extraction.selection_mode == "full" and rec and extraction.selected_option and 1 <= extraction.selected_option <= len(rec["options"]):
@@ -405,7 +404,7 @@ def _ground_actions(state, extraction):
     retained = []
     for item in extraction.updates:
         # Partial function choices cannot silently authorize unrelated proposed context.
-        if extraction.selection_mode == "partial" and item.field in {"application", "research_object", "research_scope", "work_conditions", "constraints"} and item.value and item.value not in item.quote:
+        if not extraction.intents and extraction.selection_mode == "partial" and item.field in {"application", "research_object", "research_scope", "work_conditions", "constraints"} and item.value and item.value not in item.quote:
             if item.field == "research_object" and state.get("asked_field") == "research_object" and item.value == state["fields"]["research_object"].get("value"):
                 pass
             elif item.field == "research_scope" and state.get("asked_field") == "research_scope":
@@ -457,7 +456,7 @@ def _select(state, extraction, text, context):
     if not option.get("reconsidered") and any((x["direction_id"] == option["id"] or x.get("fingerprint") == direction_fingerprint(option)) and x["status"] == "rejected"
            for x in state["recommendation_history"]):
         return "这条方向曾被拒绝，请先重新审查方向。"
-    major = any(field in option["fields"] and state["fields"][field].get("status") == "specified" and
+    major = extraction.context_change not in {"restatement", "refinement"} and any(field in option["fields"] and state["fields"][field].get("status") == "specified" and
                 state["fields"][field].get("value") != (option["fields"][field].get("value") if isinstance(option["fields"][field], dict) else option["fields"][field])
                 for field in ("research_object", "application", "research_scope"))
     if major:
@@ -606,9 +605,13 @@ def _confirm(state, context):
     draft = make_draft(state)
     if request_issues(draft):
         return _result(state, notice="当前规约仍有下述缺口，补充后再核对确认；可用 /show 查看草稿。")
+    if context.get("review_hash") and context["review_hash"] != state.get("review_hash"):
+        return _result(state, notice="展示版本已经变化，请核对当前规约。")
     if context.get("draft_id") != state["draft_id"] or (state["stage"] != "review" and context.get("reviewed_draft_id") != state["draft_id"]):
         return _result(state, notice="已展示当前完整规约，请核对后明确确认。")
-    validate_research_request_v4(draft)
+    adopt_summaries(state, state["turns"][-1])
+    draft = make_draft(state)
+    validate_current_request(draft)
     state["confirmed_request"] = deepcopy(draft)
     state["stage"] = "ready_for_design"
     result = _result(state)
@@ -619,9 +622,12 @@ def _confirm(state, context):
 def process_turn(state, text, extraction):
     """Deterministic, testable update path without automatic confirmation."""
     normalize_state(state)
+    state["_input_text"] = text
+    extraction = _ground_actions(state, extraction)
     before = _fingerprint(state)
     state["turns"].append(text.strip())
     _merge(state, text, extraction)
+    prepare_summaries(state, None)
     return _result(state, _touch(state, before))
 
 
@@ -631,6 +637,8 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
     if not text:
         raise ValueError("输入不能为空")
     context = input_context or {}
+    state["_input_text"] = text
+    state["_generation_operation_id"] = operation_id
     started = time.perf_counter()
     if text in CONFIRM_WORDS:
         state["turns"].append(text)
@@ -649,10 +657,24 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
         if "reject" in extraction.actions or text in {"不采用", "不用建议"}:
             notice = _reject(state, extraction, text, context)
         _merge(state, text, extraction, context)
+        prepare_summaries(state, operation_id)
         changed = _touch(state, before)
-        guide = bool(set(extraction.actions) & {"recommend", "explain", "unsure", "reject"})
+        guide = bool(set(extraction.actions) & {"recommend", "explain", "unsure", "reject", "delegate"})
+        state["guidance_mode"] = extraction.guidance_mode
+        if guide and any(h.get("status") == "accepted" for h in state["recommendation_history"]) and extraction.guidance_mode != "new_direction":
+            open_issues = request_issues(make_draft(state))
+            if open_issues:
+                state["asked_field"] = open_issues[0]["field"]
+            else:
+                guide = False
+                notice = "已有方向已保留；当前可以核对规约。若要换方向，请明确说明。"
         generated = generate_recommendations(client, model, state, text, operation_id) if guide and state["domain"] not in {"drug_discovery", "non_research"} else None
         result = _result(state, changed, guide, text, notice, generated)
+        result["interpretation"] = extraction.model_dump()
+        result["operation_decisions"] = state.get("_operation_decisions", [])
+        result["important_changes"] = [LABELS.get(d["operation"]["field"],d["operation"]["field"]) + "：" + d["operation"]["action"] + "；原话：" + d["operation"]["quote"] for d in result["operation_decisions"] if d["decision"] == "accepted" and (d["operation"]["action"] in {"remove","replace"} or d["operation"]["field"] == "research_scope")]
+        if "quote" in extraction.actions:
+            result["notice"] = "已识别为原提案引用，未新增用户要求或重新选择方向。"
         if extraction.clarification_question and any(i.get("field") == extraction.clarification_field for i in result["blocking_issues"]) and not guide:
             state["asked_field"] = extraction.clarification_field
             result["next_question"] = LABELS.get(extraction.clarification_field, "研究信息") + "：" + extraction.clarification_question
@@ -666,8 +688,13 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
                 state["stage"] = "review"
                 result = _result(state, changed)
             result["notice"] = "本轮含修改或选择，请核对更新后的完整草稿，再确认。"
+    if "extraction" in locals():
+        result["interpretation"] = extraction.model_dump()
+        result["operation_decisions"] = state.get("_operation_decisions", [])
+        result["important_changes"] = [LABELS.get(d["operation"]["field"],d["operation"]["field"]) + "：" + d["operation"]["action"] + "；原话：" + d["operation"]["quote"] for d in result["operation_decisions"] if d["decision"] == "accepted" and (d["operation"]["action"] in {"remove","replace"} or d["operation"]["field"] == "research_scope")]
     result["metadata"] = {"model": model, "rule_version": RULE_VERSION, "contract_version": CONTRACT_VERSION,
                           "elapsed_seconds": round(time.perf_counter() - started, 3),
+                          "runtime": runtime_fingerprint(),
                           "catalog_version": (state.get("recommendation_set") or {}).get("catalog_version")}
     return result
 
@@ -676,6 +703,10 @@ def handle_turn(client, model, state, text, input_context=None, operation_id=Non
     # Commit the turn only after extraction and proposal validation both succeed.
     working = deepcopy(state)
     result = _handle_turn(client, model, working, text, input_context, operation_id)
+    from lapis import attach_view
+    attach_view(working, result)
+    for key in [key for key in working if key.startswith("_")]:
+        working.pop(key)
     state.clear()
     state.update(working)
     return result

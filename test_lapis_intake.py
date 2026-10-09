@@ -3,7 +3,7 @@ from copy import deepcopy
 from unittest.mock import patch
 
 from lapis_core import intake_is_confirmed
-from lapis_contract import validate_research_request_v4
+from lapis_contract import validate_current_request
 from lapis_guidance import load_catalog, recommendations
 from lapis_intake import Extraction, Update, handle_turn, new_state, normalize_state, process_turn
 
@@ -61,7 +61,7 @@ class IntakeV3Test(unittest.TestCase):
         self.assertFalse(stale["ready_for_design"])
         confirmed = handle_turn(None, "mock", state, "确认", input_context=draft["input_context"])
         self.assertTrue(intake_is_confirmed(state, confirmed))
-        validate_research_request_v4(confirmed["request"])
+        validate_current_request(confirmed["request"])
         repeated = handle_turn(None, "mock", state, "确认", input_context=confirmed["input_context"])
         self.assertEqual(repeated["request"], confirmed["request"])
         self.assertFalse(repeated.get("confirmation_event", False))
@@ -80,7 +80,7 @@ class IntakeV3Test(unittest.TestCase):
         payload = deepcopy(selected["request"])
         payload["sources"]["pef-co2-2015"]["claim"] = "changed without provenance"
         with self.assertRaisesRegex(ValueError, "快照校验"):
-            validate_research_request_v4(payload)
+            validate_current_request(payload)
 
 
     def test_unknown_mechanism_does_not_require_hypothesis(self):
@@ -276,8 +276,8 @@ class IntakeV3Test(unittest.TestCase):
     def test_unclear_placeholder_is_replaced_by_clarification(self):
         state = new_state()
         turn(state, TEXT, full_updates())
-        turn(state, "指标不明确", Extraction(updates=[
-            Update(field="target_performance", status="unclear", quote="指标不明确", action="replace")]))
+        turn(state, "整体目标替换为未明确指标", Extraction(updates=[
+            Update(field="target_performance", status="unclear", quote="整体目标替换为未明确指标", action="replace")]))
         clarified = turn(state, "改为比较稳定性", Extraction(updates=[
             Update(field="target_performance", status="specified", value="稳定性", direction="比较",
                    quote="比较稳定性", action="update")]))

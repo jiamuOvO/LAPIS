@@ -168,7 +168,7 @@ class GraphIntakeTest(unittest.TestCase):
         self.assertEqual(second["request_version"], 1)
         saved = get_task(task_id)
         self.assertEqual(saved["status"], "request_confirmed")
-        self.assertEqual(saved["intake_result"]["request"]["contract_version"], 4)
+        self.assertEqual(saved["intake_result"]["request"]["contract_version"], 5)
         self.assertEqual(len(saved["intake_result"]["request"]["fields"]), 8)
 
     def test_operation_replay_rejects_changed_context(self):

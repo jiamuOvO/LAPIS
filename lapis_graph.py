@@ -14,7 +14,7 @@ from langgraph.types import Command, interrupt
 from psycopg.conninfo import make_conninfo
 
 from lapis_intake import handle_turn
-from lapis_store import connect, db_config, get_intake_operation, get_task, save_turn, record_intake_run
+from lapis_store import connect, db_config, get_intake_operation, get_task, save_turn, record_intake_run, get_recent_intake_turns
 
 
 class IntakeState(TypedDict, total=False):
@@ -43,6 +43,7 @@ def build_intake_graph(client, model: str, prompt_hash: str, checkpointer):
         else:
             task = get_task(task_id)
             intake_state = task["intake_state"]
+            intake_state["_recent_turns"] = get_recent_intake_turns(task_id)
             result = handle_turn(client, model, intake_state, state["user_text"],
                                  input_context=state.get("input_context") or {}, operation_id=operation_id)
             version = save_turn(task_id, task["revision"], intake_state, result,

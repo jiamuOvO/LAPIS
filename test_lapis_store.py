@@ -28,9 +28,9 @@ def confirmed_v2_request():
 
 
 def confirmed_v4_request():
-    from lapis_contract import RULE_VERSION
+    from lapis_contract import RULE_VERSION, CONTRACT_VERSION
     payload = confirmed_v2_request()
-    payload.update(contract_version=4, rule_version=RULE_VERSION, domain="materials_application",
+    payload.update(contract_version=CONTRACT_VERSION, rule_version=RULE_VERSION, domain="materials_application",
                    draft_revision=1, draft_id="draft-1", issues=[], sources={}, proposals={})
     for field in ("target_performance", "constraints"):
         for i, entry in enumerate(payload["fields"][field]):
@@ -46,7 +46,7 @@ class StoreGateTest(unittest.TestCase):
         task = create_task("test")
         self.assertIsNone(get_task(task)["request_version"])
         request = confirmed_v4_request()
-        state = {"contract_version": 4, "draft_id": request["draft_id"], "fields": request["fields"],
+        state = {"contract_version": 5, "draft_id": request["draft_id"], "fields": request["fields"],
                  "turns": ["研究意图"], "stage": "clarifying"}
         draft_result = {"ready": False, "ready_for_design": False,
                         "intake_status": "needs_confirmation", "request": request}
@@ -100,7 +100,7 @@ class StoreGateTest(unittest.TestCase):
                   "calculation_status": "pending_research_design"}
         self.assertEqual(save_turn(task, 0, state, result, "test", "fake"), 1)
         self.assertEqual(get_task(task)["request_version"], 1)
-        with self.assertRaisesRegex(ValueError, "v4"):
+        with self.assertRaisesRegex(ValueError, "确认版本"):
             propose_design(task, {"request_version": 1}, "test")
 
     def test_replayed_operation_does_not_duplicate_a_turn(self):

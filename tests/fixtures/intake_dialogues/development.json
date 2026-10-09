@@ -1,0 +1,62 @@
+[
+  {
+    "id": "beginner",
+    "material": "氮化硼",
+    "background": "你只知道氮化硼名称，不知道具体用途。先请求推荐，再按一个功能名选择；用途按所见推荐决定。不要假装知道条件或性能已证实。",
+    "terminal": "confirm"
+  },
+  {
+    "id": "multisentence",
+    "material": "电解液",
+    "background": "你研究储能电池电解液，关注传输和稳定性。不得使用含氟添加剂是硬约束，低成本是偏好。两三句话说明这些，条件不知道；两个目标和禁用要求必须保留。",
+    "terminal": "confirm"
+  },
+  {
+    "id": "multi_goal_edit",
+    "material": "合金",
+    "background": "想比较合金的强度和抗氧化表现，航空材料用途。随后新增导热，再明确撤回强度；抗氧化和导热保留。先自然说明，不一次填八项。",
+    "terminal": "confirm"
+  },
+  {
+    "id": "long_additive",
+    "material": "呋喃分子",
+    "background": "想研究呋喃分子作为高分子抗氧化添加剂，后来决定比较并记录氧化诱导期。条件和方法不知道。引用提案不是提出约束。氧化诱导期始终保留，范围只在已有方向内，不加入其他方向。",
+    "terminal": "confirm"
+  },
+  {
+    "id": "quotation",
+    "material": "聚合物",
+    "background": "想研究聚合物包装的阻隔表现，请推荐，复制实际展示的假设和限制，不因此提出硬约束；随后明确把低成本作为偏好。",
+    "terminal": "confirm"
+  },
+  {
+    "id": "unknown_delegate",
+    "material": "胶黏剂",
+    "background": "研究胶黏剂用于器件粘接，关注耐热；已有禁用有毒溶剂要求。温度不知道，可委托建议，但委托不能撤回禁用要求。明确没有其他额外要求。",
+    "terminal": "confirm"
+  },
+  {
+    "id": "context_change",
+    "material": "二氧化硅",
+    "background": "先研究二氧化硅涂层耐磨。先同义重述并细化为器件表面涂层，随后主动改为室内吸附材料，承认需要重新核对功能目标。不要自动声称有效。",
+    "terminal": "confirm"
+  },
+  {
+    "id": "indicator",
+    "material": "高分子添加剂",
+    "background": "研究高分子抗氧化添加剂，明确记录氧化诱导期，但不知道评价方法和计算路线。条件未知。不能让系统保证软件能直接算出该指标。",
+    "terminal": "confirm"
+  },
+  {
+    "id": "pause_correct",
+    "material": "陶瓷",
+    "background": "研究陶瓷散热，目标导热。纠正一次对象类别为氮化硼陶瓷，拒绝当前确认，并说暂时暂停；不要为了完成填写所有信息。",
+    "terminal": "pause"
+  },
+  {
+    "id": "conflict",
+    "material": "电解液",
+    "background": "研究储能电池电解液传输。同一方案要求必须含FEC和不能含FEC，故意保留矛盾并拒绝消除。认可系统具体阻断，不能接受系统假选一种。",
+    "terminal": "blocked"
+  }
+]

@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import builtins
+import io
+from copy import deepcopy
 import json
 import os
 from pathlib import Path
@@ -15,6 +18,7 @@ from psycopg import sql
 from openai import OpenAI
 
 from lapis_core import digest
+from lapis_contract import CONTRACT_VERSION
 from lapis_intake import LABELS, PROPOSAL_PROMPT, SYSTEM_PROMPT, preview_intake
 from lapis_graph import run_intake_turn
 from lapis_store import (ROOT, approve_design, artifact_root, create_simulation_attempt, create_task,
@@ -92,6 +96,8 @@ def field_text(field, value):
         if status == "specified" and field == "target_performance":
             if entry.get("direction") != entry.get("value"):
                 text += "（" + (entry.get("direction") or "方向待澄清") + "）"
+        if entry.get("source") == "system_suggestion":
+            text += "（待您采用的意图摘要）"
         if entry.get("needs_review"):
             text += "（场景变化后需重新核对）"
         result.append(text)
@@ -122,7 +128,9 @@ def short_text(value, limit=100):
     return text if len(text) <= limit else text[:limit] + "…"
 
 
-def render_sources(result, detail=True):
+def render_sources(result, detail=True, stream=None):
+    def print(*args, **kwargs):
+        builtins.print(*args, file=stream, **kwargs)
     detail_view = detail
     request = (result or {}).get("request") or {}
     active = {(e.get("recommendation_ref") or {}).get("direction_id") for value in request.get("fields", {}).values()
@@ -141,7 +149,8 @@ def render_sources(result, detail=True):
             if direction not in active:
                 continue
             shown = True
-            print("已采用提案：" + str(detail.get("label", "")))
+            pending = any(e.get("source") == "system_suggestion" and (e.get("recommendation_ref") or {}).get("direction_id") == direction for v in request.get("fields", {}).values() for e in (v if isinstance(v,list) else [v]))
+            print(("待核对摘要：" if pending else "已采用提案：") + str(detail.get("label", "")))
             for key, label in (("assumptions", "假设"), ("limitations", "限制"), ("clarifications", "待研究设计核查")):
                 if detail.get(key):
                     print(label + "：" + ("；".join(detail[key]) if detail_view else "；".join(short_text(x, 85) for x in detail[key][:2])))
@@ -163,7 +172,12 @@ def render_sources(result, detail=True):
         print("暂无可核查引用；研究提案尚未科学核验。")
 
 
-def render_intake_result(result, full=False):
+def render_intake_result(result, full=False, stream=None):
+    def print(*args, **kwargs):
+        builtins.print(*args, file=stream, **kwargs)
+    if not full and result and result.get("view"):
+        print(result["view"]["text"], end="")
+        return
     if not result:
         print("LAPIS> 请描述你本轮想研究的材料问题。")
         return
@@ -173,7 +187,7 @@ def render_intake_result(result, full=False):
         print("当前研究规约：")
         for field, label in LABELS.items():
             print(label + "：" + field_text(field, request.get("fields", {}).get(field)))
-        render_sources(result, detail=False)
+        render_sources(result, detail=False, stream=stream)
     elif status == "ready_for_design":
         print("LAPIS> 研究请求已保存，可进入研究设计；确认规约不授权计算。")
     elif result.get("changes"):
@@ -187,9 +201,15 @@ def render_intake_result(result, full=False):
             if not any(e.get("value") or e.get("source") == "user" and e.get("status") in {"none", "open"} for e in entries):
                 continue
             parts.append(LABELS[field] + "为" + field_text(field, fields[field]))
-        parts = parts[:3]
+        # Every changed field is visible; otherwise removals can hide behind a summary.
+        parts = parts
         if parts:
             print("LAPIS> 已更新：" + "；".join(parts) + "。")
+    for decision in result.get("operation_decisions", []):
+        if decision.get("decision") == "not_applied":
+            print("暂未应用：" + LABELS.get(decision["operation"]["field"], "研究信息") + "；" + decision["reason"] + "。")
+    for change in result.get("important_changes", []):
+        print("本轮变更：" + change)
     if result.get("needs_review_fields"):
         print("需重核：" + "、".join(LABELS.get(f,f) for f in result["needs_review_fields"]) + "，原信息已保留。")
     if result.get("notice"):
@@ -209,6 +229,26 @@ def render_intake_result(result, full=False):
         print("LAPIS> " + ("你想采用哪个方向，或修改哪些内容？" if rec.get("options") else short_text(result["next_question"], 180)))
 
 
+
+def attach_view(state, result):
+    """One immutable string is used by persistence, context and actual CLI output."""
+    buf=io.StringIO()
+    raw=deepcopy(result);raw.pop('view',None)
+    render_intake_result(raw,stream=buf)
+    text=buf.getvalue();draft_id=result['request']['draft_id']
+    view_hash=digest({'text':text,'draft_id':draft_id,'renderer':'intake-view-5.0'})
+    question=None
+    if result.get('next_question'):
+        field=state.get('asked_field')
+        question={'id':'Q-'+digest({'draft_id':draft_id,'field':field,'question':result['next_question']})[:16],
+                  'fields':[field] if field else [],'text':result['next_question'],'draft_id':draft_id,'view_hash':view_hash}
+    result['view']={'text':text,'hash':view_hash,'renderer_version':'intake-view-5.0','draft_id':draft_id,'question':question}
+    review_hash=digest(result['request'])
+    result['input_context']['review_hash']=review_hash
+    state['review_hash']=review_hash
+    result['input_context']['view_hash']=view_hash
+    state['view_hash']=view_hash;state['current_question']=question
+
 def run_chat(task_id: str | None, actor: str) -> None:
     key = os.getenv("LAPIS_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
     if not key:
@@ -222,7 +262,7 @@ def run_chat(task_id: str | None, actor: str) -> None:
     prompt_hash = digest({"extract": SYSTEM_PROMPT, "proposal": PROPOSAL_PROMPT})
     print("输入 /show 查看完整规约，/sources 查看依据，/debug 查看技术记录，/exit 退出。", flush=True)
     result = task.get("intake_result")
-    if task.get("intake_state") and task["intake_state"].get("contract_version") != 4:
+    if task.get("intake_state") and task["intake_state"].get("contract_version") != CONTRACT_VERSION:
         result = preview_intake(task["intake_state"])
     display = True
     reviewed_draft_id = None

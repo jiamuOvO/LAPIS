@@ -9,9 +9,9 @@ from lapis_proposals import Guidance
 from test_lapis_proposals import proposal
 
 
-def advice(state, body=None, text='请推荐', actions=None, context=None):
+def advice(state, body=None, text='请推荐', actions=None, context=None, mode="auto"):
     client = Mock(); client.create.return_value = Guidance.model_validate(body or proposal())
-    with patch('lapis_intake.extract',return_value=Extraction(actions=actions or ['recommend'],selected_option=1)), patch('lapis_proposals.reference_recommendations',return_value=None):
+    with patch('lapis_intake.extract',return_value=Extraction(actions=actions or ['recommend'],selected_option=1,guidance_mode=mode)), patch('lapis_proposals.reference_recommendations',return_value=None):
         return handle_turn(client,'review-test',state,text,context)
 
 
@@ -85,7 +85,7 @@ class ReviewTest(unittest.TestCase):
 
     def test_guidance_hides_complete_review_so_first_confirm_must_display_it(self):
         state=new_state(); initial=advice(state); review=select(state,initial['input_context'])
-        guidance=advice(state,context=review['input_context'])
+        guidance=advice(state,context=review['input_context'],mode='new_direction')
         self.assertNotIn('当前研究规约',shown(guidance))
         pending=handle_turn(None,'test',state,'确认',guidance['input_context'])
         self.assertFalse(pending['ready_for_design'])
@@ -139,7 +139,7 @@ class ReviewTest(unittest.TestCase):
 
     def test_show_receipt_can_confirm_current_complete_guidance_but_not_old_version(self):
         state=new_state(); initial=advice(state); selected=select(state,initial['input_context'])
-        guidance=advice(state,context=selected['input_context'])
+        guidance=advice(state,context=selected['input_context'],mode='new_direction')
         context={**guidance['input_context'],'reviewed_draft_id':'old'}
         before=deepcopy(state)
         self.assertFalse(handle_turn(None,'test',state,'确认',context)['ready_for_design'])

@@ -6,7 +6,7 @@ import unittest
 from copy import deepcopy
 from unittest.mock import Mock, patch
 from pydantic import ValidationError
-from lapis_contract import validate_research_request_v4
+from lapis_contract import validate_current_request
 from lapis_intake import Extraction, Update, handle_turn, new_state, normalize_state
 from lapis_proposals import Guidance, generate_recommendations
 from test_lapis_store import confirmed_v3_request
@@ -49,7 +49,7 @@ class DynamicProposalTest(unittest.TestCase):
         self.assertEqual(selected["intake_status"], "needs_confirmation")
         self.assertFalse(selected["ready_for_design"])
         confirmed = handle_turn(None, "test-model", state, "确认", selected["input_context"])
-        validate_research_request_v4(confirmed["request"])
+        validate_current_request(confirmed["request"])
         self.assertTrue(confirmed["ready_for_design"])
         obj = confirmed["request"]["fields"]["research_object"]
         self.assertEqual(obj["source_refs"], [])
@@ -58,7 +58,7 @@ class DynamicProposalTest(unittest.TestCase):
         forged = deepcopy(confirmed["request"])
         forged["fields"]["research_object"]["evidence_status"] = "verified"
         with self.assertRaises(ValueError):
-            validate_research_request_v4(forged)
+            validate_current_request(forged)
 
     def test_unknown_keys_types_and_qualifiers_are_rejected(self):
         for mutation in (lambda p: p.update(extra=1),
@@ -133,7 +133,7 @@ class DynamicProposalTest(unittest.TestCase):
         old = confirmed_v3_request(); frozen = deepcopy(old)
         legacy = {"contract_version":3,"fields":deepcopy(old["fields"]),"turns":["旧请求"],"stage":"ready_for_design"}
         normalize_state(legacy)
-        self.assertEqual(legacy["contract_version"],4)
+        self.assertEqual(legacy["contract_version"],5)
         self.assertEqual(legacy["stage"],"clarifying")
         self.assertTrue(legacy["fields"]["purpose"]["needs_review"])
         self.assertEqual(old, frozen)
