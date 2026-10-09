@@ -118,6 +118,24 @@ class ReviewTest(unittest.TestCase):
         with patch('lapis.get_intake_operation',return_value={'result':{}}):
             with self.assertRaises(ValueError): hydrate_review(old)
 
+    def test_incomplete_selection_does_not_summarize_unknown_placeholders(self):
+        state=new_state();body=proposal()
+        body['options'][0]['fields']['purpose']={'status':'open'}
+        body['options'][0]['fields']['application']={'status':'open'}
+        initial=advice(state,body); selected=select(state,initial['input_context'])
+        text=shown(selected)
+        self.assertNotIn('尚未指定',text)
+        self.assertNotIn('研究目的为留待',text)
+        self.assertFalse(selected['ready_for_design'])
+
+    def test_user_method_references_are_readable_without_exposing_json(self):
+        stream=io.StringIO()
+        result={'request':{'reference_notes':[{'value':'用户指定的方法需审核','active':True}, {'value':'撤回参考','active':False}]}}
+        with redirect_stdout(stream): render_sources(result)
+        self.assertIn('用户指定的方法需审核',stream.getvalue())
+        self.assertNotIn('撤回参考',stream.getvalue())
+        self.assertNotIn('active',stream.getvalue())
+
     def test_show_sources_debug_commands_do_not_call_model_or_repeat_review(self):
         state=new_state(); initial=advice(state); review=select(state,initial['input_context'])
         stream=io.StringIO()

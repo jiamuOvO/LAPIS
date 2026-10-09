@@ -144,6 +144,10 @@ def render_sources(result, detail=True):
             for key, label in (("assumptions", "假设"), ("limitations", "限制"), ("clarifications", "待研究设计核查")):
                 if detail.get(key):
                     print(label + "：" + ("；".join(detail[key]) if detail_view else "；".join(short_text(x, 85) for x in detail[key][:2])))
+    for note in request.get("reference_notes", []):
+        if note.get("active", True) and note.get("value"):
+            print("用户研究参考（未核验）：" + (note["value"] if detail_view else short_text(note["value"], 100)))
+            shown = True
     sources = {**request.get("sources", {}), **((result or {}).get("recommendations") or {}).get("sources", {})}
     if sources and not detail_view:
         print("参考引用：" + str(len(sources)) + " 条；用 /sources 查看支持范围与限制。")
@@ -174,7 +178,15 @@ def render_intake_result(result, full=False):
     elif result.get("changes"):
         fields = request.get("fields", {})
         changed = list(dict.fromkeys(result["changes"]))
-        parts = [LABELS[field] + "为" + field_text(field, fields[field]) for field in changed if field in fields][:3]
+        parts = []
+        for field in changed:
+            if field not in fields:
+                continue
+            entries = fields[field] if isinstance(fields[field], list) else [fields[field]]
+            if not any(e.get("value") or e.get("source") == "user" and e.get("status") in {"none", "open"} for e in entries):
+                continue
+            parts.append(LABELS[field] + "为" + field_text(field, fields[field]))
+        parts = parts[:3]
         if parts:
             print("LAPIS> 已更新：" + "；".join(parts) + "。")
     if result.get("needs_review_fields"):
