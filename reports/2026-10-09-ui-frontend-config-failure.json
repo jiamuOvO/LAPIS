@@ -1,0 +1,74 @@
+{
+  "implementation_commit": "55b45dd836982f1e30ddff1ffd231003e31c1701",
+  "contract_version": 4,
+  "rule_version": "intake-rules-4.0",
+  "software_tests": {
+    "passed": 73,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 15.05,
+    "database": "lapis_test"
+  },
+  "real_latest": {
+    "run_id": "5355d2bc-3504-446b-b589-0fb646c35943",
+    "baseline_commit": "3e60713f6f0f71e16dfb5ccb52f48cea215551e6",
+    "judgments": {
+      "passed": 18
+    },
+    "confirmed_cases": [
+      "furan-confirm",
+      "battery-confirm",
+      "ceramic-confirm"
+    ],
+    "http_calls": 17,
+    "total_tokens": 78472,
+    "wall_seconds": 58.566,
+    "model_pinning": "provider_alias_unpinned",
+    "code_sha256": {
+      "lapis.py": "2a1f6b848a2794723312deb8496cdfb8c99aa64c1823ce633842a72934bced82",
+      "lapis_intake.py": "d73c511276274664acc0ba6e3e256eb4ac778ace1125a2ad1904cef800d5dd73",
+      "lapis_contract.py": "a31b2785e456a3a63dce065b9c6316db9f431155c4d01890c6fd043be97873bb",
+      "lapis_proposals.py": "79ce8ffbe4304f0e6c93ec55be3a3c63ef5da4a90b476527580fe6edb745777c",
+      "lapis_guidance.py": "4bbf7511e2e544f67a49fda68c25976219bec4118ced680f3f7ebc361b96220c",
+      "lapis_graph.py": "0eab715d30d9f7d4235ff500d26f17862de4d2fa3fc7342270b50e1f6bbbe0db",
+      "lapis_core.py": "ae3e1cf4ad8f9497b3955e43cc2d590722b500c97671652b93bd8426acbb24b5",
+      "lapis_store.py": "cd8ddd9ebb8b2ae08c2db0703294d9535beb1be68e8fab56f9fd61fa4b246dd9"
+    }
+  },
+  "mock_latest": {
+    "run_id": "ac43aa8f-b5a7-4bd7-a80c-e39fa8a0f8e1",
+    "judgments": {
+      "passed": 18
+    }
+  },
+  "all_real_runs": {
+    "37375528-ca0d-4dc2-82bf-c796d777c9c7": {
+      "passed": 20,
+      "failed": 1
+    },
+    "48f559dc-2e86-4cda-bd6d-318803e72f1e": {
+      "passed": 16
+    },
+    "5355d2bc-3504-446b-b589-0fb646c35943": {
+      "passed": 18
+    }
+  },
+  "scope": "Software intake and synthetic research intents only; no scientific computation, observations or conclusions.",
+  "final_frontend_resume": [
+    {
+      "step": "furan-fresh-process-resume",
+      "judgment": "failed",
+      "returncode": 1
+    },
+    {
+      "step": "battery-fresh-process-resume",
+      "judgment": "failed",
+      "returncode": 1
+    },
+    {
+      "step": "ceramic-fresh-process-resume",
+      "judgment": "failed",
+      "returncode": 1
+    }
+  ]
+}

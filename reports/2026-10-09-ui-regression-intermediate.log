@@ -1,0 +1,83 @@
+test_recommend_select_exit_resume_confirm_uses_persisted_context (test_lapis_cli.ChatDatabaseTest.test_recommend_select_exit_resume_confirm_uses_persisted_context) ... FAIL
+test_chat_asks_next_question_and_keeps_task (test_lapis_cli.ChatTest.test_chat_asks_next_question_and_keeps_task) ... ok
+test_chat_resumes_saved_question_draft_and_confirmation (test_lapis_cli.ChatTest.test_chat_resumes_saved_question_draft_and_confirmation) ... ok
+test_confirmation_context_survives_retry_without_refresh (test_lapis_cli.ChatTest.test_confirmation_context_survives_retry_without_refresh) ... ok
+test_artifact_is_hashed_and_confined (test_lapis_core.CoreGateTest.test_artifact_is_hashed_and_confined) ... ok
+test_attempt_state_machine_rejects_shortcuts (test_lapis_core.CoreGateTest.test_attempt_state_machine_rejects_shortcuts) ... ok
+test_digest_is_order_independent (test_lapis_core.CoreGateTest.test_digest_is_order_independent) ... ok
+test_incomplete_design_cannot_be_approved (test_lapis_core.CoreGateTest.test_incomplete_design_cannot_be_approved) ... ok
+test_intake_ready_is_not_computation_approval (test_lapis_core.CoreGateTest.test_intake_ready_is_not_computation_approval) ... ok
+test_placeholder_is_not_an_executable_method (test_lapis_core.CoreGateTest.test_placeholder_is_not_an_executable_method) ... ok
+test_checkpoint_setup_starts_after_lock_transaction_ends (test_lapis_graph.GraphIntakeTest.test_checkpoint_setup_starts_after_lock_transaction_ends) ... ok
+test_commit_before_checkpoint_failure_replays_once (test_lapis_graph.GraphIntakeTest.test_commit_before_checkpoint_failure_replays_once) ... ok
+test_operation_replay_rejects_changed_context (test_lapis_graph.GraphIntakeTest.test_operation_replay_rejects_changed_context) ... ok
+test_pause_and_resume_across_graph_instances (test_lapis_graph.GraphIntakeTest.test_pause_and_resume_across_graph_instances) ... ok
+test_retry_same_operation_after_failure_before_commit (test_lapis_graph.GraphIntakeTest.test_retry_same_operation_after_failure_before_commit) ... ok
+test_same_task_concurrent_input_is_rejected (test_lapis_graph.GraphIntakeTest.test_same_task_concurrent_input_is_rejected) ... ok
+test_v3_confirm_resumes_and_keeps_request_confirmed_status (test_lapis_graph.GraphIntakeTest.test_v3_confirm_resumes_and_keeps_request_confirmed_status) ... ok
+test_accepted_suggestion_can_be_rejected_without_erasing_user_goal (test_lapis_intake.IntakeV3Test.test_accepted_suggestion_can_be_rejected_without_erasing_user_goal) ... ok
+test_battery_direction_not_offered_for_explicit_lead_acid (test_lapis_intake.IntakeV3Test.test_battery_direction_not_offered_for_explicit_lead_acid) ... ok
+test_battery_liquid_guidance_and_economic_ambiguity (test_lapis_intake.IntakeV3Test.test_battery_liquid_guidance_and_economic_ambiguity) ... ok
+test_confirm_plus_edit_requires_another_confirmation (test_lapis_intake.IntakeV3Test.test_confirm_plus_edit_requires_another_confirmation) ... ok
+test_confirmation_is_bound_to_displayed_draft_and_duplicate_is_stable (test_lapis_intake.IntakeV3Test.test_confirmation_is_bound_to_displayed_draft_and_duplicate_is_stable) ... ok
+test_cost_opt_out_removes_only_uniquely_named_constraint (test_lapis_intake.IntakeV3Test.test_cost_opt_out_removes_only_uniquely_named_constraint) ... ok
+test_eight_fields_unknown_and_no_automatic_confirmation (test_lapis_intake.IntakeV3Test.test_eight_fields_unknown_and_no_automatic_confirmation) ... ok
+test_extensible_catalog_supports_new_material_without_code_branch (test_lapis_intake.IntakeV3Test.test_extensible_catalog_supports_new_material_without_code_branch) ... ok
+test_goal_direction_update_preserves_id_and_other_goal (test_lapis_intake.IntakeV3Test.test_goal_direction_update_preserves_id_and_other_goal) ... ok
+test_help_before_required_fields_is_source_backed_and_not_adopted (test_lapis_intake.IntakeV3Test.test_help_before_required_fields_is_source_backed_and_not_adopted) ... ok
+test_legacy_state_is_readable_and_requires_re_review (test_lapis_intake.IntakeV3Test.test_legacy_state_is_readable_and_requires_re_review) ... ok
+test_method_reference_withdrawal_is_logged_not_execution_permission (test_lapis_intake.IntakeV3Test.test_method_reference_withdrawal_is_logged_not_execution_permission) ... ok
+test_mixed_confirmation_with_no_effective_edit_still_requires_review (test_lapis_intake.IntakeV3Test.test_mixed_confirmation_with_no_effective_edit_still_requires_review) ... ok
+test_model_expanded_option_does_not_erase_catalog_provenance (test_lapis_intake.IntakeV3Test.test_model_expanded_option_does_not_erase_catalog_provenance) ... ok
+test_negated_confirmation_cannot_be_misclassified_into_approval (test_lapis_intake.IntakeV3Test.test_negated_confirmation_cannot_be_misclassified_into_approval) ... ok
+test_object_change_marks_old_context_for_review_and_requires_display_binding (test_lapis_intake.IntakeV3Test.test_object_change_marks_old_context_for_review_and_requires_display_binding) ... ok
+test_pause_keeps_recommendations_and_rejection_does_not_repeat (test_lapis_intake.IntakeV3Test.test_pause_keeps_recommendations_and_rejection_does_not_repeat) ... ok
+test_qualifier_only_update_preserves_existing_value_and_id (test_lapis_intake.IntakeV3Test.test_qualifier_only_update_preserves_existing_value_and_id) ... ok
+test_removal_is_exact_and_preserves_other_goal (test_lapis_intake.IntakeV3Test.test_removal_is_exact_and_preserves_other_goal) ... ok
+test_selection_plus_cost_removal_keeps_both_actions_and_source (test_lapis_intake.IntakeV3Test.test_selection_plus_cost_removal_keeps_both_actions_and_source) ... ok
+test_source_snapshot_tampering_is_rejected (test_lapis_intake.IntakeV3Test.test_source_snapshot_tampering_is_rejected) ... ok
+test_stale_selection_cannot_adopt_or_poison_new_draft (test_lapis_intake.IntakeV3Test.test_stale_selection_cannot_adopt_or_poison_new_draft) ... ok
+test_task_classification_change_retains_constraints_and_changes_draft (test_lapis_intake.IntakeV3Test.test_task_classification_change_retains_constraints_and_changes_draft) ... ok
+test_unclear_placeholder_is_replaced_by_clarification (test_lapis_intake.IntakeV3Test.test_unclear_placeholder_is_replaced_by_clarification) ... ok
+test_unknown_mechanism_does_not_require_hypothesis (test_lapis_intake.IntakeV3Test.test_unknown_mechanism_does_not_require_hypothesis) ... ok
+test_unknown_open_none_and_ungrounded_updates (test_lapis_intake.IntakeV3Test.test_unknown_open_none_and_ungrounded_updates) ... ok
+test_historical_v2_legacy_checksum_upgrades_once (test_lapis_migrations.MigrationTest.test_historical_v2_legacy_checksum_upgrades_once) ... ok
+test_v1_upgrade_repeat_and_failed_migration_rollback (test_lapis_migrations.MigrationTest.test_v1_upgrade_repeat_and_failed_migration_rollback) ... ok
+test_generated_snapshot_replay_and_adoption_are_traceable (test_lapis_proposals.DynamicPersistenceTest.test_generated_snapshot_replay_and_adoption_are_traceable) ... ok
+test_failed_provider_rolls_back_and_rejected_content_is_supplied (test_lapis_proposals.DynamicProposalTest.test_failed_provider_rolls_back_and_rejected_content_is_supplied) ... ok
+test_hard_constraint_survives_adoption_and_old_v3_requires_review (test_lapis_proposals.DynamicProposalTest.test_hard_constraint_survives_adoption_and_old_v3_requires_review) ... ok
+test_selection_does_not_swallow_cost_removal_against_unknown_proposal (test_lapis_proposals.DynamicProposalTest.test_selection_does_not_swallow_cost_removal_against_unknown_proposal) ... ok
+test_stale_selection_cannot_promote_model_expanded_text_to_user_fact (test_lapis_proposals.DynamicProposalTest.test_stale_selection_cannot_promote_model_expanded_text_to_user_fact) ... ok
+test_unknown_keys_types_and_qualifiers_are_rejected (test_lapis_proposals.DynamicProposalTest.test_unknown_keys_types_and_qualifiers_are_rejected) ... ok
+test_unlisted_material_without_sources_can_be_adopted_and_confirmed (test_lapis_proposals.DynamicProposalTest.test_unlisted_material_without_sources_can_be_adopted_and_confirmed) ... ok
+test_unprovided_source_or_link_is_rejected_without_partial_turn (test_lapis_proposals.DynamicProposalTest.test_unprovided_source_or_link_is_rejected_without_partial_turn) ... ok
+test_adopted_hard_constraint_survives_later_recommendation (test_lapis_review.ReviewTest.test_adopted_hard_constraint_survives_later_recommendation) ... ok
+test_collection_and_edit_do_not_print_internal_unknown_fields (test_lapis_review.ReviewTest.test_collection_and_edit_do_not_print_internal_unknown_fields) ... ok
+test_economic_withdrawal_uses_model_resolved_name (test_lapis_review.ReviewTest.test_economic_withdrawal_uses_model_resolved_name) ... ok
+test_empty_explanation_has_no_nonexistent_choice_or_confirmation (test_lapis_review.ReviewTest.test_empty_explanation_has_no_nonexistent_choice_or_confirmation) ... ok
+test_explicit_field_reaffirmation_promotes_bounded_open_intent_without_erasing_it (test_lapis_review.ReviewTest.test_explicit_field_reaffirmation_promotes_bounded_open_intent_without_erasing_it) ... ok
+test_guidance_hides_complete_review_so_first_confirm_must_display_it (test_lapis_review.ReviewTest.test_guidance_hides_complete_review_so_first_confirm_must_display_it) ... ok
+test_identical_rejected_content_filtered_and_explicit_reconsideration_allowed (test_lapis_review.ReviewTest.test_identical_rejected_content_filtered_and_explicit_reconsideration_allowed) ... ok
+test_review_and_fresh_copy_preserve_adopted_assumptions (test_lapis_review.ReviewTest.test_review_and_fresh_copy_preserve_adopted_assumptions) ... ok
+test_show_sources_debug_commands_do_not_call_model_or_repeat_review (test_lapis_review.ReviewTest.test_show_sources_debug_commands_do_not_call_model_or_repeat_review) ... ok
+test_legacy_request_is_readable_but_cannot_enter_new_design (test_lapis_store.StoreGateTest.test_legacy_request_is_readable_but_cannot_enter_new_design) ... ok
+test_persistence_and_execution_gate (test_lapis_store.StoreGateTest.test_persistence_and_execution_gate) ... ok
+test_replayed_operation_does_not_duplicate_a_turn (test_lapis_store.StoreGateTest.test_replayed_operation_does_not_duplicate_a_turn) ... ok
+test_drug_research_is_excluded_without_rejecting_all_medical_materials (test_lapis_v3_contract.V3ContractTest.test_drug_research_is_excluded_without_rejecting_all_medical_materials) ... ok
+test_temperature_units_and_component_rules_do_not_depend_on_model_issue_flags (test_lapis_v3_contract.V3ContractTest.test_temperature_units_and_component_rules_do_not_depend_on_model_issue_flags) ... ok
+test_unknown_open_and_none_are_distinct_and_allowed (test_lapis_v3_contract.V3ContractTest.test_unknown_open_and_none_are_distinct_and_allowed) ... ok
+test_edit_revokes_active_version_and_old_records_remain_readable (test_lapis_v3_contract.V3StoreTest.test_edit_revokes_active_version_and_old_records_remain_readable) ... ok
+test_stale_design_cannot_be_approved_or_frozen_after_edit (test_lapis_v3_contract.V3StoreTest.test_stale_design_cannot_be_approved_or_frozen_after_edit) ... ok
+
+======================================================================
+FAIL: test_recommend_select_exit_resume_confirm_uses_persisted_context (test_lapis_cli.ChatDatabaseTest.test_recommend_select_exit_resume_confirm_uses_persisted_context)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_cli.py", line 93, in test_recommend_select_exit_resume_confirm_uses_persisted_context
+    self.assertIn("限制：", printed.getvalue())
+AssertionError: '限制：' not found in '输入 /show 查看完整规约，/sources 查看依据，/debug 查看技术记录，/exit 退出。\nLAPIS> 请描述你本轮想研究的材料问题。\nLAPIS> 已更新：研究对象为呋喃基。\n可选方向（模型提案尚未科学核验）：\n1. 呋喃功能化聚合物的可逆交联与再加工研究：把宽泛的基团问题限定为有材料用途的特定聚合物网络；该方向已有可核查研究及副反应限制。\n2. 特定呋喃基聚酯的包装阻隔研究：选择该方向会把对象限定为 PEF 等特定聚酯；文献支持提出阻隔比较问题，不证明用户材料性能。\nLAPIS> 你想采用哪个方向，或修改哪些内容？\n当前研究规约：\n研究目的：比较特定呋喃基聚酯的气体阻隔表现\n研究对象：PEF 与适当对照聚酯\n应用场景：聚酯包装材料\n工作条件：尚未指定，研究设计阶段确定\n目标性能：气体阻隔能力（比较）\n约束条件：尚未指定，研究设计阶段确定\n研究范围：先比较特定聚酯的气体阻隔行为，具体结构、形态和对照待研究设计审核\n材料功能：降低包装材料中的气体透过\n已采用提案：特定呋喃基聚酯的包装阻隔研究\n参考引用：2 条；用 /sources 查看支持范围与限制。\nLAPIS> 请核对以下八项规约及提案假设、限制，确认后进入研究设计；也可以直接修改。\n恢复此对话：lapis.py chat --task-id d4d90ad5-d225-4151-9b85-2e8ee0e7439b\n'
+
+----------------------------------------------------------------------
+Ran 70 tests in 17.229s
+
+FAILED (failures=1)
