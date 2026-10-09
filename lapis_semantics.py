@@ -73,6 +73,9 @@ def check_operations(state,text,extraction):
     intents={i.id:i for i in extraction.intents}
     question=state.get('current_question') or {}
     refs=set(FIELDS)|{e.get('id') for v in state['fields'].values() for e in (v if isinstance(v,list) else [v]) if e.get('id')}
+    rec=state.get('recommendation_set') or {}
+    refs.update(o['id'] for o in rec.get('options',[]));refs.update(state.get('proposals',{}));refs.update(p for proposal in state.get('proposals',{}).values() for p in proposal.get('direction_ids',[]))
+    if rec.get('id'):refs.add(rec['id'])
     accepted=[];decisions=[]
     for item in extraction.updates:
         if item.field == 'research_scope' and item.scope_mode in {'current_scope','no_extra_exclusions'}:
