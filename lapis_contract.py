@@ -55,6 +55,7 @@ def domain_from_fields(fields, proposed=None):
     text = " ".join((fields.get(k) or {}).get("value") or ""
                     for k in ("purpose", "research_object", "application", "research_scope"))
     # These are research-purpose combinations, not a rejection of every occurrence of 药.
+    text = re.sub(r"(?:不研究|不开展|不做|不涉及|排除|不包含|不包括|不进行|不用于|暂不支持|禁止)(?:任何)?(?:药物筛选|药物发现|药物先导筛选|药效研究|药物候选筛选)", "", text)
     if (re.search(r"药物|药效|drug", text, re.I) and
             re.search(r"先导|药物候选|药效|靶蛋白.*结合|结合.*靶蛋白|药物.*筛选", text)):
         return "drug_discovery"
@@ -83,7 +84,7 @@ def request_issues(payload):
             continue
         for entry in entries:
             if entry.get("status") == "unclear" or entry.get("needs_review"):
-                add("ambiguity", field, "这项信息需要先澄清或重新核对。", [entry.get("id")])
+                add("ambiguity", field, "请澄清当前内容或明确重新核对。", [entry.get("id")])
             if entry.get("status") == "specified":
                 if not (entry.get("value") or "").strip():
                     add("missing", field, "明确的信息不能为空。")

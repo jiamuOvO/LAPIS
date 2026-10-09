@@ -83,9 +83,12 @@ class Issue(StrictModel):
 
 class Extraction(StrictModel):
     actions: list[Literal["inform", "recommend", "explain", "unsure", "select", "reject",
-                         "edit", "pause", "confirm", "reaffirm"]] = Field(default_factory=lambda: ["inform"])
+                         "edit", "pause", "confirm", "reaffirm", "progress"]] = Field(default_factory=lambda: ["inform"])
     updates: list[Update] = Field(default_factory=list)
     selected_option: int | None = None
+    selection_mode: Literal["full", "partial"] = "full"
+    clarification_field: str | None = None
+    clarification_question: str | None = None
     domain: Literal["materials_application", "drug_discovery", "basic_research", "non_research", "uncertain"] | None = None
     domain_quote: str | None = None
     issues: list[Issue] = Field(default_factory=list)
@@ -110,10 +113,16 @@ SYSTEM_PROMPT = """你是 LAPIS 第一模块的结构化对话提取器。只从
 work_conditions服役条件；target_performance性能与定性方向；constraints硬约束/偏好；
 research_scope包含/排除范围；material_function材料承担的作用。
 actions可同时有多个：inform、recommend请求推荐、explain请求解释、unsure不知道、
-select重新选择完整方向、reject拒绝、edit修改、pause先不确认、confirm确认、reaffirm重新核对。
+select选择方向（整体或局部）、reject拒绝、edit修改、pause先不确认、confirm确认、reaffirm重新核对。
 混合表达不能只保留一个动作：“采用第二个方向但先不考虑成本”=select+edit；
 “不研究氧化稳定性其他保留”只删除该目标；“确认但成本改为偏好”=confirm+edit。
-selected_option仅用于重选完整方向的序号；“用途采用刚才的X”“功能沿用X”是字段补充或reaffirm，不是重新select。
+selected_option由上下文识别序号、名称或功能，不能猜测多个匹配。selection_mode=full仅用户明确采用整个方向；短答或只选功能必须partial，不能自动采用推荐所有用途、对象、假设和其他目标。partial用updates只记录本轮已明确的意图，未明确字段保持原状。
+短答要结合当前推荐解释；只选多目标中的一项时用replace目标列表，排除未选择的目标。定性功能如“耐磨作用”已足以将目标性能specified（比较/考察），没有量化指标不应标open。区分研究目的（探索/比较/筛选）、性能（欲考察性质）、材料功能（用途中的角色）和用途（具体场景）。上下文足以明确探索行动时更新旧unclear目的，并resolve_issue_ids；不可仅更新性能而遗留已解决目的问题。不能将选定研究方向当作科学事实。
+例如旧目的“研究某材料的生活用途”是unclear，本轮从推荐选定某个功能时，目的可明确为“探索该材料在所选功能中的应用”，这只是行动意图；必须更新purpose、material_function和单一目标，并解决旧目的issue。具体用途尚未选时仍追问，不要把所有候选用途写成specified。不要等用户再次说“探索”才更新已明确的目的。
+多个匹配不能select，给出clarification_field及clarification_question，点名可选差别。仍缺具体用途时不自动填所有用途，提问具体用途选择；问题只能采用当前推荐和已知意图，不添加事实断言。clarification_question是一个可回答的问题；不能泛称“这项信息”。若仍有问题，clarification_field对应当前最优先实质缺口，clarification_question带已知意图和具体可选差别，例如材料用途仍宽泛时给已有推荐中的用途选项。
+用户在回答asked_field时优先解释为该字段的补充；功能问题的回答“拟提高某性能”应更新material_function，不仅更新性能或目的。带“待验证意图/不假定有效”的说明是证据限制，不是用户硬约束，不写constraints。必要时用reference_note记录。
+“可以下一步了吗”等进度询问用progress（不是confirm，不自动确认）。
+selected_option用于定位当前方向；“用途采用刚才的X”“功能沿用X”是字段补充或reaffirm，不是重新select。
 采用方向时不要把推荐文本提取为用户原话字段。
 每项quote必须是本轮原话连续片段。未提及的字段不输出。已有字段用于理解不能冒充本轮原话。
 研究目的应是本轮行动。“设计高电压电池”只是上层意图：应用高电压电池，目的还不清楚，
@@ -387,10 +396,13 @@ def _ground_actions(state, extraction):
     """Do not let model-expanded option text overwrite its catalog provenance."""
     rec = state.get("recommendation_set")
     adopted = {}
-    if "select" in extraction.actions and rec and extraction.selected_option and 1 <= extraction.selected_option <= len(rec["options"]):
+    if "select" in extraction.actions and extraction.selection_mode == "full" and rec and extraction.selected_option and 1 <= extraction.selected_option <= len(rec["options"]):
         adopted = rec["options"][extraction.selected_option - 1]["fields"]
     retained = []
     for item in extraction.updates:
+        # Partial function choices cannot silently authorize unrelated proposed context.
+        if extraction.selection_mode == "partial" and item.field in {"application", "research_object", "research_scope", "work_conditions", "constraints"} and item.value and item.value not in item.quote:
+            continue
         current = state["fields"].get(item.field)
         if item.field in extraction.reaffirm_fields and isinstance(current, dict) and current.get("value") and re.search(r"沿用|保留|重核", item.quote) and (item.value is None or item.value == current.get("value")):
             continue
@@ -529,7 +541,12 @@ def _result(state, changed=False, guide=False, text="", notice=None, generated=N
         actionable = [x for x in issues if x["kind"] != "missing"]
         issue = (actionable or issues)[0]
         state["asked_field"] = issue["field"]
-        question = QUESTIONS.get(issue["field"], issue["message"]) if issue["kind"] in {"missing", "domain"} else issue["message"]
+        known = state["fields"].get(issue["field"])
+        entries = known if isinstance(known, list) else [known or {}]
+        values = "、".join(e.get("value") or "" for e in entries if e.get("value"))
+        question = LABELS.get(issue["field"], "研究信息") + ("（当前：" + values + "）" if values else "") + "：" + QUESTIONS.get(issue["field"], issue["message"])
+        if issue["kind"] not in {"missing", "domain", "ambiguity"} or issue.get("kind") == "ambiguity" and not issue["message"].startswith("请澄清"):
+            question = issue["message"] + " " + question
     else:
         status = "ready_for_design" if state["stage"] == "ready_for_design" else "needs_confirmation"
         question = None if status == "ready_for_design" else "请核对以下八项规约及提案假设、限制，确认后进入研究设计；也可以直接修改。"
@@ -573,11 +590,11 @@ def _confirm(state, context):
         return _result(state, notice="本轮未授权确认，草稿已保留。")
     if state["stage"] == "ready_for_design":
         return _result(state, notice=None if context.get("draft_id") == state["draft_id"] else "当前请求已经确认，本轮没有新增确认。")
-    if context.get("draft_id") != state["draft_id"] or (state["stage"] != "review" and context.get("reviewed_draft_id") != state["draft_id"]):
-        return _result(state, notice="请先查看当前完整草稿，再确认它的版本。")
     draft = make_draft(state)
     if request_issues(draft):
-        return _result(state)
+        return _result(state, notice="当前规约仍有下述缺口，补充后再核对确认；可用 /show 查看草稿。")
+    if context.get("draft_id") != state["draft_id"] or (state["stage"] != "review" and context.get("reviewed_draft_id") != state["draft_id"]):
+        return _result(state, notice="已展示当前完整规约，请核对后明确确认。")
     validate_research_request_v4(draft)
     state["confirmed_request"] = deepcopy(draft)
     state["stage"] = "ready_for_design"
@@ -614,7 +631,7 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
         before = _fingerprint(state)
         state["turns"].append(text)
         notice = None
-        if "select" in extraction.actions:
+        if "select" in extraction.actions and extraction.selection_mode == "full":
             notice = _select(state, extraction, text, context)
         if "reject" in extraction.actions or text in {"不采用", "不用建议"}:
             notice = _reject(state, extraction, text, context)
@@ -623,6 +640,11 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
         guide = bool(set(extraction.actions) & {"recommend", "explain", "unsure", "reject"})
         generated = generate_recommendations(client, model, state, text, operation_id) if guide and state["domain"] not in {"drug_discovery", "non_research"} else None
         result = _result(state, changed, guide, text, notice, generated)
+        if extraction.clarification_question and any(i.get("field") == extraction.clarification_field for i in result["blocking_issues"]) and not guide:
+            state["asked_field"] = extraction.clarification_field
+            result["next_question"] = LABELS.get(extraction.clarification_field, "研究信息") + "：" + extraction.clarification_question
+        if "progress" in extraction.actions:
+            result = _result(state, changed, notice="确认规约后才进入研究设计，当前没有授权计算。" if not request_issues(make_draft(state)) else None)
         if "confirm" in extraction.actions and not extraction.updates and not changed and not (set(extraction.actions) & {"select", "edit", "reaffirm", "reject"}):
             result = _confirm(state, context)
         elif "confirm" in extraction.actions:

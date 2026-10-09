@@ -90,7 +90,8 @@ def field_text(field, value):
         if status == "specified" and field == "constraints":
             text = ("硬约束：" if entry.get("strength") == "hard" else "偏好：") + text
         if status == "specified" and field == "target_performance":
-            text += "（" + (entry.get("direction") or "方向待澄清") + "）"
+            if entry.get("direction") != entry.get("value"):
+                text += "（" + (entry.get("direction") or "方向待澄清") + "）"
         if entry.get("needs_review"):
             text += "（场景变化后需重新核对）"
         result.append(text)
