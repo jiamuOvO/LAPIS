@@ -16,6 +16,7 @@ from lapis import render_intake_result
 assert os.getenv('LAPIS_TEST_PG')=='1' and os.getenv('LAPIS_DB_NAME')=='lapis_test'
 client=instructor.from_openai(OpenAI(api_key=os.getenv('LAPIS_API_KEY') or os.environ['DEEPSEEK_API_KEY'],base_url=os.getenv('LAPIS_BASE_URL','https://api.deepseek.com'),timeout=40,max_retries=0),mode=instructor.Mode.JSON)
 model=os.getenv('LAPIS_MODEL','deepseek-flash');prompt=digest({'extract':SYSTEM_PROMPT,'proposal':PROPOSAL_PROMPT})
+failed_cases=0
 run=str(uuid4());baseline=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
 hashes={f:hashlib.sha256((ROOT/f).read_bytes()).hexdigest() for f in ('lapis_intake.py','lapis.py','lapis_contract.py')}
 outfile=ROOT/'reports/2026-10-09-short-reply-real.jsonl';views=outfile.with_suffix('.views.md')
@@ -54,6 +55,10 @@ for case,intent,short,application,role,scope in [
   assert child.returncode==0 and all(x+'：' in child.stdout for x in LABELS.values())
   with views.open('a',encoding='utf-8') as f:f.write('\n## '+case+' 新进程恢复\n```text\n'+child.stdout+'```\n')
   verdict={'run':run,'case':case,'verdict':'passed','task_id':task,'resume_no_model_call':True}
- except Exception as e:verdict={'run':run,'case':case,'verdict':'failed','error':str(e),'task_id':task}
+ except Exception as e:
+  failed_cases+=1
+  verdict={'run':run,'case':case,'verdict':'failed','error':str(e),'task_id':task}
  with outfile.open('a',encoding='utf-8') as f:f.write(json.dumps(verdict,ensure_ascii=False)+'\n')
  print(verdict,flush=True)
+
+raise SystemExit(1 if failed_cases else 0)
