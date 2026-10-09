@@ -241,7 +241,7 @@ def attach_view(state, result):
     if result.get('next_question'):
         field=state.get('asked_field')
         question={'id':'Q-'+digest({'draft_id':draft_id,'field':field,'question':result['next_question']})[:16],
-                  'fields':[field] if field else [],'text':result['next_question'],'draft_id':draft_id,'view_hash':view_hash}
+                  'fields':[field] if field else (list(LABELS) if result['intake_status']=='needs_confirmation' else []),'text':result['next_question'],'draft_id':draft_id,'view_hash':view_hash}
     result['view']={'text':text,'hash':view_hash,'renderer_version':'intake-view-5.0','draft_id':draft_id,'question':question}
     review_hash=digest(result['request'])
     result['input_context']['review_hash']=review_hash

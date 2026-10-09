@@ -92,6 +92,13 @@ class SemanticTest(unittest.TestCase):
         r=self.send(state,'研究传输',Extraction(updates=[Update(field='purpose',status='specified',value='研究传输',quote='研究传输')]),old)
         self.assertFalse(handle_turn(None,'test',state,'确认',old)['ready_for_design'])
 
+    def test_model_confirm_misclassification_cannot_approve_progress(self):
+        state,r=self.base()
+        e=Extraction(actions=['confirm'],intents=[Intent(id='I',kind='confirm',quote='可以了，进行下一步吧')])
+        result=self.send(state,'可以了，进行下一步吧',e,r['input_context'])
+        self.assertFalse(result['ready_for_design']);self.assertFalse(result.get('confirmation_event'))
+        self.assertEqual(result['intake_status'],'needs_confirmation')
+
     def test_v4_is_readable_but_not_current_permission(self):
         state,r=self.base();old=deepcopy(r['request']);old.update(contract_version=4,rule_version='intake-rules-4.0')
         frozen=deepcopy(old);validate_research_request_v4(old)

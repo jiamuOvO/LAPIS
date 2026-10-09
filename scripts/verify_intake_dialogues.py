@@ -42,13 +42,14 @@ def main():
  model=os.getenv('LAPIS_MODEL','deepseek-flash');prompt=digest({'extract':SYSTEM_PROMPT,'proposal':PROPOSAL_PROMPT});baseline=subprocess.check_output(['git','rev-parse','HEAD'],text=True,cwd=ROOT).strip()
  scenarios=json.loads((ROOT/'tests/fixtures/intake_dialogues'/ (a.set+'.json')).read_text(encoding='utf-8'));chosen=[s for s in scenarios if a.scenarios=='all' or s['id'] in a.scenarios.split(',')]
  if not chosen:p.error('No selected scenarios')
+ if a.mode=='fixed' and any(s['id'] not in {'long_additive','multisentence','indicator'} for s in chosen):p.error('Fixed replay supports long_additive, multisentence, indicator; other backgrounds require simulated mode')
  a.output.mkdir(parents=True,exist_ok=True)
  manifest={'run_id':run,'mode':a.mode,'set':a.set,'commit':baseline,'model_alias':model,'seed':'provider_unavailable','prompt_hash':prompt,'user_prompt_hash':digest(USER_PROMPT),'dirty':bool(subprocess.check_output(['git','status','--porcelain'],text=True,cwd=ROOT).strip()),'origin':'synthetic','max_calls':a.max_calls,'max_tokens':a.max_tokens,'code_hashes':{f.name:hashlib.sha256(f.read_bytes()).hexdigest() for f in ROOT.glob('lapis*.py')}}
  (a.output/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
  verdicts=[]
  for scene in chosen:
   task=create_task('dialogue-acceptance');context={};transcript=[];previous={};metric_id=None;failed=[];decisions=[];last=None;paused=False
-  fixed=['我想研究呋喃分子的抗氧化性','高分子材料的抗氧化添加剂','比较 吧','你推荐一下','__select__','__purpose__','__assumptions__','__limitations__','氧化诱导期','随便你，无所谓这些','没有约束条件','都研究','都包含','没有不研究的','之前不是选过了吗','你推荐吧','可以了，进行下一步吧','确认'] if scene['id']=='long_additive' else ['我想研究陶瓷的导热表现','用于电子器件散热，条件暂不确定','可以下一步了吗','确认']
+  fixed=['我想研究呋喃分子的抗氧化性','高分子材料的抗氧化添加剂','比较 吧','你推荐一下','__select__','__purpose__','__assumptions__','__limitations__','氧化诱导期','随便你，无所谓这些','没有约束条件','都研究','都包含','没有不研究的','之前不是选过了吗','你推荐吧','可以了，进行下一步吧','确认'] if scene['id']=='long_additive' else (['研究储能电池电解液，关注传输和稳定性。不能使用含氟添加剂，尽量低成本。','工作条件还不知道，范围就是这轮电解液材料研究。','可以下一步了吗','确认'] if scene['id']=='multisentence' else ['研究高分子抗氧化添加剂，关注抗氧化性。','也记录氧化诱导期，条件和方法还不知道。','范围仅限这轮添加剂研究，没有其他用途。','可以下一步了吗','确认'])
   # Only this original-case recommendation is a controlled fixture. Product extraction remains real.
   body=proposal();option=body['options'][0]
   option.update(label='不同呋喃分子在高分子基体中的抗氧化添加剂效果比较',reason='用户已明确要比较呋喃分子作为高分子抗氧化添加剂的效果，该方向直接对应这一意图，并把比较对象限定为有边界的呋喃分子集合，便于后续确定评价指标和基体。',assumptions=['存在一组可比较的呋喃分子候选，且它们可作为高分子材料的添加剂进行考察','抗氧化性可通过某种尚未指定的实验或分析指标进行相对比较'],limitations=['未指定高分子基体、加工条件、服役温度和氧化评价方法，无法判断比较结果的外推范围','呋喃分子是否普遍具有抗氧化添加剂功能尚未核验，不能断言其已具备该性能'],clarifications=['具体候选与评价方法留研究设计'],source_refs=[])
@@ -87,6 +88,9 @@ def main():
      if not found:fresh_errors.append('明确指标未进入当前规约')
      elif not metric_id:metric_id=found[0]['id']
     if metric_id and not any(g.get('id')==metric_id and '氧化诱导期' in (g.get('value') or '') for g in goals):fresh_errors.append('无意丢失已选指标')
+    if last['ready_for_design'] and text not in {'确认','确认继续','同意','按此继续','就按这个'}:fresh_errors.append('没有明确确认却进入研究设计')
+    if text=='没有约束条件' and not any(c.get('status')=='specified' and c.get('strength')=='hard' for c in (old.get('constraints') or [])) and not any(c.get('status')=='none' for c in previous['constraints']):fresh_errors.append('明确无约束没有记录为none')
+    if text=='没有不研究的' and previous['research_scope'].get('value')==text:fresh_errors.append('正式范围脱离已有上下文')
     if text.startswith(('假设：','限制：','拟研究：')) and old and previous!=old:fresh_errors.append('复制提案改变研究字段')
     diff={f:{'before':old.get(f),'after':v} for f,v in previous.items() if old.get(f)!=v}
     row={'run_id':run,'scenario':scene['id'],'task_id':task,'turn':n+1,'input':text,'actual_display':view,'interpretation':last.get('interpretation'),'operation_decisions':last.get('operation_decisions'),'field_diff':diff,'request':last['request'],'result_status':last['intake_status'],'context':context,'seconds':time.perf_counter()-start,'errors':fresh_errors,'user_decisions':user_decisions,'mode':('hybrid_fixed_recommendation_real_extraction' if a.mode=='fixed' and scene['id']=='long_additive' else a.mode)}

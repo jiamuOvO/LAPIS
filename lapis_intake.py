@@ -682,7 +682,10 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
         if "progress" in extraction.actions:
             result = _result(state, changed, notice="确认规约后才进入研究设计，当前没有授权计算。" if not request_issues(make_draft(state)) else None)
         if "confirm" in extraction.actions and not extraction.updates and not changed and not (set(extraction.actions) & {"select", "edit", "reaffirm", "reject"}):
-            result = _confirm(state, context)
+            if re.match(r"^(?:我)?(?:确认|同意)(?:本版|当前|这份)?(?:研究)?(?:规约|请求)?[。！!]?\s*$", text):
+                result = _confirm(state, context)
+            else:
+                result = _result(state, notice="请明确回复‘确认’以采用本版规约；进度询问没有新增确认。")
         elif "confirm" in extraction.actions:
             if result.get("ready_for_design"):
                 state["stage"] = "review"
