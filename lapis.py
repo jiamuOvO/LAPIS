@@ -84,7 +84,7 @@ def field_text(field, value):
         elif status == "none":
             text = "本轮无预设" + ("约束" if field == "constraints" else "条件")
         elif status == "open":
-            text = (text + "；" if text else "") + "留待研究设计阶段确定"
+            text = (text + "；" if text else "") + ("留待研究设计阶段确定" if field in {"work_conditions", "constraints", "target_performance"} else "待您明确")
         elif status == "unclear":
             text = (text or "已表达但不明确") + "（待澄清）"
         if status == "specified" and field == "constraints":

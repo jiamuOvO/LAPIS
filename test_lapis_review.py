@@ -127,6 +127,7 @@ class ReviewTest(unittest.TestCase):
         self.assertNotIn('尚未指定',text)
         self.assertNotIn('研究目的为留待',text)
         self.assertFalse(selected['ready_for_design'])
+        self.assertEqual(__import__('lapis').field_text('purpose',{'status':'open'}),'待您明确')
 
     def test_user_method_references_are_readable_without_exposing_json(self):
         stream=io.StringIO()
