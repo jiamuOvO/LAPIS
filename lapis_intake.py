@@ -406,7 +406,10 @@ def _ground_actions(state, extraction):
     for item in extraction.updates:
         # Partial function choices cannot silently authorize unrelated proposed context.
         if extraction.selection_mode == "partial" and item.field in {"application", "research_object", "research_scope", "work_conditions", "constraints"} and item.value and item.value not in item.quote:
-            continue
+            if item.field == "research_scope" and state.get("asked_field") == "research_scope":
+                item = item.model_copy(update={"value":item.quote})
+            else:
+                continue
         current = state["fields"].get(item.field)
         if item.field in extraction.reaffirm_fields and isinstance(current, dict) and current.get("value") and re.search(r"沿用|保留|重核", item.quote) and (item.value is None or item.value == current.get("value")):
             continue

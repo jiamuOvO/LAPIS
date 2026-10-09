@@ -46,6 +46,13 @@ class ShortReplyTest(unittest.TestCase):
         self.assertIn('当前研究规约',shown(result))
         self.assertFalse(result.get('confirmation_event'))
 
+    def test_explicit_scope_answer_preserves_quote_without_model_expansion(self):
+        state=new_state();state["asked_field"]="research_scope"
+        extraction=Extraction(actions=["select"],selection_mode="partial",updates=[Update(field="research_scope",status="specified",value="模型扩展了候选和范围",quote="只研究这项功能，不验证器件")])
+        with patch("lapis_intake.extract",return_value=extraction):
+            handle_turn(None,"test",state,"只研究这项功能，不验证器件",{})
+        self.assertEqual(state["fields"]["research_scope"]["value"],"只研究这项功能，不验证器件")
+
     def test_scalar_clarification_supersedes_old_ambiguity_not_conflict(self):
         state=new_state();state["fields"]["purpose"].update(status="unclear",value="生活用途",source="user")
         state["issues"]=[{"id":"old","field":"purpose","kind":"ambiguity","status":"open","message":"旧目的过宽"},{"id":"conflict","field":"purpose","kind":"conflict","status":"open","message":"独立矛盾"}]
