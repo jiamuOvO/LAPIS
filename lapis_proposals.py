@@ -85,6 +85,10 @@ source_refs只可引用输入提供的资料ID；无资料也可提出未核验�
 用户选择只采用研究意图。输出固定JSON，不能增加键。
 """
 
+def direction_fingerprint(option):
+    return content_hash({"label": option.get("label"), "fields": option.get("fields")})
+
+
 def generate_recommendations(client, model, state, text, operation_id=None):
     try:
         reference = reference_recommendations(state, text)
@@ -123,6 +127,15 @@ def generate_recommendations(client, model, state, text, operation_id=None):
             raise ValueError("模型提案含未提供的文献或链接，需重新生成")
         directions.append({"id": rec_id + "-option-" + str(index), **option.model_dump(exclude={"fields"}),
                            "fields": fields, "suggestion_origin": "model", "evidence_status": "unverified"})
+    rejected = {e.get("fingerprint") or direction_fingerprint(e) for e in state["recommendation_history"] if e["status"] == "rejected"}
+    reconsider = bool(re.search(r"重新(?:考虑|采用)|撤销拒绝", text)) and not bool(
+        re.search(r"(?:不|别|不要|暂不|先不)\s*(?:重新(?:考虑|采用)|撤销拒绝)", text))
+    filtered = [d for d in directions if direction_fingerprint(d) not in rejected or reconsider]
+    if len(filtered) != len(directions):
+        output.explanation += " 已排除与您拒绝内容完全相同的方向；请说明希望换哪种角度。"
+    directions = filtered
+    for direction in directions:
+        direction["reconsidered"] = reconsider and direction_fingerprint(direction) in rejected
     used = {ref for d in directions for ref in d["source_refs"]}
     return {"id": rec_id, "version": state.get("recommendation_revision", 0) + 1,
             "draft_id": state["draft_id"], "explanation": output.explanation,

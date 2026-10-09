@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from lapis_contract import (CONTRACT_VERSION, RULE_VERSION, FIELDS, LIST_FIELDS, CONFIRM_WORDS,
                             content_hash, domain_from_fields, request_issues,
                             validate_research_request_v4)
-from lapis_proposals import generate_recommendations, GUIDANCE_PROMPT
+from lapis_proposals import generate_recommendations, GUIDANCE_PROMPT, direction_fingerprint
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
@@ -110,10 +110,11 @@ SYSTEM_PROMPT = """你是 LAPIS 第一模块的结构化对话提取器。只从
 work_conditions服役条件；target_performance性能与定性方向；constraints硬约束/偏好；
 research_scope包含/排除范围；material_function材料承担的作用。
 actions可同时有多个：inform、recommend请求推荐、explain请求解释、unsure不知道、
-select采用显示过的方向、reject拒绝、edit修改、pause先不确认、confirm确认、reaffirm重新核对。
+select重新选择完整方向、reject拒绝、edit修改、pause先不确认、confirm确认、reaffirm重新核对。
 混合表达不能只保留一个动作：“采用第二个方向但先不考虑成本”=select+edit；
 “不研究氧化稳定性其他保留”只删除该目标；“确认但成本改为偏好”=confirm+edit。
-selected_option对应已有推荐的序号，采用时不要把推荐文本提取为用户原话字段。
+selected_option仅用于重选完整方向的序号；“用途采用刚才的X”“功能沿用X”是字段补充或reaffirm，不是重新select。
+采用方向时不要把推荐文本提取为用户原话字段。
 每项quote必须是本轮原话连续片段。未提及的字段不输出。已有字段用于理解不能冒充本轮原话。
 研究目的应是本轮行动。“设计高电压电池”只是上层意图：应用高电压电池，目的还不清楚，
 不要把整个电池当材料，不要造目标“提高电压”。
@@ -309,7 +310,7 @@ def _merge(state, text, extraction, context=None):
                     if len(matches) != 1:
                         if not matches and field == "constraints" and not any(e.get("status") == "specified" for e in current):
                             continue
-                        _edit_issue(state, field, "撤回项无法唯一匹配，请指定条目 ID 或完整名称。", item.quote)
+                        _edit_issue(state, field, "撤回项无法唯一匹配，请说明要撤回哪一项：" + "、".join(e.get("value") or "未明确项" for e in current) + "。", item.quote)
                         continue
                     matched = matches[0]
                     if field == "reference_note":
@@ -320,7 +321,7 @@ def _merge(state, text, extraction, context=None):
                         current.remove(matched)
                     continue
                 if len(matches) > 1:
-                    _edit_issue(state, field, "更新项无法唯一匹配，请指定条目 ID。", item.quote)
+                    _edit_issue(state, field, "更新项无法唯一匹配，请说明要修改哪一项：" + "、".join(e.get("value") or "未明确项" for e in current) + "。", item.quote)
                     continue
                 if item.action == "update" and not matches:
                     _edit_issue(state, field, "没有找到要更新的项，请选择条目或明确新增。", item.quote)
@@ -354,8 +355,11 @@ def _merge(state, text, extraction, context=None):
             values = state["fields"][field]
             before = deepcopy(values)
             for entry in values if isinstance(values, list) else [values]:
-                if entry.get("needs_review"):
-                    entry.pop("needs_review")
+                intent_reaffirmed = field not in {"work_conditions", "constraints"} and entry.get("status") == "open" and entry.get("value") and (field != "target_performance" or entry.get("direction"))
+                if entry.get("needs_review") or intent_reaffirmed:
+                    entry.pop("needs_review", None)
+                    if intent_reaffirmed:
+                        entry["status"] = "specified"
                     entry["review_quote"] = text
                     entry["review_turn"] = turn
                     if (entry.get("source") or "").startswith("legacy_"):
@@ -387,22 +391,35 @@ def _ground_actions(state, extraction):
         adopted = rec["options"][extraction.selected_option - 1]["fields"]
     retained = []
     for item in extraction.updates:
+        current = state["fields"].get(item.field)
+        if item.field in extraction.reaffirm_fields and isinstance(current, dict) and current.get("value") and re.search(r"沿用|保留|重核", item.quote) and (item.value is None or item.value == current.get("value")):
+            continue
         proposed = adopted.get(item.field)
         values = proposed if isinstance(proposed, list) else [proposed if isinstance(proposed, dict) else {"value": proposed}] if proposed is not None else []
         selection_only = re.fullmatch(r"(?:我)?(?:采用|选择|选|就用|用|按)(?:第?[一二三四1234](?:个|条)?|这个|该|上述)(?:方向|方案|建议|研究)?", item.quote.strip())
         if "select" in extraction.actions and selection_only:
             continue
         if item.action != "remove" and item.value is not None and any(
-                item.value == e.get("value") and (item.field != "target_performance" or item.direction == e.get("direction"))
+                item.value == e.get("value") and item.status == e.get("status", "specified") and (item.field != "target_performance" or item.direction == e.get("direction"))
                 and (item.field != "constraints" or item.strength == e.get("strength")) for e in values):
             continue
         if item.field == "constraints":
             match = re.search(r"(?:不再考虑|不考虑|撤回|取消)\s*([^，。；,;]+)", item.quote)
             if match:
                 name = re.sub(r"(?:约束|限制|要求)$", "", match.group(1)).strip()
-                found = [e for e in state["fields"]["constraints"] if name and name in (e.get("value") or "")]
-                item = item.model_copy(update={"action": "remove", "status": "none", "target_value": name,
-                                              "target_id": found[0]["id"] if len(found) == 1 else None})
+                current = state["fields"]["constraints"]
+                exact = [e for e in current if (item.target_id and e.get("id") == item.target_id)
+                         or (not item.target_id and item.target_value and e.get("value") == item.target_value)]
+                proposed_entries = adopted.get("constraints") or []
+                proposed_match = [e for e in proposed_entries if item.target_value and e.get("value") == item.target_value]
+                if len(exact) == 1:
+                    item = item.model_copy(update={"action": "remove", "status": "none", "target_id": exact[0]["id"]})
+                elif len(proposed_match) == 1:
+                    item = item.model_copy(update={"action": "remove", "status": "none", "target_id": None})
+                else:
+                    found = [e for e in current if name and name in (e.get("value") or "")]
+                    item = item.model_copy(update={"action": "remove", "status": "none", "target_value": name,
+                                                  "target_id": found[0]["id"] if len(found) == 1 else item.target_id})
         retained.append(item)
     return extraction.model_copy(update={"updates": retained})
 
@@ -416,7 +433,7 @@ def _select(state, extraction, text, context):
     if not index or not 1 <= index <= len(rec["options"]):
         return "请明确采用哪一个方向。"
     option = rec["options"][index - 1]
-    if any(x["direction_id"] == option["id"] and x["status"] == "rejected"
+    if not option.get("reconsidered") and any((x["direction_id"] == option["id"] or x.get("fingerprint") == direction_fingerprint(option)) and x["status"] == "rejected"
            for x in state["recommendation_history"]):
         return "这条方向曾被拒绝，请先重新审查方向。"
     major = any(field in option["fields"] and state["fields"][field].get("status") == "specified" and
@@ -429,7 +446,9 @@ def _select(state, extraction, text, context):
                     entry["needs_review"] = True
     state["proposals"][rec["id"]] = {"version": rec["version"], "draft_id": rec["draft_id"],
         "generation": deepcopy(rec.get("generation", {"origin": "catalogue"})),
-        "direction_ids": [o["id"] for o in rec["options"]], "content_sha256": content_hash(rec)}
+        "direction_ids": [o["id"] for o in rec["options"]], "content_sha256": content_hash(rec),
+        "review": {option["id"]: {key: deepcopy(option.get(key, [])) for key in
+                   ("label", "reason", "assumptions", "limitations", "clarifications", "source_refs")}}}
     state["sources"].update(deepcopy(rec["sources"]))
     for field, value in option["fields"].items():
         before = deepcopy(state["fields"][field])
@@ -447,8 +466,8 @@ def _select(state, extraction, text, context):
                 entry.update(id=field + "-" + uuid4().hex[:10], direction=item.get("direction"))
             converted.append(entry)
         if field in LIST_FIELDS:
-            preserved = [e for e in before if e.get("status") == "specified" and e.get("source") == "user"]
-            converted = preserved + [e for e in converted if not any(p.get("value") == e.get("value") for p in preserved)]
+            preserved = [e for e in before if e.get("status") in {"specified", "unclear"} and e.get("source") in {"user", "confirmed_suggestion"}]
+            converted = preserved + [e for e in converted if (not preserved or e.get("status") != "unknown") and not any(p.get("value") == e.get("value") for p in preserved)]
         elif before.get("status") == "specified" and field == "work_conditions" and before.get("source") == "user":
             converted = [before]
         state["fields"][field] = converted if field in LIST_FIELDS else converted[0]
@@ -475,7 +494,7 @@ def _reject(state, extraction, text, context):
     for option in options:
         state["recommendation_history"].append({"set_id": rec["id"], "version": rec["version"],
                                                 "direction_id": option["id"], "status": "rejected", "quote": text,
-                                                "label": option["label"], "fields": deepcopy(option["fields"])})
+                                                "label": option["label"], "fields": deepcopy(option["fields"]), "fingerprint": direction_fingerprint(option)})
     for field, value in state["fields"].items():
         before = deepcopy(value)
         entries = value if isinstance(value, list) else [value]
@@ -510,10 +529,10 @@ def _result(state, changed=False, guide=False, text="", notice=None, generated=N
         actionable = [x for x in issues if x["kind"] != "missing"]
         issue = (actionable or issues)[0]
         state["asked_field"] = issue["field"]
-        question = issue["message"] + " " + QUESTIONS.get(issue["field"], "")
+        question = QUESTIONS.get(issue["field"], issue["message"]) if issue["kind"] in {"missing", "domain"} else issue["message"]
     else:
         status = "ready_for_design" if state["stage"] == "ready_for_design" else "needs_confirmation"
-        question = None if status == "ready_for_design" else "请核对八项、来源、限制及草稿 " + state["draft_id"] + "，确认只允许进入研究设计。"
+        question = None if status == "ready_for_design" else "请核对以下八项规约及提案假设、限制，确认后进入研究设计；也可以直接修改。"
         state["asked_field"] = None
         if status == "needs_confirmation":
             state["stage"] = "review"
@@ -524,14 +543,20 @@ def _result(state, changed=False, guide=False, text="", notice=None, generated=N
         state["recommendation_set"] = rec
         if rec:
             state["recommendation_revision"] = rec["version"]
-            question = rec.get("explanation", "") + " 可采用序号、修改或拒绝。模型提案未核验，采用只确认研究意图；尚未获得执行许可。"
+            question = rec.get("explanation", "") + (" 您可以选择、修改或拒绝其中的方向。" if rec.get("options") else "")
             if status != "ready_for_design":
                 status = "needs_guidance"
+                state["stage"] = "clarifying"
+                state["draft"] = None
     result = {"intake_status": status, "ready": status == "ready_for_design",
               "ready_for_design": status == "ready_for_design", "request": draft,
               "calculation_status": "pending_research_design", "next_question": question,
               "blocking_issues": issues, "recommendations": rec, "content_changed": changed,
-              "input_context": {"draft_id": state["draft_id"]}}
+              "input_context": {"draft_id": state["draft_id"]},
+              "changes": [h["field"] for h in state["history"] if changed and h["turn"] == len(state["turns"])],
+              "needs_review_fields": []}
+    result["needs_review_fields"] = [field for field, value in state["fields"].items()
+        if any(e.get("needs_review") for e in (value if isinstance(value, list) else [value]))]
     if state.get("recommendation_set"):
         r = state["recommendation_set"]
         result["input_context"]["recommendation_ref"] = {"id": r["id"], "version": r["version"]}

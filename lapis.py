@@ -18,7 +18,7 @@ from lapis_core import digest
 from lapis_intake import LABELS, PROPOSAL_PROMPT, SYSTEM_PROMPT, preview_intake
 from lapis_graph import run_intake_turn
 from lapis_store import (ROOT, approve_design, artifact_root, create_simulation_attempt, create_task,
-                         db_config, freeze_execution, get_task, initialize_schema,
+                         db_config, freeze_execution, get_task, get_intake_operation, initialize_schema,
                          propose_design, register_artifact, transition_attempt,
                          verify_artifacts)
 
@@ -73,42 +73,127 @@ def run_simulation(execution_id: str, actor: str, fail: bool) -> str:
     return attempt_id
 
 
-def render_intake_result(result):
+def field_text(field, value):
+    entries = value if isinstance(value, list) else [value or {}]
+    result = []
+    for entry in entries:
+        status = entry.get("status", "specified" if entry.get("value") else "unknown")
+        text = entry.get("value") or ""
+        if status == "unknown":
+            text = "尚未指定，研究设计阶段确定" if field in {"work_conditions", "constraints"} else "尚未明确"
+        elif status == "none":
+            text = "本轮无预设" + ("约束" if field == "constraints" else "条件")
+        elif status == "open":
+            text = (text + "；" if text else "") + "留待研究设计阶段确定"
+        elif status == "unclear":
+            text = (text or "已表达但不明确") + "（待澄清）"
+        if status == "specified" and field == "constraints":
+            text = ("硬约束：" if entry.get("strength") == "hard" else "偏好：") + text
+        if status == "specified" and field == "target_performance":
+            text += "（" + (entry.get("direction") or "方向待澄清") + "）"
+        if entry.get("needs_review"):
+            text += "（场景变化后需重新核对）"
+        result.append(text)
+    return "；".join(result)
+
+
+def hydrate_review(result):
+    """Old summaries resolve their immutable operation; new requests carry small review snapshots."""
+    from copy import deepcopy
+    result = deepcopy(result)
+    request = (result or {}).get("request") or {}
+    for proposal in request.get("proposals", {}).values():
+        operation = proposal.get("generation", {}).get("operation_id")
+        if proposal.get("review") or not operation:
+            continue
+        stored = get_intake_operation(operation)
+        rec = ((stored or {}).get("result") or {}).get("recommendations") or {}
+        if not rec or digest(rec) != proposal.get("content_sha256"):
+            raise ValueError("旧提案快照缺失或校验失败，请先恢复原始操作记录")
+        proposal["review"] = {o["id"]: {key: o.get(key, []) for key in
+            ("label", "reason", "assumptions", "limitations", "clarifications", "source_refs")}
+            for o in rec.get("options", [])}
+    return result
+
+
+def short_text(value, limit=100):
+    text = str(value).replace("\n", " ")
+    return text if len(text) <= limit else text[:limit] + "…"
+
+
+def render_sources(result, detail=True):
+    detail_view = detail
+    request = (result or {}).get("request") or {}
+    active = {(e.get("recommendation_ref") or {}).get("direction_id") for value in request.get("fields", {}).values()
+              for e in (value if isinstance(value, list) else [value])}
+    shown = False
+    if detail:
+        for option in ((result or {}).get("recommendations") or {}).get("options", []):
+            print("当前提案：" + option["label"])
+            for key, label in (("reason", "理由"), ("assumptions", "假设"), ("limitations", "限制"), ("clarifications", "待澄清")):
+                value = option.get(key)
+                if value:
+                    print(label + "：" + (value if isinstance(value, str) else "；".join(value)))
+            shown = True
+    for proposal in request.get("proposals", {}).values():
+        for direction, detail in proposal.get("review", {}).items():
+            if direction not in active:
+                continue
+            shown = True
+            print("已采用提案：" + str(detail.get("label", "")))
+            for key, label in (("assumptions", "假设"), ("limitations", "限制"), ("clarifications", "待研究设计核查")):
+                if detail.get(key):
+                    print(label + "：" + ("；".join(detail[key]) if detail_view else "；".join(short_text(x, 85) for x in detail[key][:2])))
+    sources = {**request.get("sources", {}), **((result or {}).get("recommendations") or {}).get("sources", {})}
+    if sources and not detail_view:
+        print("参考引用：" + str(len(sources)) + " 条；用 /sources 查看支持范围与限制。")
+        shown = True
+    for source in sources.values() if detail_view else []:
+        shown = True
+        print("参考：" + source.get("title", "") + " " + source.get("url", ""))
+        print("支持范围：" + source.get("claim", ""))
+        limitation = source.get("limitations", [])
+        print("限制：" + (limitation if isinstance(limitation, str) else "；".join(limitation)))
+    if not shown:
+        print("暂无可核查引用；研究提案尚未科学核验。")
+
+
+def render_intake_result(result, full=False):
     if not result:
         print("LAPIS> 请描述你本轮想研究的材料问题。")
         return
+    request = result.get("request") or {}
+    status = result.get("intake_status")
+    if full or status == "needs_confirmation":
+        print("当前研究规约：")
+        for field, label in LABELS.items():
+            print(label + "：" + field_text(field, request.get("fields", {}).get(field)))
+        render_sources(result, detail=False)
+    elif status == "ready_for_design":
+        print("LAPIS> 研究请求已保存，可进入研究设计；确认规约不授权计算。")
+    elif result.get("changes"):
+        fields = request.get("fields", {})
+        changed = list(dict.fromkeys(result["changes"]))
+        parts = [LABELS[field] + "为" + field_text(field, fields[field]) for field in changed if field in fields][:3]
+        if parts:
+            print("LAPIS> 已更新：" + "；".join(parts) + "。")
+    if result.get("needs_review_fields"):
+        print("需重核：" + "、".join(LABELS.get(f,f) for f in result["needs_review_fields"]) + "，原信息已保留。")
     if result.get("notice"):
         print("LAPIS> " + result["notice"])
-    request = result.get("request") or {}
-    if request.get("fields"):
-        print("研究请求草稿 " + request.get("draft_id", "") + "：")
-        for field, value in request.get("fields", {}).items():
-            print(LABELS.get(field, field) + "：" + json.dumps(value, ensure_ascii=False))
-        for note in request.get("reference_notes", []):
-            print("未核验研究参考：" + json.dumps(note, ensure_ascii=False))
-    rec = result.get("recommendations")
-    if rec:
-        print("待选择研究方向（还未作为已确认需求）：")
+    rec = result.get("recommendations") or {}
+    if rec.get("options"):
+        print("可选方向（模型提案尚未科学核验）：")
         for i, option in enumerate(rec["options"], 1):
-            print(f"{i}. {option['label']}：{option.get('reason', '')}")
-            print("来源／证据：" + option.get("suggestion_origin", "catalogue") + " / " + option.get("evidence_status", "source_checked"))
-            for key, label in (("assumptions", "假设"), ("limitations", "限制"), ("clarifications", "待澄清")):
+            print(f"{i}. {option['label']}：{short_text(option.get('reason', ''), 90)}")
+            purpose = option.get("fields", {}).get("purpose")
+            if isinstance(purpose, dict) and purpose.get("value"):
+                print("拟研究：" + short_text(purpose["value"], 100))
+            for key, label in (("assumptions", "假设"), ("limitations", "限制")):
                 if option.get(key):
-                    print(label + "：" + "；".join(option[key]))
-        print("推荐上下文：" + json.dumps(result.get("input_context"), ensure_ascii=False))
-    sources = rec.get("sources", {}) if rec else request.get("sources", {})
-    for source in sources.values():
-        print("依据：" + source.get("title", "") + " " + source.get("url", ""))
-        print("支持范围：" + source.get("claim", ""))
-        print("对象范围：" + source.get("object_scope", ""))
-        print("限制：" + json.dumps(source.get("limitations", []), ensure_ascii=False))
-    for issue in result.get("blocking_issues", []):
-        if issue.get("kind") != "missing":
-            print("待解决：" + issue["message"])
-    if result.get("next_question"):
-        print("LAPIS> " + result["next_question"])
-    elif result.get("ready_for_design"):
-        print("LAPIS> 研究请求已保存，可进入研究设计。输入 /exit 退出，或继续修改。")
+                    print(label + "：" + "；".join(short_text(x, 75) for x in option[key][:2]))
+    if result.get("next_question") and status != "ready_for_design":
+        print("LAPIS> " + ("你想采用哪个方向，或修改哪些内容？" if rec.get("options") else short_text(result["next_question"], 180)))
 
 
 def run_chat(task_id: str | None, actor: str) -> None:
@@ -122,12 +207,16 @@ def run_chat(task_id: str | None, actor: str) -> None:
         api_key=key, base_url=os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com"), timeout=40, max_retries=0,
     ), mode=instructor.Mode.JSON)
     prompt_hash = digest({"extract": SYSTEM_PROMPT, "proposal": PROPOSAL_PROMPT})
-    print(f"任务 ID：{task_id}\n输入 /exit 退出。", flush=True)
+    print("输入 /show 查看完整规约，/sources 查看依据，/debug 查看技术记录，/exit 退出。", flush=True)
     result = task.get("intake_result")
     if task.get("intake_state") and task["intake_state"].get("contract_version") != 4:
         result = preview_intake(task["intake_state"])
+    display = True
     while True:
-        render_intake_result(result)
+        if display:
+            result = hydrate_review(result)
+            render_intake_result(result)
+            display = False
         input_context = (result or {}).get("input_context", {})
         try:
             text = input("你> ").strip()
@@ -135,18 +224,28 @@ def run_chat(task_id: str | None, actor: str) -> None:
             print()
             return
         if text in {"/exit", "退出"}:
+            print("恢复此对话：lapis.py chat --task-id " + task_id)
             return
+        if text in {"/show", "/sources", "/debug"}:
+            if text == "/show":
+                render_intake_result(result, full=True)
+            elif text == "/sources":
+                render_sources(result)
+            else:
+                print(json.dumps({"task_id": task_id, "result": result}, ensure_ascii=False, indent=2))
+            # Commands neither call the model nor count as research dialogue turns.
+            continue
         if not text:
             continue
         operation_id = str(uuid4())
-        print(f"operation_id={operation_id}", flush=True)
+
         while True:
             try:
                 output = run_intake_turn(task_id, text, actor, client, model, prompt_hash, operation_id,
                                          input_context=input_context)
                 break
             except Exception as error:
-                print(f"本轮失败：{error}")
+                print(f"本轮失败，草稿未新增提交：{type(error).__name__}。定位操作：{operation_id}")
                 try:
                     retry = input("用同一操作 ID 重试本轮？[Y/n] ").strip().casefold()
                 except (EOFError, KeyboardInterrupt):
@@ -155,6 +254,7 @@ def run_chat(task_id: str | None, actor: str) -> None:
                 if retry not in {"", "y", "yes", "是"}:
                     return
         result = output["result"]
+        display = True
 
 
 def main():
@@ -177,6 +277,7 @@ def main():
     turn.add_argument("--recommendation-version", type=int, help="推荐集合版本")
     show = sub.add_parser("show")
     show.add_argument("task_id")
+    show.add_argument("--debug", action="store_true", help="显示完整技术 JSON")
     design = sub.add_parser("propose-design")
     design.add_argument("task_id")
     design.add_argument("file", type=Path)
@@ -214,7 +315,11 @@ def main():
         elif args.command == "chat":
             run_chat(args.task_id, args.actor)
         elif args.command == "show":
-            print(json.dumps(get_task(args.task_id), ensure_ascii=False, indent=2))
+            task = get_task(args.task_id)
+            if args.debug:
+                print(json.dumps(task, ensure_ascii=False, indent=2))
+            else:
+                render_intake_result(hydrate_review(task.get("intake_result")), full=True)
         elif args.command == "turn":
             operation_id = args.operation_id or str(uuid4())
             key = os.getenv("LAPIS_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
@@ -225,7 +330,7 @@ def main():
                 api_key=key, base_url=os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com"), timeout=40, max_retries=0,
             ), mode=instructor.Mode.JSON)
             prompt_hash = digest({"extract": SYSTEM_PROMPT, "proposal": PROPOSAL_PROMPT})
-            print(f"operation_id={operation_id}", flush=True)
+
             context = {}
             if args.draft_id:
                 context["draft_id"] = args.draft_id

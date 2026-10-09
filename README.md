@@ -34,7 +34,7 @@ Set-Location 'F:\LAPIS'
 ```powershell
 $py='F:\LAPIS\.conda-lapis\python.exe'
 & $py 'F:\LAPIS\lapis.py' chat
-# 退出后可用程序打印的任务 ID 继续对话：
+# 退出后可用恢复命令（或 /debug 中的任务 ID）继续对话：
 & $py 'F:\LAPIS\lapis.py' chat --task-id <任务ID>
 & $py 'F:\LAPIS\lapis.py' start
 & $py 'F:\LAPIS\lapis.py' turn <任务ID> '我想筛选电解液……'
@@ -47,7 +47,7 @@ $py='F:\LAPIS\.conda-lapis\python.exe'
 & $py 'F:\LAPIS\lapis.py' freeze <任务ID> <设计版本>
 ```
 
-`turn` 使用现有 Instructor 进行结构化受理；设置 `LAPIS_API_KEY` 或 `DEEPSEEK_API_KEY`，可另设 `LAPIS_BASE_URL`、`LAPIS_MODEL`。LangGraph 仅编排受理中的**追问、人工确认、跨进程暂停和继续**，使用同一 PostgreSQL 实例保存 checkpoint。研究请求、审批、作业和审计以 LAPIS 表为准。命令在调用 LLM 前打印 `operation_id`；若响应丢失或进程失败，重试**同一输入**时传回原 ID。图节点重放会查操作记录，不重复写入已提交的轮次；同一 ID 用于不同输入或不同确认／推荐上下文会被拒绝，同一任务的并发输入也会被拒绝。若出现“已恢复上一轮受理”，先用上一轮 ID 查询/重试，再提交新输入。计算提交、质量判断和结论均由确定性代码及人工审核控制，不由图节点直接决定。
+`turn` 使用现有 Instructor 进行结构化受理；设置 `LAPIS_API_KEY` 或 `DEEPSEEK_API_KEY`，可另设 `LAPIS_BASE_URL`、`LAPIS_MODEL`。LangGraph 仅编排受理中的**追问、人工确认、跨进程暂停和继续**，使用同一 PostgreSQL 实例保存 checkpoint。研究请求、审批、作业和审计以 LAPIS 表为准。单轮技术命令 `turn` 在调用 LLM 前打印 `operation_id`；`chat` 仅在失败定位时显示它；若响应丢失或进程失败，重试**同一输入**时传回原 ID。图节点重放会查操作记录，不重复写入已提交的轮次；同一 ID 用于不同输入或不同确认／推荐上下文会被拒绝，同一任务的并发输入也会被拒绝。若出现“已恢复上一轮受理”，先用上一轮 ID 查询/重试，再提交新输入。计算提交、质量判断和结论均由确定性代码及人工审核控制，不由图节点直接决定。
 
 受理草案分别呈现研究目的、研究对象、应用场景、工作条件、目标性能、约束条件、研究范围和材料功能，并保留来源与用户原话。未知条件保持未知；系统建议经用户确认后保留原建议出处。`ready_for_design` 只表示整份 v4 研究请求经用户确认，可进入研究设计；数据库任务状态仍为 `request_confirmed`。旧版 v1/v2/v3 请求可读取；转换成草稿时指定字段标为待重新核对，进入新版设计前须重新核对并确认。修改当前请求立即清除 `active_request_version`，历史 `request_version` 仍可读取，不能用于新设计。设计草案可不完整，审批时必须符合 [执行计划契约](lapis_core.py)：候选、实验、条件与单位、方法和模型版本、参数、质量规则、预期原始文件与资源上限。冻结是幂等的，不启动真实计算。结构校验不能代替对模型适用性和质量阈值的科研审核。
 
@@ -108,3 +108,25 @@ $env:LAPIS_DB_NAME='lapis_test'
 ```
 
 `scripts/verify_intake_v3.py` 及 v3 报告仅记录旧版目录方案的验收；复现旧版应检出其报告中的基线，不用于评价动态推荐。测试替身及真实模型对话均不是材料计算或科研结论的验收。
+
+## 自然对话与规约核对
+
+`chat` 普通轮只说明已理解／修改的重点，并追问一个最影响边界的问题；不会每轮显示八项未知占位、技术 JSON 或操作 ID。达到可审查程度时集中呈现八项自然语言规约，用户可确认或直接修改。确认时附带修改必须再核对新规约；推荐或解释视图不能替代完整核对。
+
+- `/show`：完整当前规约及已采用提案的必要假设、限制。
+- `/sources`：完整提案说明、待核查事项及参考资料支持范围。
+- `/debug`：技术 JSON 与任务标识；`/exit` 显示恢复命令。
+- `lapis.py show <任务ID>` 为人类可读视图；加 `--debug` 查看数据库技术记录。`turn` 保持显式的单轮技术 JSON 接口。
+
+已经采用的硬约束继续保留，除非用户明确撤回或替换；改变对象／用途时重新核对。完全相同的被拒方向按名称与字段内容指纹过滤，不因换 UUID 再出现；用户明确重新考虑时才重新提供。该规则不保证识别语义相近的改写。
+
+新选择把必要审核说明快照保存在现有 JSONB 请求摘要中，完整原提案仍由不可变操作引用追溯；旧摘要从原操作加载并核验哈希，无新数据库表。科学核验状态保持未核验。短展示可截断提案说明，完整文字在 `/sources`，八项规约与硬约束不截断。
+
+本轮逐轮引导验收脚本：
+
+```powershell
+$env:LAPIS_TEST_PG='1'
+$env:LAPIS_DB_NAME='lapis_test'
+& $py .\scripts\verify_intake_ui.py --mode mock --output .\reports\local-ui-mock.jsonl
+# 真实模型模式沿用合成评测授权；必须三个场景均确认，不能只验证阻断。
+```

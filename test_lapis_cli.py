@@ -22,7 +22,8 @@ class ChatTest(unittest.TestCase):
              redirect_stdout(printed):
             run_chat(None, "researcher")
         self.assertEqual(turn.call_args.args[:3], ("task-1", "比较电解液", "researcher"))
-        self.assertIn("任务 ID：task-1", printed.getvalue())
+        self.assertIn("/show", printed.getvalue())
+        self.assertNotIn("operation_id=", printed.getvalue())
         self.assertIn("LAPIS> 请限定研究对象。", printed.getvalue())
 
 
@@ -32,7 +33,7 @@ class ChatTest(unittest.TestCase):
              "LAPIS> 用于什么场景？"),
             ({"intake_status": "needs_confirmation", "next_question": "请确认草案。",
               "request": {"fields": {"research_object": {"value": "电解液"}}}},
-             '"value": "电解液"'),
+             "研究对象：电解液"),
             ({"intake_status": "ready_for_design", "ready_for_design": True},
              "研究请求已保存"),
         ]
@@ -89,8 +90,8 @@ class ChatDatabaseTest(unittest.TestCase):
             run_chat(task, "cli-test")
         saved = get_task(task)
         self.assertEqual(saved["intake_result"]["intake_status"], "needs_confirmation")
-        self.assertIn("限制：", printed.getvalue())
-        self.assertIn("来源", saved["intake_result"]["next_question"])
+        self.assertIn("/sources", printed.getvalue())
+        self.assertIn("假设", saved["intake_result"]["next_question"])
         with patch.dict(os.environ, {"LAPIS_API_KEY": "test"}), \
              patch("lapis.OpenAI"), patch("lapis.instructor.from_openai"), \
              patch("lapis_intake.extract", side_effect=AssertionError("literal confirmation needs no model")), \
