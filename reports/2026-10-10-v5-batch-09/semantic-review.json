@@ -1,0 +1,17 @@
+{
+  "scenarios": {
+    "holdout_long_additive": {
+      "verdict": "invalid_simulator_with_action_issue",
+      "reason": "用户把私有背景中的“复制所见提案说明”当成系统已说内容并提及背景步骤；无效模拟。产品又把暂不确认并请求说明当暂停，未回答请求。"
+    },
+    "holdout_context_change": {
+      "verdict": "product_failed",
+      "reason": "初轮仅计划之后改为散热，却立即改变当前用途并混入新目标；后续最终确认不能抵消中间范围错误。"
+    },
+    "holdout_quotation": {
+      "verdict": "passed",
+      "reason": "实际复制三个方向的限制原文，未新增用户硬约束；随后易加工仅为偏好，完整核对确认与恢复。"
+    }
+  },
+  "repairs": "current/future变更契约保护本轮；解释请求不等于暂停；模拟用户不可提到私有背景或虚构系统说过的话"
+}

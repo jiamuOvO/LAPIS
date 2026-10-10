@@ -142,6 +142,14 @@ class SemanticTest(unittest.TestCase):
         self.assertFalse(result['blocking_issues'])
         self.assertEqual(result['operation_decisions'][0]['decision'],'not_applied')
 
+    def test_future_direction_does_not_change_current_request(self):
+        state,r=self.base();before=deepcopy(state['fields']);text='之后打算改到涂层用途，当前用途仍不变'
+        e=Extraction(intents=[Intent(id='I',kind='inform',quote='之后打算改到涂层用途')],updates=[Update(field='application',status='specified',value='涂层',quote='之后打算改到涂层用途',intent_ref='I',change_relation='switch',change_timing='future')])
+        result=self.send(state,text,e,r['input_context'])
+        self.assertEqual(state['fields'],before)
+        self.assertEqual(result['operation_decisions'][0]['decision'],'deferred_future')
+        self.assertFalse(result['content_changed'])
+
     def test_coarse_purpose_can_be_reviewed_without_choosing_a_paradigm(self):
         state=new_state();text='电解液用于储能电池，关注传输，条件还不知道'
         e=Extraction(domain='materials_application',domain_quote='用于储能电池',updates=[Update(field='research_object',status='specified',value='电解液',quote='电解液'),Update(field='application',status='specified',value='储能电池',quote='用于储能电池'),Update(field='target_performance',status='specified',value='传输',direction='考察',quote='关注传输'),Update(field='work_conditions',status='unknown',quote='条件还不知道')])

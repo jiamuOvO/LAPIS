@@ -56,6 +56,7 @@ class Update(StrictModel):
     intent_ref: str | None = None
     basis_refs: list[str] = Field(default_factory=list)
     scope_mode: Literal["unspecified", "current_scope", "no_extra_exclusions", "expand"] = "unspecified"
+    change_timing: Literal["current", "future"] = "current"
     change_relation: Literal["unspecified", "restatement", "refinement", "switch", "uncertain"] = "unspecified"
     target_id: str | None = None
     target_value: str | None = None
@@ -132,9 +133,9 @@ kind:answer回答当前问题；inform新信息；edit主动修改/撤回；adop
 add增加，update唯一指向现有项只改明确属性，remove需撤回意图并指向target_refs，replace只在明确整个字段替换时使用。已采用的目标/指标默认保留。仅选推荐中一子目标不加入未选提案目标，但不能删除此前用户已选项。推荐之外的新指标可以add，即使当前追问其他字段；用inform或edit独立意图。
 “都研究/都包含”结合实际问题理解，范围回答不能修改目标。指代多个层级则不修改并问具体差别；已选范围内“无额外排除”要归纳有界范围，basis_refs指已有对象/用途/目标，并标scope_mode=current_scope或no_extra_exclusions；扩到新对象/用途为expand。真正指代歧义不输出updates。不写脱离上下文的短句，不扩大到未选方向。
 quote区分复制拟研究/假设/限制与采用；原提案内容保持来源，不能写成用户constraints或reference_note。只有用户明确将某项作为要求才是用户约束。“随便你”委托提出方案，不代表撤回约束；“之前不是选过了吗”核对采用记录，不一次解除所有冲突。重贴已采用内容不是重新select陈旧推荐。
-对象/用途/范围变化标change_relation:restatement同义，refinement兼容细化/补未知，switch真正改变，uncertain不确定。首次明确用途不应要求重核原目标。真正换用途时重核受影响项，但原值保留。context_change用于完整方向选择；不按字符串不同判断换场景。
+change_timing=current表示现在修改本轮规约，future表示之后另一轮才考虑的研究方向。仅提到“之后/后续打算转到另一用途”时标future，不能立即改当前用途或把未来目标并入当前范围；本轮计划中的未来计算不属于这种延期变更。对象/用途/范围变化标change_relation:restatement同义，refinement兼容细化/补未知，switch真正改变，uncertain不确定。首次明确用途不应要求重核原目标。真正换用途时重核受影响项，但原值保留。context_change用于完整方向选择；不按字符串不同判断换场景。
 selected_option按当前推荐序号/名称/功能定位。selection_mode=full只明确整个方向采用；partial仅局部。采用方向的字段来自提案，不提取成用户updates。拒绝/采用的引用必须来自当前展示版本；多个匹配问差别不能冒选。
-推荐初次方向可以完整；已采用后guidance_mode=fill_gap仅补当前缺口，用户明确换方向才new_direction。解释可explain。“可以下一步了吗”用progress，不自动confirm。确认伴真正内容修改先展示新版本；仅重述已展示的相同内容不算修改。粗研究目的已有值时，“筛选还是探索未定”不等于撤回研究目的；未知的是方法分类，保留现有目的。
+推荐初次方向可以完整；已采用后guidance_mode=fill_gap仅补当前缺口，用户明确换方向才new_direction。解释可explain。“可以下一步了吗”用progress，不自动confirm。“先别确认，先解释/给方案/展示假设限制”是继续问答，用explain/recommend，不是pause；pause仅用于停止本轮交流，不能把暂不批准当作停止回答问题。请求展示提案不是复制引用。确认伴真正内容修改先展示新版本；仅重述已展示的相同内容不算修改。粗研究目的已有值时，“筛选还是探索未定”不等于撤回研究目的；未知的是方法分类，保留现有目的。
 unknown没提供或本人尚不知道，none明确无预设，open交后续设计确定，unclear是已给内容存在两种互斥解释，绝不用于单纯缺信息。“具体条件不清楚/不知道”保持unknown；“条件待定/后续再说”用open，不能要求第一模块给数值单位。不能因为科学效果未核验把清楚意图标unclear。约束区分hard/preference；没有约束不自动撤回现有硬约束。性价比需要成本口径和性能关注点，不能保证最优。
 完整度：对象/基本用途/关注点清楚即可整理研究目的、粗范围和拟功能；候选/基体/条件/评价方法留研究设计。用户说详细指标、阻隔对象或测试标准未知时，保留已经确定的粗关注点，不能把target_performance改为unknown/unclear，也不输出找不到目标的update。不要添加“必须明确指标/候选才能继续”的issue。独立矛盾、对象用途歧义和未同意扩大仍阻断。resolve_issue_ids只指已解决的问题；reaffirm_fields只对应明确重核，不由progress自动批准。
 温度temperatures数值单位来自原话，禁止混用℃/K；组分要求predicate保留否定。具体机制/方法/参数主动输入可reference_note未核验，引用提案不能变用户参考。

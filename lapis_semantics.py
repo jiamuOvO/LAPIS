@@ -100,6 +100,9 @@ def check_operations(state,text,extraction):
             labels=dict(zip(FIELDS,('研究目的','研究对象','应用场景','工作条件','目标性能','约束条件','研究范围','材料功能')))
             explicit=item.field in intent.target_refs and intent.quote.startswith(labels.get(item.field,'\0'))
             if not explicit:reason='回答操作不属于当前问题；跨字段编辑须有独立意图'
+        if not reason and item.change_timing=='future':
+            decisions.append({'operation':item.model_dump(),'decision':'deferred_future','reason':'记录为后续研究意图，本轮规约保持不变'})
+            continue
         if item.field in FIELDS and item.field not in LIST_FIELDS:
             existing=state['fields'][item.field]
             if existing.get('status')=='specified' and item.status!='specified' and item.change_relation=='restatement':

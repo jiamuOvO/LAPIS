@@ -211,6 +211,8 @@ def render_intake_result(result, full=False, stream=None):
         if parts:
             print("LAPIS> 已更新：" + "；".join(parts) + "。")
     for decision in result.get("operation_decisions", []):
+        if decision.get("decision") == "deferred_future":
+            print("后续研究意图已记录，本轮未改变：" + LABELS.get(decision["operation"]["field"], "研究信息") + "。")
         if decision.get("decision") == "not_applied":
             print("暂未应用：" + LABELS.get(decision["operation"]["field"], "研究信息") + "；" + decision["reason"] + "。")
     for change in result.get("important_changes", []):
