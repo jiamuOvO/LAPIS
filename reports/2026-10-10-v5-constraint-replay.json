@@ -1,0 +1,170 @@
+{
+  "kind": "saved_real_extraction_in_memory_replay",
+  "guidance_stubbed": true,
+  "new_model_calls": 0,
+  "source_task_id": "003112a3-006c-4f60-90c2-2f993e1e4b1c",
+  "input": "低成本偏好保留，含义还是原料和加工成本尽量低，属于偏好而非硬性门槛。现在研究目的、应用场景、目标性能和材料功能都按保温板隔热来核对，但隔热功能本身还没被证实，温湿度条件、测试方法我也还没定。请把完整规约列出来，我看过再确认。",
+  "verdict": "passed",
+  "status": "needs_confirmation",
+  "fields": {
+    "purpose": {
+      "turn": 3,
+      "quote": "我这边现在、本轮改为研究片状矿物用于保温板的隔热表现",
+      "value": "研究片状矿物用于保温板的隔热表现",
+      "source": "user",
+      "status": "specified",
+      "basis_refs": [
+        "purpose"
+      ]
+    },
+    "application": {
+      "turn": 3,
+      "quote": "我这边现在、本轮改为研究片状矿物用于保温板的隔热表现",
+      "value": "保温板",
+      "source": "user",
+      "status": "specified",
+      "basis_refs": [
+        "application"
+      ]
+    },
+    "constraints": [
+      {
+        "status": "specified",
+        "value": "低成本（原料与加工成本尽量低）",
+        "quote": "低成本偏好保留，含义还是原料和加工成本尽量低，属于偏好而非硬性门槛。",
+        "source": "user",
+        "turn": 4,
+        "id": "constraints-e166ebe668",
+        "strength": "preference",
+        "basis_refs": [
+          "constraints-e166ebe668"
+        ]
+      }
+    ],
+    "research_scope": {
+      "turn": 3,
+      "quote": "这不是以后可能的计划，而是当前研究方向的切换",
+      "value": "本轮聚焦片状矿物用于保温板的隔热表现，已撤回塑料包装阻隔关注点",
+      "source": "user",
+      "status": "specified",
+      "basis_refs": [
+        "research_scope"
+      ]
+    },
+    "research_object": {
+      "turn": 1,
+      "quote": "片状矿物",
+      "value": "片状矿物",
+      "source": "user",
+      "status": "specified"
+    },
+    "work_conditions": {
+      "status": "unknown",
+      "value": null,
+      "quote": "温湿度条件、测试方法我也还没定。",
+      "source": "user",
+      "turn": 4,
+      "basis_refs": [
+        "work_conditions"
+      ]
+    },
+    "material_function": {
+      "turn": 3,
+      "quote": "我这边现在、本轮改为研究片状矿物用于保温板的隔热表现",
+      "value": "隔热",
+      "source": "user",
+      "status": "specified",
+      "basis_refs": [
+        "material_function"
+      ]
+    },
+    "target_performance": [
+      {
+        "id": "target_performance-0afb59de16",
+        "turn": 3,
+        "quote": "我这边现在、本轮改为研究片状矿物用于保温板的隔热表现",
+        "value": "隔热表现",
+        "source": "user",
+        "status": "specified",
+        "direction": "提升隔热性能",
+        "basis_refs": [
+          "target_performance-4af70a0d9d"
+        ]
+      }
+    ]
+  },
+  "operation_decisions": [
+    {
+      "operation": {
+        "field": "constraints",
+        "status": "specified",
+        "value": "低成本（原料与加工成本尽量低）",
+        "quote": "低成本偏好保留，含义还是原料和加工成本尽量低，属于偏好而非硬性门槛。",
+        "action": "update",
+        "intent_ref": "intent-1",
+        "basis_refs": [
+          "constraints-e166ebe668"
+        ],
+        "scope_mode": "unspecified",
+        "change_timing": "current",
+        "change_relation": "refinement",
+        "target_id": "constraints-e166ebe668",
+        "target_value": null,
+        "direction": null,
+        "strength": "preference",
+        "category": null,
+        "predicate": null,
+        "temperatures": []
+      },
+      "decision": "accepted"
+    },
+    {
+      "operation": {
+        "field": "work_conditions",
+        "status": "unknown",
+        "value": null,
+        "quote": "温湿度条件、测试方法我也还没定。",
+        "action": "update",
+        "intent_ref": "intent-2",
+        "basis_refs": [
+          "work_conditions"
+        ],
+        "scope_mode": "unspecified",
+        "change_timing": "current",
+        "change_relation": "restatement",
+        "target_id": null,
+        "target_value": null,
+        "direction": null,
+        "strength": null,
+        "category": null,
+        "predicate": null,
+        "temperatures": []
+      },
+      "decision": "accepted"
+    },
+    {
+      "operation": {
+        "field": "reference_note",
+        "status": "specified",
+        "value": "隔热功能本身尚未被证实（用户自述，未核验）",
+        "quote": "隔热功能本身还没被证实",
+        "action": "add",
+        "intent_ref": "intent-2",
+        "basis_refs": [
+          "target_performance-0afb59de16"
+        ],
+        "scope_mode": "unspecified",
+        "change_timing": "current",
+        "change_relation": "unspecified",
+        "target_id": null,
+        "target_value": null,
+        "direction": null,
+        "strength": null,
+        "category": "hypothesis",
+        "predicate": null,
+        "temperatures": []
+      },
+      "decision": "accepted"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "scenarios": {
+    "fresh_context_actual": {
+      "verdict": "product_failed_then_budget_stopped",
+      "reason": "第3轮确实切换到保温板并撤回阻隔，低成本偏好需重核。第4轮用户明确保留/澄清偏好却被误判成销毁条目，反复追问直到26批次调用上限。"
+    },
+    "fresh_conflict_preserved": {
+      "verdict": "not_executed"
+    },
+    "fresh_delayed_indicator_quote": {
+      "verdict": "not_executed"
+    }
+  },
+  "repairs": "部分更新没有value时不算删除；约束refinement保留strength与组分谓词才允许；组分禁用不能被answer/refinement反转。记录回放通过，不代替真实重跑。"
+}

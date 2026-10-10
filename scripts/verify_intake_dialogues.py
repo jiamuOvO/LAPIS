@@ -106,8 +106,8 @@ def main():
     for gid in old_ids.keys()-new_ids:
      if not any(e['action']=='replace' or e.get('target_id')==gid or e.get('target_value')==old_ids[gid].get('value') for e in edits):fresh_errors.append('目标条目消失但没有接受的撤回/替换操作')
     diff={f:{'before':old.get(f),'after':v} for f,v in previous.items() if old.get(f)!=v}
-    stalled=stalled+1 if not diff and 'confirm' in (last.get('interpretation') or {}).get('actions',[]) and not last['ready_for_design'] else 0
-    if stalled>=3:fresh_errors.append('连续三轮确认仍未推进，停止本例并复核')
+    stalled=stalled+1 if not diff and not last['ready_for_design'] and ('confirm' in (last.get('interpretation') or {}).get('actions',[]) or last['intake_status']=='needs_clarification') else 0
+    if stalled>=3:fresh_errors.append('连续三轮核对或澄清仍未推进，停止本例并复核')
     row={'run_id':run,'scenario':scene['id'],'task_id':task,'turn':n+1,'input':text,'actual_display':view,'interpretation':last.get('interpretation'),'operation_decisions':last.get('operation_decisions'),'field_diff':diff,'request':last['request'],'result_status':last['intake_status'],'context':context,'seconds':time.perf_counter()-start,'errors':fresh_errors,'user_decisions':user_decisions,'mode':('hybrid_fixed_recommendation_real_extraction' if a.mode=='fixed' and scene['id']=='long_additive' else a.mode)}
     with (a.output/'turns.jsonl').open('a',encoding='utf-8') as f:f.write(json.dumps(row,ensure_ascii=False,default=str)+'\n')
     with (a.output/'actual-display.md').open('a',encoding='utf-8') as f:f.write('\n## '+scene['id']+' '+str(n+1)+'\n你> '+text+'\n```text\n'+view+'```\n')

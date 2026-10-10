@@ -1,0 +1,202 @@
+{
+  "max_calls": 400,
+  "max_tokens": 2000000,
+  "calls": 400,
+  "tokens": 1791988,
+  "remaining_tokens": 208012,
+  "batches": [
+    {
+      "batch": 1,
+      "calls": 48,
+      "tokens": 203953,
+      "roles": {
+        "simulated_user": {
+          "calls": 21,
+          "tokens": 29730
+        },
+        "product": {
+          "calls": 27,
+          "tokens": 174223
+        }
+      },
+      "commit": "f745e19ada8859a10da9bd46eb06fe6dd64f99b7"
+    },
+    {
+      "batch": 2,
+      "calls": 43,
+      "tokens": 159457,
+      "roles": {
+        "simulated_user": {
+          "calls": 20,
+          "tokens": 24016
+        },
+        "product": {
+          "calls": 23,
+          "tokens": 135441
+        }
+      },
+      "commit": "f745e19ada8859a10da9bd46eb06fe6dd64f99b7"
+    },
+    {
+      "batch": 3,
+      "calls": 39,
+      "tokens": 191933,
+      "roles": {
+        "simulated_user": {
+          "calls": 18,
+          "tokens": 31174
+        },
+        "product": {
+          "calls": 21,
+          "tokens": 160759
+        }
+      },
+      "commit": "f745e19ada8859a10da9bd46eb06fe6dd64f99b7"
+    },
+    {
+      "batch": 4,
+      "calls": 48,
+      "tokens": 215076,
+      "roles": {
+        "simulated_user": {
+          "calls": 21,
+          "tokens": 29923
+        },
+        "product": {
+          "calls": 27,
+          "tokens": 185153
+        }
+      },
+      "commit": "219b7c1f015a92cbb8a3b6d956b940649c40451c"
+    },
+    {
+      "batch": 5,
+      "calls": 35,
+      "tokens": 186627,
+      "roles": {
+        "simulated_user": {
+          "calls": 17,
+          "tokens": 33946
+        },
+        "product": {
+          "calls": 18,
+          "tokens": 152681
+        }
+      },
+      "commit": "968edf0b3a7910ae1bbef3d84a03682e5f6beaaa"
+    },
+    {
+      "batch": 6,
+      "calls": 30,
+      "tokens": 156545,
+      "roles": {
+        "simulated_user": {
+          "calls": 13,
+          "tokens": 18937
+        },
+        "product": {
+          "calls": 17,
+          "tokens": 137608
+        }
+      },
+      "commit": "d39efa0cacb82f5c4f049717e5c075fa5c83ead5"
+    },
+    {
+      "batch": 7,
+      "calls": 24,
+      "tokens": 82921,
+      "roles": {
+        "simulated_user": {
+          "calls": 11,
+          "tokens": 11102
+        },
+        "product": {
+          "calls": 13,
+          "tokens": 71819
+        }
+      },
+      "commit": "bf0a3b08cc808030ac0e8f07d858cc2ecaa8f56a"
+    },
+    {
+      "batch": 8,
+      "calls": 18,
+      "tokens": 74210,
+      "roles": {
+        "simulated_user": {
+          "calls": 8,
+          "tokens": 8987
+        },
+        "product": {
+          "calls": 10,
+          "tokens": 65223
+        }
+      },
+      "commit": "bf0a3b08cc808030ac0e8f07d858cc2ecaa8f56a"
+    },
+    {
+      "batch": 9,
+      "calls": 34,
+      "tokens": 139248,
+      "roles": {
+        "simulated_user": {
+          "calls": 16,
+          "tokens": 22496
+        },
+        "product": {
+          "calls": 18,
+          "tokens": 116752
+        }
+      },
+      "commit": "186dc6a3a72f46e771ecc39235699d51617d573e"
+    },
+    {
+      "batch": 10,
+      "calls": 30,
+      "tokens": 138339,
+      "roles": {
+        "simulated_user": {
+          "calls": 13,
+          "tokens": 20789
+        },
+        "product": {
+          "calls": 17,
+          "tokens": 117550
+        }
+      },
+      "commit": "2035c72c88b00449130f624499fd2b71efea0030"
+    },
+    {
+      "batch": 11,
+      "calls": 25,
+      "tokens": 124313,
+      "roles": {
+        "simulated_user": {
+          "calls": 12,
+          "tokens": 20752
+        },
+        "product": {
+          "calls": 13,
+          "tokens": 103561
+        }
+      },
+      "commit": "c39d8f9c7fe67c0d0db336fe93b46006775dc6cf"
+    },
+    {
+      "batch": 12,
+      "calls": 26,
+      "tokens": 119366,
+      "roles": {
+        "simulated_user": {
+          "calls": 10,
+          "tokens": 20113
+        },
+        "product": {
+          "calls": 16,
+          "tokens": 99253
+        }
+      },
+      "commit": "6e95998ff6ee588e82325cdc4942905ff55e72dd"
+    }
+  ],
+  "prices_unavailable": true
+}

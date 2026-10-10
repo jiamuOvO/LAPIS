@@ -29,6 +29,7 @@ class SemanticTest(unittest.TestCase):
         self.send(state,'比较吧',e,r['input_context'])
         self.assertEqual(len(state['fields']['target_performance']),2)
         self.assertEqual(state['fields']['target_performance'][0]['id'],goal['id'])
+        self.assertEqual(state['fields']['target_performance'][0]['direction'],'比较')
 
     def test_explicit_mixed_edit_is_allowed(self):
         state,r=self.base();goal=state['fields']['target_performance'][0];state['current_question']={'id':'scope-Q','fields':['research_scope']}
@@ -158,6 +159,24 @@ class SemanticTest(unittest.TestCase):
         self.assertIsNotNone(result['next_question'])
         self.assertFalse(result['ready_for_design'])
         self.assertFalse(result.get('confirmation_event'))
+
+    def test_constraint_clarification_preserves_strength_and_rechecks(self):
+        state,r=self.base();entry=state['fields']['constraints'][1];entry.update(value='低成本',strength='preference',needs_review=True);state['current_question']={'id':'cost-Q','fields':['constraints']}
+        text='低成本偏好保留，原料和加工成本尽量低'
+        e=Extraction(intents=[Intent(id='I',kind='answer',quote=text,question_ref='cost-Q',target_refs=[entry['id']])],updates=[Update(field='constraints',status='specified',value='低成本（原料与加工成本尽量低）',strength='preference',quote=text,intent_ref='I',action='update',target_id=entry['id'],change_relation='refinement')])
+        result=self.send(state,text,e,r['input_context'])
+        current=next(c for c in state['fields']['constraints'] if c['id']==entry['id'])
+        self.assertEqual(current['strength'],'preference');self.assertNotIn('needs_review',current)
+        self.assertEqual(current['value'],'低成本（原料与加工成本尽量低）')
+        self.assertEqual(result['operation_decisions'][0]['decision'],'accepted')
+
+    def test_constraint_refinement_cannot_reverse_component_prohibition(self):
+        state,r=self.base();entry=state['fields']['constraints'][0];entry.update(value='不能含FEC',strength='hard',predicate={'target':'FEC','operator':'forbid','scope':'current'});state['current_question']={'id':'cost-Q','fields':['constraints']}
+        text='必须含FEC'
+        e=Extraction(intents=[Intent(id='I',kind='answer',quote=text,question_ref='cost-Q',target_refs=[entry['id']])],updates=[Update(field='constraints',status='specified',value=text,strength='hard',quote=text,intent_ref='I',action='update',target_id=entry['id'],change_relation='refinement',predicate={'target':'FEC','operator':'require'})])
+        result=self.send(state,text,e,r['input_context'])
+        self.assertEqual(state['fields']['constraints'][0]['value'],'不能含FEC')
+        self.assertEqual(result['operation_decisions'][0]['decision'],'not_applied')
 
     def test_coarse_purpose_can_be_reviewed_without_choosing_a_paradigm(self):
         state=new_state();text='电解液用于储能电池，关注传输，条件还不知道'
