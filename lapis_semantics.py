@@ -38,6 +38,10 @@ def build_context(state,text):
             'asked_field':state.get('asked_field'),'recent_dialogue':recent,'recommendations':state.get('recommendation_set'),
             'adopted_proposals':state.get('proposals',{}),'recommendation_history':state.get('recommendation_history',[])[-4:],
             'reference_notes':state.get('reference_notes',[])}
+    rec=context['recommendations']
+    if rec and any(h.get('set_id')==rec['id'] and h.get('status') in {'accepted','focused'} for h in state.get('recommendation_history',[])):
+        # Current fields and adopted review retain the chosen content and provenance.
+        context['recommendations']={**rec,'options':[{k:o[k] for k in ('id','label') if k in o} for o in rec['options']]}
     while len(json.dumps(context,ensure_ascii=False))>24000 and context['recent_dialogue']:
         context['recent_dialogue'].pop(0);context['older_dialogue_omitted']=True
     if len(json.dumps(context,ensure_ascii=False))>24000:

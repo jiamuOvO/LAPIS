@@ -26,12 +26,20 @@ class UserReply(BaseModel):
 
 USER_PROMPT="""你是材料研究软件的独立模拟用户，不是测试修复者。你只能看到自己的背景和产品实际显示对话。按背景自然交流，一轮最多两三句话。始终保留背景中明确的基本用途与要求；产品反问不能让你把已知用途改成未知，具体器件细分未知也不等于基本用途未知。不能一次填八项，不能为了产品过关改变既定意图。初学者可以从所见推荐产生新决定，写入decisions；不确定保持不确定。引用提案不代表要求。纠正误解和暂停是合理行为。未知不填造科学参数，不能把材料功能当已证实。不要输出产品内部字段或测试答案。确认前应看完整规约；只有发言明确请求暂停、暂不继续时stop=pause；正在提问、纠正、请求修改并等待答复时必须continue，不能仅因等待标pause。背景有“随后/后来”时按多轮顺序行动，不在首句假装已有未发生的发言。把背景当成自己的想法，不向产品提到私有背景、测试、步骤或模拟规则；不得说产品提到过实际对话里没有的内容。需要提案就自然请求推荐，不能索取不存在的“所见提案”。确认前自行核对背景要求的实际行动是否已在可见对话中发生；未来打算不算已完成的新增、引用或用途改变。未发生就本轮自然执行该行动，不能提前确认结束。认可核对后自然明确确认；stop=confirm必须对应发言中批准整份规约，不只确认某条约束。输出text/decisions/stop。"""
 
+def request_reserve(content):
+ """Conservative text byte allowance, excluding HTTP JSON escaping."""
+ body=json.loads(content);messages=body.get('messages',[])
+ if messages and all(isinstance(m.get('content'),str) for m in messages) and not any(k in body for k in ('tools','response_format','functions')):
+  size=sum(len(m['content'].encode('utf-8')) for m in messages)+128*(len(messages)+1)
+ else:size=len(content)
+ return size+body.get('max_tokens',2600)
+
 def main():
  p=argparse.ArgumentParser();p.add_argument('--mode',choices=['fixed','simulated'],required=True);p.add_argument('--scenarios',default='long_additive');p.add_argument('--set',choices=['development','holdout','supplementary'],default='development');p.add_argument('--max-calls',type=int,default=60);p.add_argument('--max-tokens',type=int,default=400000);p.add_argument('--output',type=Path,required=True);p.add_argument('--resume-from',type=Path);a=p.parse_args()
  if os.getenv('LAPIS_TEST_PG')!='1' or os.getenv('LAPIS_DB_NAME')!='lapis_test':p.error('Requires isolated lapis_test')
  initialize_schema();run=str(uuid4());calls=[];current_role='product';tokens=0;budget_stops=[]
  def before(request):
-  reserve=len(request.content)+json.loads(request.content).get('max_tokens',2600)
+  reserve=request_reserve(request.content)
   if len(calls)>=a.max_calls or tokens+reserve>a.max_tokens:
    budget_stops.append({'role':current_role,'used_tokens':tokens,'reserved_tokens':reserve,'used_calls':len(calls)})
    raise RuntimeError('Acceptance budget exhausted before request')

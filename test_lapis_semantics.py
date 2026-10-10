@@ -9,6 +9,21 @@ from test_lapis_intake import TEXT, full_updates, turn
 from test_lapis_review import advice, select
 
 class SemanticTest(unittest.TestCase):
+    def test_adopted_context_keeps_menu_and_review_without_mutating_state(self):
+        state=new_state();r=advice(state);select(state,r['input_context']);before=deepcopy(state)
+        context=build_context(state,'引用限制')
+        self.assertEqual(state,before)
+        self.assertEqual([o['id'] for o in context['recommendations']['options']],[o['id'] for o in state['recommendation_set']['options']])
+        self.assertEqual(context['adopted_proposals'],state['proposals'])
+        self.assertEqual(context['fields'],state['fields'])
+        self.assertTrue(all(set(o)<= {'id','label'} for o in context['recommendations']['options']))
+
+    def test_budget_reserve_counts_decoded_text_and_output(self):
+        import json
+        from scripts.verify_intake_dialogues import request_reserve
+        body={'messages':[{'role':'user','content':'中文"\\'}],'max_tokens':100}
+        self.assertEqual(request_reserve(json.dumps(body).encode()),len(body['messages'][0]['content'].encode())+256+100)
+
     def base(self):
         state=new_state();r=turn(state,TEXT,full_updates());return state,r
     def send(self,state,text,extraction,context=None):
