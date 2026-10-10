@@ -150,6 +150,15 @@ class SemanticTest(unittest.TestCase):
         self.assertEqual(result['operation_decisions'][0]['decision'],'deferred_future')
         self.assertFalse(result['content_changed'])
 
+    def test_withholding_approval_can_continue_explanation(self):
+        state,r=self.base();text='先不确认整份规约，请继续说明需要核对哪些功能'
+        with patch('lapis_intake.generate_recommendations',return_value=None):
+            result=self.send(state,text,Extraction(actions=['pause','explain'],pause_scope='approval'),r['input_context'])
+        self.assertNotEqual(result['intake_status'],'paused')
+        self.assertIsNotNone(result['next_question'])
+        self.assertFalse(result['ready_for_design'])
+        self.assertFalse(result.get('confirmation_event'))
+
     def test_coarse_purpose_can_be_reviewed_without_choosing_a_paradigm(self):
         state=new_state();text='电解液用于储能电池，关注传输，条件还不知道'
         e=Extraction(domain='materials_application',domain_quote='用于储能电池',updates=[Update(field='research_object',status='specified',value='电解液',quote='电解液'),Update(field='application',status='specified',value='储能电池',quote='用于储能电池'),Update(field='target_performance',status='specified',value='传输',direction='考察',quote='关注传输'),Update(field='work_conditions',status='unknown',quote='条件还不知道')])

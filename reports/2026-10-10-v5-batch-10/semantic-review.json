@@ -1,0 +1,17 @@
+{
+  "scenarios": {
+    "holdout_long_additive": {
+      "verdict": "passed_for_metric_retention_across_adoption",
+      "reason": "四轮真实独立输入，原始氧化诱导期ID保留，经方向采用和核对后确认恢复；没有新用户约束。指标首轮已给出，未覆盖后来新增；18轮原轨迹另以混合模式验证。"
+    },
+    "holdout_context_change": {
+      "verdict": "product_failed_then_budget_stopped",
+      "reason": "future变更正确保留当前用途，但暂不确认且请求解释被pause停止；随后切换/核对到第9轮，在30调用上限停止，未完成。"
+    },
+    "holdout_conflict": {
+      "verdict": "not_executed",
+      "reason": "本批上限停止，未开始。"
+    }
+  },
+  "repairs": "pause_scope区分conversation和approval，两者均不新增审批，approval继续问答"
+}

@@ -1,0 +1,1 @@
+{"scenario": "holdout_context_change", "verdict": "error", "error_type": "InstructorRetryException", "error": "Connection error.", "failed_input": null, "turn": 10, "task_id": "fcb7d9c2-99f6-4dfa-aa36-5f3de21f3c49"}
