@@ -111,6 +111,21 @@ class SemanticTest(unittest.TestCase):
         self.assertEqual(result['intake_status'],'paused');self.assertIsNone(result['next_question'])
         self.assertFalse(result['ready_for_design'])
 
+    def test_mixed_adoption_and_rejection_preserves_adopted_direction(self):
+        from test_lapis_proposals import proposal
+        state=new_state();body=proposal();body['options']=[deepcopy(body['options'][0]) for _ in range(3)]
+        for n,o in enumerate(body['options']):o['label']='方向'+str(n+1)
+        r=advice(state,body);rec=state['recommendation_set'];ids=[o['id'] for o in rec['options']];text='采用第一个，不用第二第三个'
+        e=Extraction(actions=['select','reject'],selected_option=1,intents=[Intent(id='A',kind='adopt',quote='采用第一个',target_refs=[ids[0]]),Intent(id='R',kind='reject',quote='不用第二第三个',target_refs=ids[1:])])
+        result=self.send(state,text,e,r['input_context'])
+        self.assertEqual({h['direction_id'] for h in state['recommendation_history'] if h['status']=='rejected'},set(ids[1:]))
+        self.assertTrue(any(h['status']=='accepted' and h['direction_id']==ids[0] for h in state['recommendation_history']))
+        self.assertTrue(any(g.get('recommendation_ref',{}).get('direction_id')==ids[0] for g in state['fields']['target_performance']))
+        text='八项已经核对过了，我确认这份规约。第二第三个仍然不用。'
+        e=Extraction(actions=['confirm','reject'],intents=[Intent(id='C',kind='confirm',quote='我确认这份规约'),Intent(id='R',kind='reject',quote='第二第三个仍然不用',target_refs=ids[1:])])
+        result=self.send(state,text,e,result['input_context'])
+        self.assertTrue(result['ready_for_design'])
+
     def test_coarse_purpose_can_be_reviewed_without_choosing_a_paradigm(self):
         state=new_state();text='电解液用于储能电池，关注传输，条件还不知道'
         e=Extraction(domain='materials_application',domain_quote='用于储能电池',updates=[Update(field='research_object',status='specified',value='电解液',quote='电解液'),Update(field='application',status='specified',value='储能电池',quote='用于储能电池'),Update(field='target_performance',status='specified',value='传输',direction='考察',quote='关注传输'),Update(field='work_conditions',status='unknown',quote='条件还不知道')])

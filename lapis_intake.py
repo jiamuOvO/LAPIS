@@ -515,11 +515,22 @@ def _select(state, extraction, text, context):
 
 
 def _reject(state, extraction, text, context):
+    refs = {ref for i in extraction.intents if i.kind == "reject" for ref in i.target_refs}
+    latest = {h["direction_id"]:h["status"] for h in state["recommendation_history"] if h.get("status") in {"accepted", "rejected"}}
+    already_rejected = {ref for ref,status in latest.items() if status == "rejected"}
+    if refs and refs.issubset(already_rejected):
+        return None  # Restating an existing rejection does not change the reviewed request.
     rec = state.get("recommendation_set")
     if not rec or context.get("recommendation_ref") != {"id": rec["id"], "version": rec["version"]} or context.get("draft_id") != state["draft_id"]:
         return "请先查看当前方向或草稿，再明确拒绝哪条建议。"
     options = rec["options"]
-    if extraction.selected_option and 1 <= extraction.selected_option <= len(options):
+    rejection_intents = [i for i in extraction.intents if i.kind == "reject"]
+    if rejection_intents:
+        refs = {ref for i in rejection_intents for ref in i.target_refs}
+        options = [o for o in options if o["id"] in refs or rec["id"] in refs]
+        if not options:
+            return "拒绝未指向当前方向；请说明哪项不用，已有选择已保留。"
+    elif extraction.selected_option and 1 <= extraction.selected_option <= len(options):
         options = [options[extraction.selected_option - 1]]
     rejected = {x["id"] for x in options}
     for option in options:
@@ -534,7 +545,8 @@ def _reject(state, extraction, text, context):
         if before != state["fields"][field]:
             state["history"].append({"field": field, "before": before, "after": deepcopy(state["fields"][field]),
                                      "turn": len(state["turns"]), "reason": "recommendation_rejected"})
-    state["recommendation_set"] = None
+    if rejected == {o["id"] for o in rec["options"]}:
+        state["recommendation_set"] = None
 
 
 def make_draft(state):
@@ -668,6 +680,7 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
             notice = _select(state, extraction, text, context)
         if "reject" in extraction.actions or text in {"不采用", "不用建议"}:
             notice = _reject(state, extraction, text, context)
+        action_notice = notice
         _merge(state, text, extraction, context)
         prepare_summaries(state, operation_id)
         changed = _touch(state, before)
@@ -695,8 +708,8 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
             state["clarification_question"] = {"draft_id":state["draft_id"], "field":extraction.clarification_field, "question":result["next_question"]}
         if "progress" in extraction.actions:
             result = _result(state, changed, notice="确认规约后才进入研究设计，当前没有授权计算。" if not request_issues(make_draft(state)) else None)
-        if "confirm" in extraction.actions and not changed and not (set(extraction.actions) & {"select", "edit", "reaffirm", "reject"}):
-            if re.match(r"^(?:我)?(?:确认|同意)(?:(?:本版|当前|这份)?(?:研究)?(?:规约|请求))?(?:[：:，,。！!；;]|$)", text):
+        if "confirm" in extraction.actions and not changed and not action_notice and not (set(extraction.actions) & {"select", "edit", "reaffirm"}) and not any(d["decision"] == "not_applied" for d in result["operation_decisions"]):
+            if re.search(r"(?:我)?(?:确认|同意)(?:这份|本版|当前|上述|以上)?(?:研究)?(?:规约|请求|意图)|^(?:我)?(?:确认|同意)(?!一下|下)", text):
                 result = _confirm(state, context)
             else:
                 result = _result(state, notice="请明确回复‘确认’以采用本版规约；进度询问没有新增确认。")

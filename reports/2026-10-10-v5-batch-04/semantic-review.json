@@ -1,0 +1,18 @@
+{
+  "scenarios": {
+    "holdout_beginner": {
+      "verdict": "product_failed",
+      "reason": "同轮采用1拒绝2和3，_reject错误复用selected_option=1，删除刚选内容；后续明确批准不在句首也被拒。最终重申不能抵消中间失败。"
+    },
+    "holdout_multisentence": {
+      "verdict": "passed",
+      "reason": "保留两目标与硬约束/偏好，条件可未知，确认和子进程恢复。"
+    },
+    "holdout_multi_goal_edit": {
+      "verdict": "passed",
+      "reason": "真实顺序新增导电、撤回强度、保留耐蚀与导电，确认和子进程恢复。"
+    }
+  },
+  "repairs": "拒绝按独立reject意图引用处理；拒绝重述不阻止未改版确认；明确整份规约批准可位于句中",
+  "holdout_note": "这三个背景已执行，后续重跑属于回归，不再视为未触碰留出集"
+}

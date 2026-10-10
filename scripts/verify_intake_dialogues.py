@@ -113,7 +113,7 @@ def main():
     print(scene['id'],n+1,last['intake_status'],fresh_errors,flush=True);failed.extend(fresh_errors)
     if fresh_errors:break
     if a.mode=='simulated' and (last['ready_for_design'] or paused or scene['terminal']=='blocked' and n>=1 and any(i.get('kind')=='conflict' for i in last['blocking_issues'])):break
-   good=last and not failed and (last['ready_for_design'] or scene['terminal']=='pause' and paused and last['intake_status']=='paused' and last.get('next_question') is None or scene['terminal']=='blocked' and not last['ready_for_design'] and bool(last['blocking_issues']))
+   good=last and not failed and (last['ready_for_design'] or scene['terminal']=='pause' and paused and last['intake_status']=='paused' and last.get('next_question') is None or scene['terminal']=='blocked' and not last['ready_for_design'] and any(i.get('kind')=='conflict' for i in last['blocking_issues']))
    if scene['id']=='long_additive' and a.mode=='fixed' and not metric_id:good=False;failed.append('未实际验证指标采用及保留')
    if good and last['ready_for_design']:
     child=subprocess.run([sys.executable,'-X','utf8',str(ROOT/'lapis.py'),'chat','--task-id',task],input='/show\n/exit\n',text=True,encoding='utf-8',capture_output=True,timeout=30)
