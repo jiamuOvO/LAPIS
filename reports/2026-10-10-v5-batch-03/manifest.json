@@ -1,0 +1,26 @@
+{
+  "run_id": "3a6a6139-883b-43db-8c8f-2909fe47b70a",
+  "mode": "simulated",
+  "set": "development",
+  "commit": "f745e19ada8859a10da9bd46eb06fe6dd64f99b7",
+  "model_alias": "deepseek-flash",
+  "seed": "provider_unavailable",
+  "prompt_hash": "8b42cc02d3f4f19a9eebcdf96ae49bd6619565e801454e5747d719b25149d094",
+  "user_prompt_hash": "8c5e4aade61f3114ca9a5b52fc5376e1cd8c82ee20e6076526eeb8aaaed77c57",
+  "dirty": true,
+  "origin": "synthetic",
+  "max_calls": 50,
+  "max_tokens": 350000,
+  "code_hashes": {
+    "lapis.py": "67f9e1981f0d071b4f153be0c55133a72b3424686f6061806bec7866eb7f0668",
+    "lapis_contract.py": "a582798d37a99a33cfe46982e568eddae79bf832da08089d158489a01fe5f94b",
+    "lapis_contract_v4.py": "01a1f085557ad5750dc6ce12e5c598021bc7f69080e5b51f9707b124a7e57bb0",
+    "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
+    "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
+    "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
+    "lapis_intake.py": "476d27e380abcd8f8064bd3496b407f465aa1f2d5589fd1e23d9cc63ad444863",
+    "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
+    "lapis_semantics.py": "0b914fb48d61856c2d44b62865880693b4021e230e7c409d4c49853a09f56af9",
+    "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
+  }
+}

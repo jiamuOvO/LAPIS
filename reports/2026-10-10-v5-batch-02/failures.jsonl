@@ -1,0 +1,1 @@
+{"scenario": "beginner", "verdict": "error", "error_type": "InstructorRetryException", "error": "Connection error.", "failed_input": "你好，我最近听说氮化硼这种材料，但不太清楚它具体能做什么。能给我推荐几个常见的用途或功能方向吗？", "turn": 1, "task_id": "55723959-d26b-461d-bf53-2eb3556b7202"}

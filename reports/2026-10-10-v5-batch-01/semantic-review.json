@@ -1,0 +1,19 @@
+{
+  "verdict": "not_passed",
+  "scenarios": {
+    "beginner": {
+      "verdict": "invalid_simulator_stop",
+      "reason": "第三轮实际请求修改，stop却为pause；未向产品表达暂停，不应计为产品暂停失败。"
+    },
+    "multisentence": {
+      "verdict": "product_failed",
+      "reason": "第五、六轮明确确认且字段未改变，仍要求重审；后续未定范式错误清空已明确的粗目的。"
+    },
+    "multi_goal_edit": {
+      "verdict": "invalid_sequence_with_product_issue",
+      "reason": "模拟用户首句声称撤回从未加入的强度，未执行背景的逐轮新增/撤回顺序；产品随后留下无法消解的撤回歧义。"
+    }
+  },
+  "repairs": "确认仅重述可采用原版本；重述不清空目的；明确不存在条目保持列表并提示；模拟器暂停与顺序说明修订",
+  "raw_records_preserved": true
+}

@@ -49,7 +49,7 @@ class Predicate(StrictModel):
 class Update(StrictModel):
     field: Literal["task_type", "purpose", "research_object", "application", "work_conditions",
                    "target_performance", "constraints", "research_scope", "material_function", "reference_note"]
-    status: Literal["specified", "none", "open", "unclear"]
+    status: Literal["specified", "unknown", "none", "open", "unclear"]
     value: str | None = None
     quote: str = Field(min_length=1)
     action: Literal["add", "update", "replace", "remove"] = "add"
@@ -125,7 +125,7 @@ class IntakeSuggestion(BaseModel):
     limitation: str
 
 
-SYSTEM_PROMPT = """你是 LAPIS 第一模块的结构化语义解释器。一次调用输出简短可检查的理解、意图和拟修改，只输出语义结论和引用，不输出推理过程、不虚构科学事实。一句话可以同时明确对象、用途和目标；务必分拆隐含但清楚的使用背景，不只把整个短语塞进研究对象后再问用户已说过的用途。明确命名其他字段是独立inform/edit，不要绑到正在回答的另一问题。固定八项：purpose研究行动/判断，research_object材料类别/体系，application基本用途，work_conditions条件，target_performance关注点和方向，constraints硬约束/偏好，research_scope本轮边界，material_function拟承担作用。
+SYSTEM_PROMPT = """你是 LAPIS 第一模块的结构化语义解释器。一次调用输出简短可检查的理解、意图和拟修改，只输出语义结论和引用，不输出推理过程、不虚构科学事实。一句话可以同时明确对象、用途和目标；application只需基本用途，不要求具体器件细分。材料名中清楚的用途限定词也要分拆为application，而不是再索取更细用途；务必分拆隐含但清楚的使用背景，不只把整个短语塞进研究对象后再问用户已说过的用途。明确命名其他字段是独立inform/edit，不要绑到正在回答的另一问题。固定八项：purpose研究行动/判断，research_object材料类别/体系，application基本用途，work_conditions条件，target_performance关注点和方向，constraints硬约束/偏好，research_scope本轮边界，material_function拟承担作用。
 所有原话quote必须来自本轮连续片段。上下文用于解释省略，不冒充原话。intents每条有id/kind/quote；回答必须以question_ref指向current_question.id；修改指向target_refs。updates逐条intent_ref，引用当前条目ID或字段作为basis_refs。不重复输出未修改字段。
 kind:answer回答当前问题；inform新信息；edit主动修改/撤回；adopt采用提案；reject拒绝；quote引用原提案；delegate委托建议；progress查询下一步；confirm明确批准；pause暂停。用户混合编辑可以有多条意图；回答某字段不能改另一个字段，独立主动编辑须另列意图。actions维持inform/edit/select/recommend/explain/unsure/reaffirm/reject/progress/confirm/pause/quote/delegate调用分工。
 “比较吧”回答目标方向时，更新现有目标direction，不改value，不删除具体指标；也可独立明确研究目的但不要再重复追问已知目标。研究/考察/探索本身是合法目的，无需强选筛选或比较。定性关注点可以进入研究设计，无需具体指标、公式、单位、模型或计算路线。
@@ -134,8 +134,8 @@ add增加，update唯一指向现有项只改明确属性，remove需撤回意�
 quote区分复制拟研究/假设/限制与采用；原提案内容保持来源，不能写成用户constraints或reference_note。只有用户明确将某项作为要求才是用户约束。“随便你”委托提出方案，不代表撤回约束；“之前不是选过了吗”核对采用记录，不一次解除所有冲突。重贴已采用内容不是重新select陈旧推荐。
 对象/用途/范围变化标change_relation:restatement同义，refinement兼容细化/补未知，switch真正改变，uncertain不确定。首次明确用途不应要求重核原目标。真正换用途时重核受影响项，但原值保留。context_change用于完整方向选择；不按字符串不同判断换场景。
 selected_option按当前推荐序号/名称/功能定位。selection_mode=full只明确整个方向采用；partial仅局部。采用方向的字段来自提案，不提取成用户updates。拒绝/采用的引用必须来自当前展示版本；多个匹配问差别不能冒选。
-推荐初次方向可以完整；已采用后guidance_mode=fill_gap仅补当前缺口，用户明确换方向才new_direction。解释可explain。“可以下一步了吗”用progress，不自动confirm。确认伴修改先展示新版本。
-unknown没提供，none明确无预设，open交后续设计确定，unclear真实歧义。不能因为科学效果未核验把清楚意图标unclear。约束区分hard/preference；没有约束不自动撤回现有硬约束。性价比需要成本口径和性能关注点，不能保证最优。
+推荐初次方向可以完整；已采用后guidance_mode=fill_gap仅补当前缺口，用户明确换方向才new_direction。解释可explain。“可以下一步了吗”用progress，不自动confirm。确认伴真正内容修改先展示新版本；仅重述已展示的相同内容不算修改。粗研究目的已有值时，“筛选还是探索未定”不等于撤回研究目的；未知的是方法分类，保留现有目的。
+unknown没提供或本人尚不知道，none明确无预设，open交后续设计确定，unclear是已给内容存在两种互斥解释，绝不用于单纯缺信息。“具体条件不清楚/不知道”保持unknown；“条件待定/后续再说”用open，不能要求第一模块给数值单位。不能因为科学效果未核验把清楚意图标unclear。约束区分hard/preference；没有约束不自动撤回现有硬约束。性价比需要成本口径和性能关注点，不能保证最优。
 完整度：对象/基本用途/关注点清楚即可整理研究目的、粗范围和拟功能；候选/基体/条件/评价方法留研究设计。不要添加“必须明确指标/候选才能继续”的issue。独立矛盾、对象用途歧义和未同意扩大仍阻断。resolve_issue_ids只指已解决的问题；reaffirm_fields只对应明确重核，不由progress自动批准。
 温度temperatures数值单位来自原话，禁止混用℃/K；组分要求predicate保留否定。具体机制/方法/参数主动输入可reference_note未核验，引用提案不能变用户参考。
 domain按对象+用途+目的：materials_application材料用途；drug_discovery药物先导/药效/靶蛋白筛选首版不支持；basic_research无用途保持草稿；uncertain缺信息。不能凭单一材料词下领域结论。task_type只辅助，可other，不强加范式。
@@ -695,8 +695,8 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
             state["clarification_question"] = {"draft_id":state["draft_id"], "field":extraction.clarification_field, "question":result["next_question"]}
         if "progress" in extraction.actions:
             result = _result(state, changed, notice="确认规约后才进入研究设计，当前没有授权计算。" if not request_issues(make_draft(state)) else None)
-        if "confirm" in extraction.actions and not extraction.updates and not changed and not (set(extraction.actions) & {"select", "edit", "reaffirm", "reject"}):
-            if re.match(r"^(?:我)?(?:确认|同意)(?:本版|当前|这份)?(?:研究)?(?:规约|请求)?[。！!]?\s*$", text):
+        if "confirm" in extraction.actions and not changed and not (set(extraction.actions) & {"select", "edit", "reaffirm", "reject"}):
+            if re.match(r"^(?:我)?(?:确认|同意)(?:(?:本版|当前|这份)?(?:研究)?(?:规约|请求))?(?:[：:，,。！!；;]|$)", text):
                 result = _confirm(state, context)
             else:
                 result = _result(state, notice="请明确回复‘确认’以采用本版规约；进度询问没有新增确认。")

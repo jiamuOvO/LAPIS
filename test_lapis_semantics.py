@@ -111,6 +111,37 @@ class SemanticTest(unittest.TestCase):
         self.assertEqual(result['intake_status'],'paused');self.assertIsNone(result['next_question'])
         self.assertFalse(result['ready_for_design'])
 
+    def test_coarse_purpose_can_be_reviewed_without_choosing_a_paradigm(self):
+        state=new_state();text='电解液用于储能电池，关注传输，条件还不知道'
+        e=Extraction(domain='materials_application',domain_quote='用于储能电池',updates=[Update(field='research_object',status='specified',value='电解液',quote='电解液'),Update(field='application',status='specified',value='储能电池',quote='用于储能电池'),Update(field='target_performance',status='specified',value='传输',direction='考察',quote='关注传输'),Update(field='work_conditions',status='unknown',quote='条件还不知道')])
+        r=self.send(state,text,e)
+        self.assertEqual(r['intake_status'],'needs_confirmation')
+        self.assertEqual(state['fields']['purpose']['source'],'system_suggestion')
+        self.assertFalse(r['ready_for_design'])
+        result=handle_turn(None,'test',state,'确认',r['input_context'])
+        self.assertTrue(result['ready_for_design'])
+        self.assertEqual(result['request']['fields']['purpose']['source'],'confirmed_suggestion')
+
+    def test_explicit_confirmation_with_unchanged_restatement_is_accepted(self):
+        state,r=self.base();value=state['fields']['purpose']['value'];text='确认，采用这版规约；已有目标和约束不变。'
+        e=Extraction(actions=['confirm','inform'],intents=[Intent(id='I',kind='confirm',quote=text)],updates=[Update(field='purpose',status='specified',value=value,quote=text,change_relation='restatement')])
+        result=self.send(state,text,e,r['input_context'])
+        self.assertTrue(result['ready_for_design']);self.assertTrue(result['confirmation_event'])
+
+    def test_restatement_of_unknown_method_cannot_clear_known_purpose(self):
+        state,r=self.base();before=deepcopy(state['fields']['purpose']);text='筛选还是探索还没定，先按这个方向走'
+        e=Extraction(intents=[Intent(id='I',kind='inform',quote=text)],updates=[Update(field='purpose',status='open',quote=text,intent_ref='I',change_relation='restatement')])
+        result=self.send(state,text,e,r['input_context'])
+        self.assertEqual(state['fields']['purpose'],before)
+        self.assertEqual(result['operation_decisions'][0]['decision'],'not_applied')
+
+    def test_named_absent_removal_does_not_create_permanent_issue(self):
+        state,r=self.base();before=deepcopy(state['fields']['target_performance']);text='强度不用研究了'
+        e=Extraction(intents=[Intent(id='I',kind='edit',quote=text,target_refs=['强度'])],updates=[Update(field='target_performance',status='none',value='强度',quote=text,intent_ref='I',action='remove',target_value='强度')])
+        result=self.send(state,text,e,r['input_context'])
+        self.assertEqual(state['fields']['target_performance'],before)
+        self.assertFalse(result['blocking_issues'])
+
     def test_model_confirm_misclassification_cannot_approve_progress(self):
         state,r=self.base()
         e=Extraction(actions=['confirm'],intents=[Intent(id='I',kind='confirm',quote='可以了，进行下一步吧')])

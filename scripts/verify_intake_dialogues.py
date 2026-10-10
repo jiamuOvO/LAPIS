@@ -20,9 +20,9 @@ class UserReply(BaseModel):
  model_config=ConfigDict(extra='forbid')
  text:str=Field(min_length=1,max_length=1200)
  decisions:list[str]=Field(default_factory=list)
- stop:str='continue'
+ stop: str = Field(default='continue', pattern='^(continue|pause|confirm)$')
 
-USER_PROMPT="""你是材料研究软件的独立模拟用户，不是测试修复者。你只能看到自己的背景和产品实际显示对话。按背景自然交流，一轮最多两三句话，不能一次填八项，不能为了产品过关改变既定意图。初学者可以从所见推荐产生新决定，写入decisions；不确定保持不确定。引用提案不代表要求。纠正误解和暂停是合理行为。未知不填造科学参数，不能把材料功能当已证实。不要输出产品内部字段或测试答案。确认前应看完整规约；需要等待则stop=pause，确认完stop=confirm。输出text/decisions/stop。"""
+USER_PROMPT="""你是材料研究软件的独立模拟用户，不是测试修复者。你只能看到自己的背景和产品实际显示对话。按背景自然交流，一轮最多两三句话。始终保留背景中明确的基本用途与要求；产品反问不能让你把已知用途改成未知，具体器件细分未知也不等于基本用途未知。不能一次填八项，不能为了产品过关改变既定意图。初学者可以从所见推荐产生新决定，写入decisions；不确定保持不确定。引用提案不代表要求。纠正误解和暂停是合理行为。未知不填造科学参数，不能把材料功能当已证实。不要输出产品内部字段或测试答案。确认前应看完整规约；只有发言明确请求暂停、暂不继续时stop=pause；正在提问、纠正、请求修改并等待答复时必须continue，不能仅因等待标pause。背景有“随后/后来”时按多轮顺序行动，不在首句假装已有未发生的发言。认可核对后自然明确确认；stop=confirm必须对应发言中批准整份规约，不只确认某条约束。输出text/decisions/stop。"""
 
 def main():
  p=argparse.ArgumentParser();p.add_argument('--mode',choices=['fixed','simulated'],required=True);p.add_argument('--scenarios',default='long_additive');p.add_argument('--set',choices=['development','holdout'],default='development');p.add_argument('--max-calls',type=int,default=60);p.add_argument('--max-tokens',type=int,default=400000);p.add_argument('--output',type=Path,required=True);a=p.parse_args()
@@ -53,7 +53,7 @@ def main():
  (a.output/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
  verdicts=[]
  for scene in chosen:
-  task=create_task('dialogue-acceptance');context={};transcript=[];previous={};metric_id=None;failed=[];decisions=[];last=None;paused=False
+  task=create_task('dialogue-acceptance');context={};transcript=[];previous={};metric_id=None;failed=[];decisions=[];last=None;paused=False;stalled=0
   fixed=['我想研究呋喃分子的抗氧化性','高分子材料的抗氧化添加剂','比较 吧','你推荐一下','__select__','__purpose__','__assumptions__','__limitations__','氧化诱导期','随便你，无所谓这些','没有约束条件','都研究','都包含','没有不研究的','之前不是选过了吗','你推荐吧','可以了，进行下一步吧','确认'] if scene['id']=='long_additive' else (['研究储能电池电解液，关注传输和稳定性。不能使用含氟添加剂，尽量低成本。','工作条件还不知道，范围就是这轮电解液材料研究。','可以下一步了吗','确认'] if scene['id']=='multisentence' else ['研究高分子抗氧化添加剂，关注抗氧化性。','也记录氧化诱导期，条件和方法还不知道。','范围仅限这轮添加剂研究，没有其他用途。','可以下一步了吗','确认'])
   # Only this original-case recommendation is a controlled fixture. Product extraction remains real.
   body=proposal();option=body['options'][0]
@@ -93,7 +93,9 @@ def main():
      if not found:fresh_errors.append('明确指标未进入当前规约')
      elif not metric_id:metric_id=found[0]['id']
     if metric_id and not any(g.get('id')==metric_id and '氧化诱导期' in (g.get('value') or '') for g in goals):fresh_errors.append('无意丢失已选指标')
-    if last['ready_for_design'] and text not in {'确认','确认继续','同意','按此继续','就按这个'}:fresh_errors.append('没有明确确认却进入研究设计')
+    if paused and not any(i.get('kind')=='pause' for i in (last.get('interpretation') or {}).get('intents',[])) and 'pause' not in (last.get('interpretation') or {}).get('actions',[]) and text not in {'暂停','先不确认','暂不确认'}:fresh_errors.append('模拟器暂停标记与实际发言不一致，需要语义复核')
+    elif paused and (last['intake_status']!='paused' or last.get('next_question') is not None or last['ready_for_design']):fresh_errors.append('用户暂停未被产品正确执行')
+    if last['ready_for_design'] and not last.get('confirmation_event'):fresh_errors.append('没有确认事件却进入研究设计')
     if text=='没有约束条件' and not any(c.get('status')=='specified' and c.get('strength')=='hard' for c in (old.get('constraints') or [])) and not any(c.get('status')=='none' for c in previous['constraints']):fresh_errors.append('明确无约束没有记录为none')
     if text=='没有不研究的' and previous['research_scope'].get('value')==text:fresh_errors.append('正式范围脱离已有上下文')
     if text.startswith(('假设：','限制：','拟研究：')) and old and previous!=old:fresh_errors.append('复制提案改变研究字段')
@@ -103,13 +105,15 @@ def main():
     for gid in old_ids.keys()-new_ids:
      if not any(e['action']=='replace' or e.get('target_id')==gid or e.get('target_value')==old_ids[gid].get('value') for e in edits):fresh_errors.append('目标条目消失但没有接受的撤回/替换操作')
     diff={f:{'before':old.get(f),'after':v} for f,v in previous.items() if old.get(f)!=v}
+    stalled=stalled+1 if not diff and 'confirm' in (last.get('interpretation') or {}).get('actions',[]) and not last['ready_for_design'] else 0
+    if stalled>=3:fresh_errors.append('连续三轮确认仍未推进，停止本例并复核')
     row={'run_id':run,'scenario':scene['id'],'task_id':task,'turn':n+1,'input':text,'actual_display':view,'interpretation':last.get('interpretation'),'operation_decisions':last.get('operation_decisions'),'field_diff':diff,'request':last['request'],'result_status':last['intake_status'],'context':context,'seconds':time.perf_counter()-start,'errors':fresh_errors,'user_decisions':user_decisions,'mode':('hybrid_fixed_recommendation_real_extraction' if a.mode=='fixed' and scene['id']=='long_additive' else a.mode)}
     with (a.output/'turns.jsonl').open('a',encoding='utf-8') as f:f.write(json.dumps(row,ensure_ascii=False,default=str)+'\n')
     with (a.output/'actual-display.md').open('a',encoding='utf-8') as f:f.write('\n## '+scene['id']+' '+str(n+1)+'\n你> '+text+'\n```text\n'+view+'```\n')
     print(scene['id'],n+1,last['intake_status'],fresh_errors,flush=True);failed.extend(fresh_errors)
     if fresh_errors:break
-    if a.mode=='simulated' and (last['ready_for_design'] or paused):break
-   good=last and not failed and (last['ready_for_design'] or scene['terminal']=='pause' and paused or scene['terminal']=='blocked' and not last['ready_for_design'] and bool(last['blocking_issues']))
+    if a.mode=='simulated' and (last['ready_for_design'] or paused or scene['terminal']=='blocked' and n>=1 and any(i.get('kind')=='conflict' for i in last['blocking_issues'])):break
+   good=last and not failed and (last['ready_for_design'] or scene['terminal']=='pause' and paused and last['intake_status']=='paused' and last.get('next_question') is None or scene['terminal']=='blocked' and not last['ready_for_design'] and bool(last['blocking_issues']))
    if scene['id']=='long_additive' and a.mode=='fixed' and not metric_id:good=False;failed.append('未实际验证指标采用及保留')
    if good and last['ready_for_design']:
     child=subprocess.run([sys.executable,'-X','utf8',str(ROOT/'lapis.py'),'chat','--task-id',task],input='/show\n/exit\n',text=True,encoding='utf-8',capture_output=True,timeout=30)

@@ -1,0 +1,17 @@
+{
+  "scenarios": {
+    "beginner": {
+      "verdict": "infrastructure_error",
+      "reason": "第一轮产品接口ConnectionError，未形成对话；不作语义通过。"
+    },
+    "multisentence": {
+      "verdict": "product_failed",
+      "reason": "抽取schema缺少unknown，导致未知条件误判unclear；缺失粗研究目的持续追问。"
+    },
+    "multi_goal_edit": {
+      "verdict": "passed",
+      "reason": "分轮提出目标，新增导热，明确撤回强度，保留抗氧化与导热；完整核对确认并子进程恢复。"
+    }
+  },
+  "repairs": "Update允许unknown；澄清unknown/open/unclear；已知对象用途关注点生成待采用粗目的；停滞确认有限停止"
+}

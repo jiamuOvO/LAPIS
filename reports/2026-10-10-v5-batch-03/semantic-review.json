@@ -1,0 +1,13 @@
+{
+  "scenarios": {
+    "beginner": {
+      "verdict": "product_failed",
+      "reason": "确认，采用这版规约的明确批准被词法门槛拒绝。"
+    },
+    "multisentence": {
+      "verdict": "invalid_simulator_background_drift_with_product_issue",
+      "reason": "产品初轮未拆分已知基本用途；随后用户把背景里的已知用途改说未知。后续非原预设需求，不能算有效通过。"
+    }
+  },
+  "repairs": "允许明确确认后接逗号与不改变版本的重述；明确基本用途无需器件细分；模拟器不能随产品追问改变已知背景"
+}

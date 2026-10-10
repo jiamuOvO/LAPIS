@@ -100,9 +100,16 @@ def check_operations(state,text,extraction):
             labels=dict(zip(FIELDS,('研究目的','研究对象','应用场景','工作条件','目标性能','约束条件','研究范围','材料功能')))
             explicit=item.field in intent.target_refs and intent.quote.startswith(labels.get(item.field,'\0'))
             if not explicit:reason='回答操作不属于当前问题；跨字段编辑须有独立意图'
+        if item.field in FIELDS and item.field not in LIST_FIELDS:
+            existing=state['fields'][item.field]
+            if existing.get('status')=='specified' and item.status!='specified' and item.change_relation=='restatement':
+                reason='重述没有撤回既有研究内容；保持当前值'
         if item.field in LIST_FIELDS:
             current=state['fields'][item.field]
             existing=[e for e in current if e.get('status')=='specified']
+            name=item.target_value or item.value
+            if item.action=='remove' and intent and intent.kind=='edit' and name and name in item.quote and not any(name in (e.get('value') or '') or (e.get('value') and e['value'] in name) for e in current) and not any(e.get('id')==item.target_id if item.target_id else e.get('value')==name for e in current):
+                reason='当前列表没有该条目，未删除其他项'
             destructive=item.action in {'remove','replace'} or (item.action=='update' and any((e.get('id')==item.target_id or e.get('value')==item.target_value) and (item.status!='specified' or e.get('value')!=item.value) for e in existing))
             if destructive and existing:
                 if intent and intent.kind != 'edit':reason='该意图没有授权撤回或替换既有条目'
@@ -126,10 +133,12 @@ def prepare_summaries(state,operation_id):
     values=[g['value'] for g in goals if g.get('status')=='specified' and g.get('value')]
     if not values:return
     focus='、'.join(values)
-    summaries={'research_scope':obj['value']+'在'+app['value']+'中的'+focus+'研究；具体候选、条件与方法留待研究设计',
+    summaries={'purpose':'研究'+obj['value']+'在'+app['value']+'中的'+focus+'表现',
+               'research_scope':obj['value']+'在'+app['value']+'中的'+focus+'研究；具体候选、条件与方法留待研究设计',
                'material_function':'拟在'+app['value']+'中支持'+focus+'；效果尚待研究验证'}
     for field,value in summaries.items():
         current=f[field]
+        if field=='purpose' and current.get('value'):continue
         if current.get('source')=='system_suggestion' and current.get('suggestion_origin')=='context' and current.get('value')!=value:
             current={'status':'unknown'}
         if current.get('status') not in {'unknown','open'}:continue
