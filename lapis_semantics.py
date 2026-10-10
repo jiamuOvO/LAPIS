@@ -29,10 +29,12 @@ def runtime_fingerprint():
 
 def build_context(state,text):
     recent=[]
-    for row in state.get('_recent_turns',[])[-4:]:
+    rows=state.get('_recent_turns',[])[-4:]
+    for index,row in enumerate(rows):
         result=row.get('result') or {}
         view=result.get('view') or {}
-        recent.append({'operation_id':row.get('operation_id'),'user':row.get('input'),'assistant':view.get('text') or result.get('next_question'),'original_view':bool(view)})
+        latest=index==len(rows)-1
+        recent.append({'operation_id':row.get('operation_id'),'user':row.get('input'),'assistant':(view.get('text') or result.get('next_question')) if latest else result.get('next_question'),'original_view':bool(view) and latest})
     context = {'input':text,'original_intent':state['turns'][0] if state['turns'] else text,'fields':state['fields'],
             'issues':[i for i in state['issues'] if i.get('status')!='resolved'],'current_question':state.get('current_question'),
             'asked_field':state.get('asked_field'),'recent_dialogue':recent,'recommendations':state.get('recommendation_set'),
