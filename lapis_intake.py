@@ -409,7 +409,22 @@ def _merge(state, text, extraction, context=None):
 
 def _ground_actions(state, extraction):
     """Do not let model-expanded option text overwrite its catalog provenance."""
+    covered = []
+    rec = state.get("recommendation_set")
+    if "select" in extraction.actions and extraction.selection_mode == "full" and rec and extraction.selected_option and 1 <= extraction.selected_option <= len(rec["options"]):
+        proposed = rec["options"][extraction.selected_option - 1]["fields"]
+        retained = []
+        for item in extraction.updates:
+            values = proposed.get(item.field)
+            values = values if isinstance(values, list) else [values]
+            same = item.action != "remove" and item.value is not None and any(isinstance(v,dict) and item.value == v.get("value") and item.status == v.get("status", "specified") and (item.field != "target_performance" or item.direction == v.get("direction")) and (item.field != "constraints" or item.strength == v.get("strength")) for v in values)
+            if same:
+                covered.append({"operation":item.model_dump(),"decision":"covered_by_adoption","reason":"字段随已选提案核对，保留提案来源，不另作为用户原话"})
+            else:
+                retained.append(item)
+        extraction = extraction.model_copy(update={"updates":retained})
     extraction, decisions = check_operations(state, state.get("_input_text", ""), extraction)
+    decisions = covered + decisions
     state["_operation_decisions"] = decisions
     state["_intents"] = extraction.intents
     rec = state.get("recommendation_set")
@@ -708,8 +723,8 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
             state["clarification_question"] = {"draft_id":state["draft_id"], "field":extraction.clarification_field, "question":result["next_question"]}
         if "progress" in extraction.actions:
             result = _result(state, changed, notice="确认规约后才进入研究设计，当前没有授权计算。" if not request_issues(make_draft(state)) else None)
-        if "confirm" in extraction.actions and not changed and not action_notice and not (set(extraction.actions) & {"select", "edit", "reaffirm"}) and not any(d["decision"] == "not_applied" for d in result["operation_decisions"]):
-            if re.search(r"(?:我)?(?:确认|同意)(?:这份|本版|当前|上述|以上)?(?:研究)?(?:规约|请求|意图)|^(?:我)?(?:确认|同意)(?!一下|下)", text):
+        if "confirm" in extraction.actions and not changed and not action_notice and "edit" not in extraction.actions and not any(d["decision"] == "not_applied" for d in state.get("_operation_decisions", [])):
+            if re.search(r"我(?:确认|同意)(?!一下|下)|(?:确认|同意)(?:这份|本版|当前|上述|以上)?(?:研究)?(?:规约|请求|意图)|^(?:确认|同意)(?!一下|下)", text):
                 result = _confirm(state, context)
             else:
                 result = _result(state, notice="请明确回复‘确认’以采用本版规约；进度询问没有新增确认。")

@@ -126,6 +126,14 @@ class SemanticTest(unittest.TestCase):
         result=self.send(state,text,e,result['input_context'])
         self.assertTrue(result['ready_for_design'])
 
+    def test_full_adoption_duplicate_field_keeps_source_without_false_rejection(self):
+        state=new_state();r=advice(state);o=state['recommendation_set']['options'][0];value=o['fields']['research_scope']['value'];text='我采用第一个方向'
+        e=Extraction(actions=['select'],selected_option=1,intents=[Intent(id='A',kind='adopt',quote=text,target_refs=[o['id']])],updates=[Update(field='research_scope',status='specified',value=value,quote=text,intent_ref='A',basis_refs=[o['id']])])
+        result=self.send(state,text,e,r['input_context'])
+        self.assertEqual(state['fields']['research_scope']['source'],'confirmed_suggestion')
+        self.assertFalse(any(d['decision']=='not_applied' for d in result['operation_decisions']))
+        self.assertTrue(any(d['decision']=='covered_by_adoption' for d in result['operation_decisions']))
+
     def test_coarse_purpose_can_be_reviewed_without_choosing_a_paradigm(self):
         state=new_state();text='电解液用于储能电池，关注传输，条件还不知道'
         e=Extraction(domain='materials_application',domain_quote='用于储能电池',updates=[Update(field='research_object',status='specified',value='电解液',quote='电解液'),Update(field='application',status='specified',value='储能电池',quote='用于储能电池'),Update(field='target_performance',status='specified',value='传输',direction='考察',quote='关注传输'),Update(field='work_conditions',status='unknown',quote='条件还不知道')])
@@ -139,7 +147,7 @@ class SemanticTest(unittest.TestCase):
 
     def test_explicit_confirmation_with_unchanged_restatement_is_accepted(self):
         state,r=self.base();value=state['fields']['purpose']['value'];text='确认，采用这版规约；已有目标和约束不变。'
-        e=Extraction(actions=['confirm','inform'],intents=[Intent(id='I',kind='confirm',quote=text)],updates=[Update(field='purpose',status='specified',value=value,quote=text,change_relation='restatement')])
+        e=Extraction(actions=['confirm','inform','progress'],intents=[Intent(id='I',kind='confirm',quote=text)],updates=[Update(field='purpose',status='specified',value=value,quote=text,change_relation='restatement')])
         result=self.send(state,text,e,r['input_context'])
         self.assertTrue(result['ready_for_design']);self.assertTrue(result['confirmation_event'])
 

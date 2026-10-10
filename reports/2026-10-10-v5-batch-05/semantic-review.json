@@ -1,0 +1,17 @@
+{
+  "scenarios": {
+    "holdout_beginner": {
+      "verdict": "product_failed",
+      "reason": "确认与progress同轮时结果被替换，缺operation_decisions导致KeyError；事务回滚。"
+    },
+    "holdout_quotation": {
+      "verdict": "product_failed",
+      "reason": "完整采用时重复抽取提案字段被标成拒绝，造成无谓澄清；最终确认和progress再次KeyError。"
+    },
+    "holdout_unknown_delegate": {
+      "verdict": "budget_stopped",
+      "reason": "35次批次调用限额用尽，预请求停止由SDK包装为ConnectionError；有budget_stops证明，此例未形成产品回答。"
+    }
+  },
+  "repairs": "确认判断使用已保存操作决定；采用覆盖的重复抽取标covered_by_adoption并保留提案来源；明确我确认可在句中；真正edit仍需核对"
+}
