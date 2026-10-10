@@ -1,0 +1,453 @@
+[
+  {
+    "scenario": "holdout-pause",
+    "verdict": "passed",
+    "kind": "saved_real_extraction_in_memory_replay_guidance_stubbed",
+    "new_model_calls": 0,
+    "input": "我先只关心导热这一项，其他条件和方法都还没定。这个摘要里“承担散热功能”只是我的设想，不能当成已经证实。先暂停，我再想想。",
+    "source_task_id": "93bd39a2-4824-40ad-98c9-84a15ba4fd5e",
+    "result_status": "paused",
+    "fields": {
+      "purpose": {
+        "turn": 1,
+        "quote": "先想确认一下它的导热性能大概是什么水平",
+        "value": "确认氧化铝陶瓷的导热性能水平",
+        "source": "user",
+        "status": "specified"
+      },
+      "application": {
+        "turn": 1,
+        "quote": "做散热件",
+        "value": "散热件",
+        "source": "user",
+        "status": "specified"
+      },
+      "constraints": [
+        {
+          "id": "constraints-unknown",
+          "turn": null,
+          "quote": null,
+          "value": null,
+          "source": null,
+          "status": "unknown"
+        }
+      ],
+      "research_scope": {
+        "turn": null,
+        "quote": null,
+        "value": "氧化铝陶瓷在散热件中的导热性能水平研究；具体候选、条件与方法留待研究设计",
+        "source": "system_suggestion",
+        "status": "specified",
+        "basis_refs": [
+          "research_object",
+          "application",
+          "target_performance-54e8025107"
+        ],
+        "source_refs": [],
+        "evidence_status": "unverified",
+        "suggestion_origin": "context",
+        "recommendation_ref": {
+          "id": "summary-17e4a45c-2baf-428c-8a81-42e6d330f685",
+          "version": 1,
+          "direction_id": "summary-17e4a45c-2baf-428c-8a81-42e6d330f685-1"
+        }
+      },
+      "research_object": {
+        "turn": 1,
+        "quote": "氧化铝陶瓷",
+        "value": "氧化铝陶瓷",
+        "source": "user",
+        "status": "specified"
+      },
+      "work_conditions": {
+        "status": "open",
+        "value": null,
+        "quote": "其他条件和方法都还没定",
+        "source": "user",
+        "turn": 2,
+        "basis_refs": [
+          "work_conditions"
+        ]
+      },
+      "material_function": {
+        "status": "specified",
+        "value": "承担散热功能（用户设想，未证实）",
+        "quote": "这个摘要里“承担散热功能”只是我的设想，不能当成已经证实",
+        "source": "user",
+        "turn": 2,
+        "basis_refs": [
+          "material_function"
+        ]
+      },
+      "target_performance": [
+        {
+          "id": "target_performance-54e8025107",
+          "turn": 1,
+          "quote": "导热性能大概是什么水平",
+          "value": "导热性能水平",
+          "source": "user",
+          "status": "specified",
+          "direction": "确认导热性能水平"
+        }
+      ]
+    },
+    "decisions": [
+      {
+        "operation": {
+          "field": "target_performance",
+          "status": "specified",
+          "value": "导热性能水平",
+          "quote": "我先只关心导热这一项",
+          "action": "update",
+          "intent_ref": "intent-1",
+          "basis_refs": [
+            "target_performance-54e8025107"
+          ],
+          "scope_mode": "unspecified",
+          "change_relation": "refinement",
+          "target_id": "target_performance-54e8025107",
+          "target_value": "导热性能水平",
+          "direction": "确认导热性能水平",
+          "strength": null,
+          "category": null,
+          "predicate": null,
+          "temperatures": []
+        },
+        "decision": "accepted"
+      },
+      {
+        "operation": {
+          "field": "work_conditions",
+          "status": "open",
+          "value": null,
+          "quote": "其他条件和方法都还没定",
+          "action": "update",
+          "intent_ref": "intent-2",
+          "basis_refs": [
+            "work_conditions"
+          ],
+          "scope_mode": "unspecified",
+          "change_relation": "refinement",
+          "target_id": null,
+          "target_value": null,
+          "direction": null,
+          "strength": null,
+          "category": null,
+          "predicate": null,
+          "temperatures": []
+        },
+        "decision": "accepted"
+      },
+      {
+        "operation": {
+          "field": "material_function",
+          "status": "specified",
+          "value": "承担散热功能（用户设想，未证实）",
+          "quote": "这个摘要里“承担散热功能”只是我的设想，不能当成已经证实",
+          "action": "update",
+          "intent_ref": "intent-3",
+          "basis_refs": [
+            "material_function"
+          ],
+          "scope_mode": "unspecified",
+          "change_relation": "refinement",
+          "target_id": null,
+          "target_value": null,
+          "direction": null,
+          "strength": null,
+          "category": null,
+          "predicate": null,
+          "temperatures": []
+        },
+        "decision": "accepted"
+      }
+    ]
+  },
+  {
+    "scenario": "simulated-beginner-final",
+    "verdict": "passed",
+    "kind": "saved_real_extraction_in_memory_replay_guidance_stubbed",
+    "new_model_calls": 0,
+    "input": "谢谢推荐。我对润滑与耐磨添加剂这个方向比较感兴趣，想先了解氮化硼在这方面的功能定位。不过我不确定它具体适合什么摩擦条件，这些性能也还没被证实吧？",
+    "source_task_id": "569dee3d-5584-42cf-b4ec-72389d68d08a",
+    "result_status": "needs_clarification",
+    "fields": {
+      "purpose": {
+        "status": "specified",
+        "value": "探索氮化硼在润滑与耐磨场景中的功能定位",
+        "quote": null,
+        "source": "system_suggestion",
+        "turn": null,
+        "basis_refs": [
+          "8ce2203e-b672-4f1f-8de1-84d5bcac1696-option-2"
+        ],
+        "suggestion_origin": "model",
+        "evidence_status": "unverified",
+        "recommendation_ref": {
+          "id": "8ce2203e-b672-4f1f-8de1-84d5bcac1696",
+          "version": 1,
+          "direction_id": "8ce2203e-b672-4f1f-8de1-84d5bcac1696-option-2"
+        },
+        "source_refs": []
+      },
+      "application": {
+        "turn": 1,
+        "quote": "能给我推荐一下它常见的用途或功能方向吗？",
+        "value": null,
+        "source": "user",
+        "status": "open"
+      },
+      "constraints": [
+        {
+          "id": "constraints-unknown",
+          "turn": null,
+          "quote": null,
+          "value": null,
+          "source": null,
+          "status": "unknown"
+        }
+      ],
+      "research_scope": {
+        "turn": null,
+        "quote": null,
+        "value": null,
+        "source": null,
+        "status": "unknown"
+      },
+      "research_object": {
+        "turn": 1,
+        "quote": "氮化硼这个材料",
+        "value": "氮化硼",
+        "source": "user",
+        "status": "specified"
+      },
+      "work_conditions": {
+        "status": "open",
+        "value": null,
+        "quote": "我不确定它具体适合什么摩擦条件",
+        "source": "user",
+        "turn": 2
+      },
+      "material_function": {
+        "status": "specified",
+        "value": "承担减摩与抗磨功能",
+        "quote": null,
+        "source": "system_suggestion",
+        "turn": null,
+        "basis_refs": [
+          "8ce2203e-b672-4f1f-8de1-84d5bcac1696-option-2"
+        ],
+        "suggestion_origin": "model",
+        "evidence_status": "unverified",
+        "recommendation_ref": {
+          "id": "8ce2203e-b672-4f1f-8de1-84d5bcac1696",
+          "version": 1,
+          "direction_id": "8ce2203e-b672-4f1f-8de1-84d5bcac1696-option-2"
+        },
+        "source_refs": []
+      },
+      "target_performance": [
+        {
+          "status": "specified",
+          "value": "摩擦系数",
+          "quote": null,
+          "source": "system_suggestion",
+          "turn": null,
+          "id": "target_performance-5fefdf6353",
+          "direction": "考察",
+          "basis_refs": [
+            "8ce2203e-b672-4f1f-8de1-84d5bcac1696-option-2"
+          ],
+          "suggestion_origin": "model",
+          "evidence_status": "unverified",
+          "recommendation_ref": {
+            "id": "8ce2203e-b672-4f1f-8de1-84d5bcac1696",
+            "version": 1,
+            "direction_id": "8ce2203e-b672-4f1f-8de1-84d5bcac1696-option-2"
+          },
+          "source_refs": []
+        },
+        {
+          "status": "specified",
+          "value": "耐磨性能",
+          "quote": null,
+          "source": "system_suggestion",
+          "turn": null,
+          "id": "target_performance-31ea29521a",
+          "direction": "考察",
+          "basis_refs": [
+            "8ce2203e-b672-4f1f-8de1-84d5bcac1696-option-2"
+          ],
+          "suggestion_origin": "model",
+          "evidence_status": "unverified",
+          "recommendation_ref": {
+            "id": "8ce2203e-b672-4f1f-8de1-84d5bcac1696",
+            "version": 1,
+            "direction_id": "8ce2203e-b672-4f1f-8de1-84d5bcac1696-option-2"
+          },
+          "source_refs": []
+        }
+      ]
+    },
+    "decisions": [
+      {
+        "operation": {
+          "field": "purpose",
+          "status": "specified",
+          "value": "探索氮化硼在润滑与耐磨场景中的功能定位",
+          "quote": "我对润滑与耐磨添加剂这个方向比较感兴趣，想先了解氮化硼在这方面的功能定位",
+          "action": "update",
+          "intent_ref": "intent-1",
+          "basis_refs": [
+            "8ce2203e-b672-4f1f-8de1-84d5bcac1696-option-2"
+          ],
+          "scope_mode": "unspecified",
+          "change_relation": "refinement",
+          "target_id": null,
+          "target_value": null,
+          "direction": null,
+          "strength": null,
+          "category": null,
+          "predicate": null,
+          "temperatures": []
+        },
+        "decision": "accepted"
+      },
+      {
+        "operation": {
+          "field": "application",
+          "status": "specified",
+          "value": "固体润滑剂、润滑油/脂添加剂、耐磨涂层",
+          "quote": "我对润滑与耐磨添加剂这个方向比较感兴趣",
+          "action": "update",
+          "intent_ref": "intent-1",
+          "basis_refs": [
+            "8ce2203e-b672-4f1f-8de1-84d5bcac1696-option-2"
+          ],
+          "scope_mode": "unspecified",
+          "change_relation": "refinement",
+          "target_id": null,
+          "target_value": null,
+          "direction": null,
+          "strength": null,
+          "category": null,
+          "predicate": null,
+          "temperatures": []
+        },
+        "decision": "not_applied",
+        "reason": "这项来自提案，尚未见到你对该用途、条件或范围的明确选择"
+      },
+      {
+        "operation": {
+          "field": "material_function",
+          "status": "specified",
+          "value": "承担减摩与抗磨功能",
+          "quote": "想先了解氮化硼在这方面的功能定位",
+          "action": "update",
+          "intent_ref": "intent-2",
+          "basis_refs": [
+            "8ce2203e-b672-4f1f-8de1-84d5bcac1696-option-2"
+          ],
+          "scope_mode": "unspecified",
+          "change_relation": "refinement",
+          "target_id": null,
+          "target_value": null,
+          "direction": null,
+          "strength": null,
+          "category": null,
+          "predicate": null,
+          "temperatures": []
+        },
+        "decision": "accepted"
+      },
+      {
+        "operation": {
+          "field": "target_performance",
+          "status": "specified",
+          "value": "摩擦系数",
+          "quote": "我对润滑与耐磨添加剂这个方向比较感兴趣",
+          "action": "add",
+          "intent_ref": "intent-1",
+          "basis_refs": [
+            "8ce2203e-b672-4f1f-8de1-84d5bcac1696-option-2"
+          ],
+          "scope_mode": "unspecified",
+          "change_relation": "refinement",
+          "target_id": null,
+          "target_value": null,
+          "direction": "考察",
+          "strength": null,
+          "category": null,
+          "predicate": null,
+          "temperatures": []
+        },
+        "decision": "accepted"
+      },
+      {
+        "operation": {
+          "field": "target_performance",
+          "status": "specified",
+          "value": "耐磨性能",
+          "quote": "我对润滑与耐磨添加剂这个方向比较感兴趣",
+          "action": "add",
+          "intent_ref": "intent-1",
+          "basis_refs": [
+            "8ce2203e-b672-4f1f-8de1-84d5bcac1696-option-2"
+          ],
+          "scope_mode": "unspecified",
+          "change_relation": "refinement",
+          "target_id": null,
+          "target_value": null,
+          "direction": "考察",
+          "strength": null,
+          "category": null,
+          "predicate": null,
+          "temperatures": []
+        },
+        "decision": "accepted"
+      },
+      {
+        "operation": {
+          "field": "work_conditions",
+          "status": "open",
+          "value": null,
+          "quote": "我不确定它具体适合什么摩擦条件",
+          "action": "update",
+          "intent_ref": "intent-3",
+          "basis_refs": [],
+          "scope_mode": "unspecified",
+          "change_relation": "refinement",
+          "target_id": null,
+          "target_value": null,
+          "direction": null,
+          "strength": null,
+          "category": null,
+          "predicate": null,
+          "temperatures": []
+        },
+        "decision": "accepted"
+      },
+      {
+        "operation": {
+          "field": "reference_note",
+          "status": "specified",
+          "value": "用户询问氮化硼在润滑与耐磨方面的性能是否已被证实，当前提案中相关性能尚未核验。",
+          "quote": "这些性能也还没被证实吧？",
+          "action": "add",
+          "intent_ref": "intent-4",
+          "basis_refs": [],
+          "scope_mode": "unspecified",
+          "change_relation": "unspecified",
+          "target_id": null,
+          "target_value": null,
+          "direction": null,
+          "strength": null,
+          "category": "other",
+          "predicate": null,
+          "temperatures": []
+        },
+        "decision": "accepted"
+      }
+    ]
+  }
+]

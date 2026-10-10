@@ -1,0 +1,96 @@
+{
+  "run_id": "d0463de8-08c7-4c4e-a4c2-b2a8c8dba5ce",
+  "verdicts": [
+    {
+      "scenario": "beginner",
+      "verdict": "error",
+      "error_type": "InstructorRetryException",
+      "error": "<failed_attempts>\n\n<generation number=\"1\">\n<exception>\n    6 validation errors for Guidance\noptions.0.fields.target_performance.0\n  Value error, Specified field requires a value [type=value_error, input_value={'status': 'specified', '...合材料导热系数'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\noptions.0.fields.target_performance.1\n  Value error, S"
+    }
+  ],
+  "calls": [
+    {
+      "role": "simulated_user",
+      "seconds": 1.939515999998548,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 399,
+        "completion_tokens": 47,
+        "total_tokens": 446,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 399
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 2.4228326000011293,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 4069,
+        "completion_tokens": 464,
+        "total_tokens": 4533,
+        "prompt_tokens_details": {
+          "cached_tokens": 3456
+        },
+        "prompt_cache_hit_tokens": 3456,
+        "prompt_cache_miss_tokens": 613
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 6.123159100010525,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 2413,
+        "completion_tokens": 1431,
+        "total_tokens": 3844,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 2413
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 4.578235700013465,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 4285,
+        "completion_tokens": 1431,
+        "total_tokens": 5716,
+        "prompt_tokens_details": {
+          "cached_tokens": 3840
+        },
+        "prompt_cache_hit_tokens": 3840,
+        "prompt_cache_miss_tokens": 445
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 4.679936099986662,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 6140,
+        "completion_tokens": 1431,
+        "total_tokens": 7571,
+        "prompt_tokens_details": {
+          "cached_tokens": 5632
+        },
+        "prompt_cache_hit_tokens": 5632,
+        "prompt_cache_miss_tokens": 508
+      },
+      "server_model": "deepseek-flash"
+    }
+  ],
+  "total_tokens": 22110,
+  "semantic_review": "requires_human_review",
+  "not_scientific_evidence": true
+}

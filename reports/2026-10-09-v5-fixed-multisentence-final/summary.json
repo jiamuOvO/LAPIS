@@ -1,0 +1,65 @@
+{
+  "run_id": "7fa9db8b-2bf2-4795-bc56-60c8dcdb9af0",
+  "verdicts": [
+    {
+      "scenario": "multisentence",
+      "task_id": "834086c3-6610-45c8-a8bd-4b310fcba376",
+      "verdict": "passed",
+      "errors": [],
+      "active_request_version": 1
+    }
+  ],
+  "calls": [
+    {
+      "role": "product",
+      "seconds": 3.738399499998195,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 4047,
+        "completion_tokens": 825,
+        "total_tokens": 4872,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 4047
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 2.3737561000016285,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 5100,
+        "completion_tokens": 477,
+        "total_tokens": 5577,
+        "prompt_tokens_details": {
+          "cached_tokens": 3456
+        },
+        "prompt_cache_hit_tokens": 3456,
+        "prompt_cache_miss_tokens": 1644
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 1.7071835000097053,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 5220,
+        "completion_tokens": 199,
+        "total_tokens": 5419,
+        "prompt_tokens_details": {
+          "cached_tokens": 3456
+        },
+        "prompt_cache_hit_tokens": 3456,
+        "prompt_cache_miss_tokens": 1764
+      },
+      "server_model": "deepseek-flash"
+    }
+  ],
+  "total_tokens": 15868,
+  "semantic_review": "requires_human_review",
+  "not_scientific_evidence": true
+}

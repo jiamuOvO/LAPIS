@@ -1,0 +1,81 @@
+{
+  "run_id": "71885b71-b50e-4918-9b8d-f1bd4ef86153",
+  "verdicts": [
+    {
+      "scenario": "holdout_pause_correct",
+      "task_id": "93bd39a2-4824-40ad-98c9-84a15ba4fd5e",
+      "verdict": "passed",
+      "errors": [],
+      "active_request_version": null
+    }
+  ],
+  "calls": [
+    {
+      "role": "simulated_user",
+      "seconds": 1.5057380000071134,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 400,
+        "completion_tokens": 46,
+        "total_tokens": 446,
+        "prompt_tokens_details": {
+          "cached_tokens": 128
+        },
+        "prompt_cache_hit_tokens": 128,
+        "prompt_cache_miss_tokens": 272
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 2.4001818999968236,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 4047,
+        "completion_tokens": 580,
+        "total_tokens": 4627,
+        "prompt_tokens_details": {
+          "cached_tokens": 3456
+        },
+        "prompt_cache_hit_tokens": 3456,
+        "prompt_cache_miss_tokens": 591
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "simulated_user",
+      "seconds": 1.2091014999896288,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 610,
+        "completion_tokens": 70,
+        "total_tokens": 680,
+        "prompt_tokens_details": {
+          "cached_tokens": 384
+        },
+        "prompt_cache_hit_tokens": 384,
+        "prompt_cache_miss_tokens": 226
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 3.1458898999990197,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 4916,
+        "completion_tokens": 665,
+        "total_tokens": 5581,
+        "prompt_tokens_details": {
+          "cached_tokens": 3456
+        },
+        "prompt_cache_hit_tokens": 3456,
+        "prompt_cache_miss_tokens": 1460
+      },
+      "server_model": "deepseek-flash"
+    }
+  ],
+  "total_tokens": 11334,
+  "semantic_review": "requires_human_review",
+  "not_scientific_evidence": true
+}

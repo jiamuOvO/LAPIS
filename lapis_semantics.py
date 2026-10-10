@@ -88,6 +88,9 @@ def check_operations(state,text,extraction):
                 suffix='；本轮无额外排除项' if item.scope_mode=='no_extra_exclusions' and '本轮无额外排除项' not in base else ''
                 item=item.model_copy(update={'value':base+suffix,'status':'specified','change_relation':'refinement','basis_refs':['research_object','application','research_scope']})
         reason=None;intent=intents.get(item.intent_ref)
+        from_proposal=any(ref in {o['id'] for o in rec.get('options',[])} for ref in item.basis_refs)
+        if from_proposal and item.field in {'research_object','application','research_scope','work_conditions','constraints'} and item.value and item.value not in item.quote and not (intent and intent.kind=='edit'):
+            reason='这项来自提案，尚未见到你对该用途、条件或范围的明确选择'
         if item.quote not in text:reason='原话片段不属于本轮'
         elif item.intent_ref and not intent:reason='意图引用不存在'
         elif any(ref not in refs for ref in item.basis_refs):reason='上下文依据不存在'
@@ -105,6 +108,8 @@ def check_operations(state,text,extraction):
                 if intent and intent.kind != 'edit':reason='该意图没有授权撤回或替换既有条目'
                 elif not intent and item.action=='replace' and not re.search(r'目标.*(?:只|仅|改为|替换)|只(?:比较|保留)|没有.*约束|不设置.*约束',item.quote):
                     reason='整体替换缺少明确修改依据'
+                if intent and item.action=='replace' and item.field not in intent.target_refs and not {e['id'] for e in existing}.issubset(set(intent.target_refs)):
+                    reason='整体替换没有明确指向当前完整字段'
                 if intent and item.action=='remove' and not (item.target_id in intent.target_refs or item.target_value in intent.target_refs):
                     reason='撤回没有对应的目标引用'
         if reason:

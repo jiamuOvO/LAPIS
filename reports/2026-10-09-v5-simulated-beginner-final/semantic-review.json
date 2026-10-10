@@ -1,0 +1,4 @@
+{
+  "verdict": "semantic_failed_and_incomplete",
+  "reason": "部分功能兴趣被扩为未经选择的完整用途且来源误标 user；第5轮请求未完成。ConnectionError原因不能确定为预算中止。已修复来源与部分选择，以保存抽取回放通过；未重新进行完整真实模型验收。"
+}

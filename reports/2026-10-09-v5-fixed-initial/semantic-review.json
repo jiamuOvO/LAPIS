@@ -1,0 +1,7 @@
+{
+  "review": "failed_semantic_review",
+  "original_program_verdict": "passed",
+  "reason": "turn 17 progress utterance incorrectly approved the request; final confirmation alone did not detect it",
+  "affected_scenario": "long_additive",
+  "also_observed": "scope/no-constraints replies rejected under complete-review question scope"
+}

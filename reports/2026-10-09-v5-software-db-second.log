@@ -1,0 +1,16 @@
+======================================================================
+FAIL: test_legacy_request_is_readable_but_cannot_enter_new_design (test_lapis_store.StoreGateTest.test_legacy_request_is_readable_but_cannot_enter_new_design)
+----------------------------------------------------------------------
+ValueError: 当前请求没有有效的当前规则确认版本，请先重新核对并确认
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_store.py", line 103, in test_legacy_request_is_readable_but_cannot_enter_new_design
+    with self.assertRaisesRegex(ValueError, "v4"):
+AssertionError: "v4" does not match "当前请求没有有效的当前规则确认版本，请先重新核对并确认"
+
+----------------------------------------------------------------------
+Ran 96 tests in 18.503s
+
+FAILED (failures=1)

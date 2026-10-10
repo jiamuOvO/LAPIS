@@ -27,10 +27,12 @@ USER_PROMPT="""你是材料研究软件的独立模拟用户，不是测试修�
 def main():
  p=argparse.ArgumentParser();p.add_argument('--mode',choices=['fixed','simulated'],required=True);p.add_argument('--scenarios',default='long_additive');p.add_argument('--set',choices=['development','holdout'],default='development');p.add_argument('--max-calls',type=int,default=60);p.add_argument('--max-tokens',type=int,default=400000);p.add_argument('--output',type=Path,required=True);a=p.parse_args()
  if os.getenv('LAPIS_TEST_PG')!='1' or os.getenv('LAPIS_DB_NAME')!='lapis_test':p.error('Requires isolated lapis_test')
- initialize_schema();run=str(uuid4());calls=[];current_role='product';tokens=0
+ initialize_schema();run=str(uuid4());calls=[];current_role='product';tokens=0;budget_stops=[]
  def before(request):
   reserve=len(request.content)+json.loads(request.content).get('max_tokens',2600)
-  if len(calls)>=a.max_calls or tokens+reserve>a.max_tokens:raise RuntimeError('Acceptance budget exhausted before request')
+  if len(calls)>=a.max_calls or tokens+reserve>a.max_tokens:
+   budget_stops.append({'role':current_role,'used_tokens':tokens,'reserved_tokens':reserve,'used_calls':len(calls)})
+   raise RuntimeError('Acceptance budget exhausted before request')
   calls.append({'role':current_role,'started':time.perf_counter()})
  def after(response):
   nonlocal tokens
@@ -119,7 +121,7 @@ def main():
    verdicts.append(error)
    with (a.output/'failures.jsonl').open('a',encoding='utf-8') as f:f.write(json.dumps(error,ensure_ascii=False)+'\n')
   with (a.output/'private-user-decisions.jsonl').open('a',encoding='utf-8') as f:f.write(json.dumps({'scenario':scene['id'],'background':scene['background'],'decisions':decisions},ensure_ascii=False)+'\n')
-  summary={'run_id':run,'verdicts':verdicts,'calls':calls,'total_tokens':tokens,'semantic_review':'requires_human_review','not_scientific_evidence':True}
+  summary={'run_id':run,'verdicts':verdicts,'calls':calls,'total_tokens':tokens,'budget_stops':budget_stops,'semantic_review':'requires_human_review','not_scientific_evidence':True}
   (a.output/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding='utf-8')
   if len(calls)>=a.max_calls or tokens>=a.max_tokens:break
  print(json.dumps(summary,ensure_ascii=False,default=str),flush=True)

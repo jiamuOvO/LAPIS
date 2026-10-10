@@ -1,0 +1,1 @@
+{"scenario": "beginner", "verdict": "error", "error_type": "InstructorRetryException", "error": "Connection error.", "failed_input": "规约我看了，方向和我选的一致。不过基体材料和气氛要求我确实还没想好，这两项先留待研究设计阶段再定吧。", "turn": 5, "task_id": "569dee3d-5584-42cf-b4ec-72389d68d08a"}

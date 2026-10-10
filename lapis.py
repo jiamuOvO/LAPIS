@@ -97,7 +97,7 @@ def field_text(field, value):
             if entry.get("direction") != entry.get("value"):
                 text += "（" + (entry.get("direction") or "方向待澄清") + "）"
         if entry.get("source") == "system_suggestion":
-            text += "（待您采用的意图摘要）"
+            text += "（待您采用的意图摘要）" if entry.get("suggestion_origin")=="context" else "（待您采用的提案内容）"
         if entry.get("needs_review"):
             text += "（场景变化后需重新核对）"
         result.append(text)
@@ -155,7 +155,7 @@ def render_sources(result, detail=True, stream=None):
             displayed_notes.add(note_key)
             shown = True
             pending = any(e.get("source") == "system_suggestion" and (e.get("recommendation_ref") or {}).get("direction_id") == direction for v in request.get("fields", {}).values() for e in (v if isinstance(v,list) else [v]))
-            print(("待核对摘要：" if pending else "已采用提案：") + str(detail.get("label", "")))
+            print(("待核对提案：" if pending else "已采用提案：") + str(detail.get("label", "")))
             for key, label in (("assumptions", "假设"), ("limitations", "限制"), ("clarifications", "待研究设计核查")):
                 if detail.get(key):
                     print(label + "：" + ("；".join(detail[key]) if detail_view else "；".join(short_text(x, 85) for x in detail[key][:2])))

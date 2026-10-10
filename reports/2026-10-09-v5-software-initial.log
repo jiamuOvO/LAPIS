@@ -1,0 +1,12 @@
+======================================================================
+FAIL: test_show_receipt_can_confirm_current_complete_guidance_but_not_old_version (test_lapis_review.ReviewTest.test_show_receipt_can_confirm_current_complete_guidance_but_not_old_version)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_review.py", line 145, in test_show_receipt_can_confirm_current_complete_guidance_but_not_old_version
+    self.assertFalse(handle_turn(None,'test',state,'确认',context)['ready_for_design'])
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 62 tests in 0.426s
+
+FAILED (failures=1, skipped=3)

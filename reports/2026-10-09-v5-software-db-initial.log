@@ -1,0 +1,40 @@
+======================================================================
+FAIL: test_legacy_request_is_readable_but_cannot_enter_new_design (test_lapis_store.StoreGateTest.test_legacy_request_is_readable_but_cannot_enter_new_design)
+----------------------------------------------------------------------
+ValueError: 当前请求没有有效的当前规则确认版本，请先重新核对并确认
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_store.py", line 103, in test_legacy_request_is_readable_but_cannot_enter_new_design
+    with self.assertRaisesRegex(ValueError, "v4"):
+AssertionError: "v4" does not match "当前请求没有有效的当前规则确认版本，请先重新核对并确认"
+
+======================================================================
+FAIL: test_edit_revokes_active_version_and_old_records_remain_readable (test_lapis_v3_contract.V3StoreTest.test_edit_revokes_active_version_and_old_records_remain_readable)
+----------------------------------------------------------------------
+ValueError: 当前请求没有有效的当前规则确认版本，请先重新核对并确认
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_v3_contract.py", line 72, in test_edit_revokes_active_version_and_old_records_remain_readable
+    with self.assertRaisesRegex(ValueError, "v4"):
+AssertionError: "v4" does not match "当前请求没有有效的当前规则确认版本，请先重新核对并确认"
+
+======================================================================
+FAIL: test_stale_design_cannot_be_approved_or_frozen_after_edit (test_lapis_v3_contract.V3StoreTest.test_stale_design_cannot_be_approved_or_frozen_after_edit)
+----------------------------------------------------------------------
+ValueError: 当前请求没有有效的当前规则确认版本，请先重新核对并确认
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_v3_contract.py", line 89, in test_stale_design_cannot_be_approved_or_frozen_after_edit
+    with self.assertRaisesRegex(ValueError, "v4"):
+AssertionError: "v4" does not match "当前请求没有有效的当前规则确认版本，请先重新核对并确认"
+
+----------------------------------------------------------------------
+Ran 84 tests in 18.864s
+
+FAILED (failures=3)

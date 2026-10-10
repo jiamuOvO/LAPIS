@@ -125,7 +125,7 @@ class IntakeSuggestion(BaseModel):
     limitation: str
 
 
-SYSTEM_PROMPT = """你是 LAPIS 第一模块的结构化语义解释器。一次调用输出简短可检查的理解、意图和拟修改，禁止隐藏思维链、虚构科学事实。一句话可以同时明确对象、用途和目标；务必分拆隐含但清楚的使用背景，不只把整个短语塞进研究对象后再问用户已说过的用途。明确命名其他字段是独立inform/edit，不要绑到正在回答的另一问题。固定八项：purpose研究行动/判断，research_object材料类别/体系，application基本用途，work_conditions条件，target_performance关注点和方向，constraints硬约束/偏好，research_scope本轮边界，material_function拟承担作用。
+SYSTEM_PROMPT = """你是 LAPIS 第一模块的结构化语义解释器。一次调用输出简短可检查的理解、意图和拟修改，只输出语义结论和引用，不输出推理过程、不虚构科学事实。一句话可以同时明确对象、用途和目标；务必分拆隐含但清楚的使用背景，不只把整个短语塞进研究对象后再问用户已说过的用途。明确命名其他字段是独立inform/edit，不要绑到正在回答的另一问题。固定八项：purpose研究行动/判断，research_object材料类别/体系，application基本用途，work_conditions条件，target_performance关注点和方向，constraints硬约束/偏好，research_scope本轮边界，material_function拟承担作用。
 所有原话quote必须来自本轮连续片段。上下文用于解释省略，不冒充原话。intents每条有id/kind/quote；回答必须以question_ref指向current_question.id；修改指向target_refs。updates逐条intent_ref，引用当前条目ID或字段作为basis_refs。不重复输出未修改字段。
 kind:answer回答当前问题；inform新信息；edit主动修改/撤回；adopt采用提案；reject拒绝；quote引用原提案；delegate委托建议；progress查询下一步；confirm明确批准；pause暂停。用户混合编辑可以有多条意图；回答某字段不能改另一个字段，独立主动编辑须另列意图。actions维持inform/edit/select/recommend/explain/unsure/reaffirm/reject/progress/confirm/pause/quote/delegate调用分工。
 “比较吧”回答目标方向时，更新现有目标direction，不改value，不删除具体指标；也可独立明确研究目的但不要再重复追问已知目标。研究/考察/探索本身是合法目的，无需强选筛选或比较。定性关注点可以进入研究设计，无需具体指标、公式、单位、模型或计算路线。
@@ -238,7 +238,7 @@ def _touch(state, before):
     return changed
 
 
-def _record(item, turn, id=None):
+def _record(item, turn, id=None, state=None):
     entry = {"status": item.status, "value": item.value, "quote": item.quote, "source": "user", "turn": turn}
     if id:
         entry["id"] = id
@@ -252,7 +252,21 @@ def _record(item, turn, id=None):
         entry["basis_refs"] = list(item.basis_refs)
     if item.temperatures:
         entry["temperatures"] = [x.model_dump() for x in item.temperatures]
+    if state and item.status == "specified":
+        rec=state.get("recommendation_set") or {}
+        option=next((o for o in rec.get("options",[]) if o["id"] in item.basis_refs),None)
+        if option and not any(i.id == item.intent_ref and i.kind == "edit" for i in state.get("_intents",[])) and item.value is not None and item.value not in item.quote:
+            _remember_proposal(state,rec,option)
+            entry.update(source="system_suggestion",quote=None,turn=None,suggestion_origin=option.get("suggestion_origin","model"),evidence_status=option.get("evidence_status","unverified"),recommendation_ref={"id":rec["id"],"version":rec["version"],"direction_id":option["id"]},source_refs=list(option.get("source_refs",[])))
+            if not any(h.get("direction_id")==option["id"] and h.get("status") in {"accepted","focused"} for h in state["recommendation_history"]):
+                state["recommendation_history"].append({"set_id":rec["id"],"version":rec["version"],"direction_id":option["id"],"status":"focused","quote":state["turns"][-1]})
     return entry
+
+
+def _remember_proposal(state,rec,option):
+    state["sources"].update(deepcopy(rec.get("sources",{})))
+    record=state["proposals"].setdefault(rec["id"],{"version":rec["version"],"draft_id":rec["draft_id"],"generation":deepcopy(rec.get("generation",{"origin":"catalogue"})),"direction_ids":[o["id"] for o in rec["options"]],"content_sha256":content_hash(rec),"review":{}})
+    record["review"][option["id"]]={key:deepcopy(option.get(key,[])) for key in ("label","reason","assumptions","limitations","clarifications","source_refs")}
 
 
 def _same(a, b):
@@ -294,7 +308,7 @@ def _merge(state, text, extraction, context=None):
             current = state["fields"][field]
         before = deepcopy(current)
         if field in SCALAR_FIELDS:
-            entry = _record(items[-1], turn)
+            entry = _record(items[-1], turn, state=state)
             if not _same(current, entry):
                 state["fields"][field] = entry
         else:
@@ -331,7 +345,7 @@ def _merge(state, text, extraction, context=None):
                     _edit_issue(state, field, "没有找到要更新的项，请选择条目或明确新增。", item.quote)
                     continue
                 id = matches[0].get("id") if matches else field + "-" + uuid4().hex[:10]
-                entry = _record(item, turn, id)
+                entry = _record(item, turn, id, state)
                 if item.action == "update" and matches and item.status == "specified":
                     for key in ("value", "direction", "strength", "predicate", "temperatures"):
                         if entry.get(key) is None and key in matches[0]:
@@ -397,6 +411,7 @@ def _ground_actions(state, extraction):
     """Do not let model-expanded option text overwrite its catalog provenance."""
     extraction, decisions = check_operations(state, state.get("_input_text", ""), extraction)
     state["_operation_decisions"] = decisions
+    state["_intents"] = extraction.intents
     rec = state.get("recommendation_set")
     adopted = {}
     if "select" in extraction.actions and extraction.selection_mode == "full" and rec and extraction.selected_option and 1 <= extraction.selected_option <= len(rec["options"]):
@@ -464,11 +479,7 @@ def _select(state, extraction, text, context):
             for entry in state["fields"][field] if isinstance(state["fields"][field], list) else [state["fields"][field]]:
                 if entry.get("status") == "specified":
                     entry["needs_review"] = True
-    state["proposals"][rec["id"]] = {"version": rec["version"], "draft_id": rec["draft_id"],
-        "generation": deepcopy(rec.get("generation", {"origin": "catalogue"})),
-        "direction_ids": [o["id"] for o in rec["options"]], "content_sha256": content_hash(rec),
-        "review": {option["id"]: {key: deepcopy(option.get(key, [])) for key in
-                   ("label", "reason", "assumptions", "limitations", "clarifications", "source_refs")}}}
+    _remember_proposal(state,rec,option)
     state["sources"].update(deepcopy(rec["sources"]))
     for field, value in option["fields"].items():
         before = deepcopy(state["fields"][field])
@@ -662,13 +673,15 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
         changed = _touch(state, before)
         guide = bool(set(extraction.actions) & {"recommend", "explain", "unsure", "reject", "delegate"})
         state["guidance_mode"] = extraction.guidance_mode
-        if guide and any(h.get("status") == "accepted" for h in state["recommendation_history"]) and extraction.guidance_mode != "new_direction":
+        if guide and any(h.get("status") in {"accepted","focused"} for h in state["recommendation_history"]) and extraction.guidance_mode != "new_direction":
             open_issues = request_issues(make_draft(state))
             if open_issues:
                 state["asked_field"] = open_issues[0]["field"]
             else:
                 guide = False
                 notice = "已有方向已保留；当前可以核对规约。若要换方向，请明确说明。"
+        if "pause" in extraction.actions:
+            guide = False
         generated = generate_recommendations(client, model, state, text, operation_id) if guide and state["domain"] not in {"drug_discovery", "non_research"} else None
         result = _result(state, changed, guide, text, notice, generated)
         result["interpretation"] = state.get("_raw_interpretation", extraction.model_dump())

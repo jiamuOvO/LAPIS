@@ -96,7 +96,7 @@ def generate_recommendations(client, model, state, text, operation_id=None):
     except FileNotFoundError:
         reference = None
     references = reference["sources"] if reference else {}
-    focus = state.get("asked_field") if any(h.get("status")=="accepted" for h in state.get("recommendation_history",[])) and state.get("guidance_mode") != "new_direction" else None
+    focus = state.get("asked_field") if any(h.get("status") in {"accepted","focused"} for h in state.get("recommendation_history",[])) and state.get("guidance_mode") != "new_direction" else None
     context = {"focus_field": focus, "input": text, "fields": state["fields"], "domain": state["domain"],
                "issues": state["issues"], "asked_field": state["asked_field"],
                "current_options": (state.get("recommendation_set") or {}).get("options", []),

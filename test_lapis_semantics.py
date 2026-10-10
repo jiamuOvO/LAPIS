@@ -92,9 +92,22 @@ class SemanticTest(unittest.TestCase):
         r=self.send(state,'研究传输',Extraction(updates=[Update(field='purpose',status='specified',value='研究传输',quote='研究传输')]),old)
         self.assertFalse(handle_turn(None,'test',state,'确认',old)['ready_for_design'])
 
+    def test_proposal_derived_context_and_goals_keep_their_source(self):
+        state=new_state();r=advice(state);option=state['recommendation_set']['options'][0];ref=option['id']
+        text='对这个功能有兴趣'
+        e=Extraction(intents=[Intent(id='I',kind='inform',quote=text)],updates=[Update(field='application',intent_ref='I',status='specified',value='所有提案用途',quote=text,basis_refs=[ref]),Update(field='target_performance',intent_ref='I',status='specified',value='热传导',direction='考察',quote=text,basis_refs=[ref])])
+        result=self.send(state,text,e,r['input_context'])
+        self.assertEqual(state['fields']['application']['status'],'unknown')
+        self.assertEqual(state['fields']['target_performance'][0]['source'],'system_suggestion')
+        self.assertEqual(state['fields']['target_performance'][0]['recommendation_ref']['direction_id'],ref)
+        self.assertTrue(any(h['status']=='focused' for h in state['recommendation_history']))
+        self.assertTrue(any(d['decision']=='not_applied' for d in result['operation_decisions']))
+
     def test_pause_is_acknowledged_without_confirmation(self):
         state,r=self.base()
-        result=self.send(state,'先暂停',Extraction(actions=['pause']),r['input_context'])
+        with patch('lapis_intake.generate_recommendations') as generated:
+            result=self.send(state,'先暂停',Extraction(actions=['explain','pause']),r['input_context'])
+            generated.assert_not_called()
         self.assertEqual(result['intake_status'],'paused');self.assertIsNone(result['next_question'])
         self.assertFalse(result['ready_for_design'])
 
