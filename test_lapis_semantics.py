@@ -134,6 +134,14 @@ class SemanticTest(unittest.TestCase):
         self.assertFalse(any(d['decision']=='not_applied' for d in result['operation_decisions']))
         self.assertTrue(any(d['decision']=='covered_by_adoption' for d in result['operation_decisions']))
 
+    def test_unknown_detail_update_cannot_create_stuck_goal_issue(self):
+        state,r=self.base();before=deepcopy(state['fields']['target_performance']);text='详细指标还不知道'
+        e=Extraction(intents=[Intent(id='I',kind='inform',quote=text)],updates=[Update(field='target_performance',status='unknown',quote=text,action='update',intent_ref='I')])
+        result=self.send(state,text,e,r['input_context'])
+        self.assertEqual(state['fields']['target_performance'],before)
+        self.assertFalse(result['blocking_issues'])
+        self.assertEqual(result['operation_decisions'][0]['decision'],'not_applied')
+
     def test_coarse_purpose_can_be_reviewed_without_choosing_a_paradigm(self):
         state=new_state();text='电解液用于储能电池，关注传输，条件还不知道'
         e=Extraction(domain='materials_application',domain_quote='用于储能电池',updates=[Update(field='research_object',status='specified',value='电解液',quote='电解液'),Update(field='application',status='specified',value='储能电池',quote='用于储能电池'),Update(field='target_performance',status='specified',value='传输',direction='考察',quote='关注传输'),Update(field='work_conditions',status='unknown',quote='条件还不知道')])

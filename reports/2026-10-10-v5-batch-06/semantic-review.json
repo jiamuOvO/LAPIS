@@ -1,0 +1,18 @@
+{
+  "scenarios": {
+    "holdout_beginner": {
+      "verdict": "completed_with_product_defect",
+      "reason": "独立用户完成确认及恢复，未丢目标/来源；但未知详细指标的更新被误写成永久歧义，靠用户纠正后恢复。已修复共享准入；不称无缺陷通过。"
+    },
+    "holdout_quotation": {
+      "verdict": "budget_stopped_with_product_defect",
+      "reason": "原文引用未写成约束，但后来详细指标未知触发澄清；批次30调用用尽，不能称完成。"
+    },
+    "holdout_unknown_delegate": {
+      "verdict": "not_executed",
+      "reason": "在批次调用上限停止，尚未开始该例。"
+    }
+  },
+  "repairs": "未定位既有目标的update被拒绝并保持已有目标，不新建永久歧义；细指标未知不覆盖粗关注点",
+  "raw_records_preserved": true
+}

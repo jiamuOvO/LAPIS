@@ -1,0 +1,1 @@
+{"scenario": "holdout_quotation", "verdict": "error", "error_type": "InstructorRetryException", "error": "Connection error.", "failed_input": "目标性能方面，我目前能确定的就是防潮相关的阻隔性能，具体想比较或改善到什么程度还没定，水蒸气透过率这类指标可以作为相对比较的参考，但不设具体数值目标。\n具体聚合物种类、厚度、温湿度条件、氧化物种类、沉积方法、膜厚、杂化体系、前驱体与工艺这些仍保持未知，不补造参数；“易加工”仍只作为偏好记录。", "turn": 7, "task_id": "d7192b90-928a-49b3-8682-840c5474672f"}

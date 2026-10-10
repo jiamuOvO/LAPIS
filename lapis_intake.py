@@ -136,7 +136,7 @@ quote区分复制拟研究/假设/限制与采用；原提案内容保持来源�
 selected_option按当前推荐序号/名称/功能定位。selection_mode=full只明确整个方向采用；partial仅局部。采用方向的字段来自提案，不提取成用户updates。拒绝/采用的引用必须来自当前展示版本；多个匹配问差别不能冒选。
 推荐初次方向可以完整；已采用后guidance_mode=fill_gap仅补当前缺口，用户明确换方向才new_direction。解释可explain。“可以下一步了吗”用progress，不自动confirm。确认伴真正内容修改先展示新版本；仅重述已展示的相同内容不算修改。粗研究目的已有值时，“筛选还是探索未定”不等于撤回研究目的；未知的是方法分类，保留现有目的。
 unknown没提供或本人尚不知道，none明确无预设，open交后续设计确定，unclear是已给内容存在两种互斥解释，绝不用于单纯缺信息。“具体条件不清楚/不知道”保持unknown；“条件待定/后续再说”用open，不能要求第一模块给数值单位。不能因为科学效果未核验把清楚意图标unclear。约束区分hard/preference；没有约束不自动撤回现有硬约束。性价比需要成本口径和性能关注点，不能保证最优。
-完整度：对象/基本用途/关注点清楚即可整理研究目的、粗范围和拟功能；候选/基体/条件/评价方法留研究设计。不要添加“必须明确指标/候选才能继续”的issue。独立矛盾、对象用途歧义和未同意扩大仍阻断。resolve_issue_ids只指已解决的问题；reaffirm_fields只对应明确重核，不由progress自动批准。
+完整度：对象/基本用途/关注点清楚即可整理研究目的、粗范围和拟功能；候选/基体/条件/评价方法留研究设计。用户说详细指标、阻隔对象或测试标准未知时，保留已经确定的粗关注点，不能把target_performance改为unknown/unclear，也不输出找不到目标的update。不要添加“必须明确指标/候选才能继续”的issue。独立矛盾、对象用途歧义和未同意扩大仍阻断。resolve_issue_ids只指已解决的问题；reaffirm_fields只对应明确重核，不由progress自动批准。
 温度temperatures数值单位来自原话，禁止混用℃/K；组分要求predicate保留否定。具体机制/方法/参数主动输入可reference_note未核验，引用提案不能变用户参考。
 domain按对象+用途+目的：materials_application材料用途；drug_discovery药物先导/药效/靶蛋白筛选首版不支持；basic_research无用途保持草稿；uncertain缺信息。不能凭单一材料词下领域结论。task_type只辅助，可other，不强加范式。
 clarification_field/question点名实际缺口并给一个能回答的问题；不索取已可后续设计的细节。输出固定JSON，不追加科学结果或文献。"""

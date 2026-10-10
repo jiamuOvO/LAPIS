@@ -108,6 +108,10 @@ def check_operations(state,text,extraction):
             current=state['fields'][item.field]
             existing=[e for e in current if e.get('status')=='specified']
             name=item.target_value or item.value
+            matched=any((item.target_id and e.get('id')==item.target_id) or (not item.target_id and name and e.get('value')==name) for e in current)
+            pending=[e for e in current if e.get('status') in {'unknown','unclear','open','none'}]
+            if item.action=='update' and not matched and len(pending)!=1:
+                reason='更新未定位现有条目，保留当前目标；请明确对应项或新增'
             if item.action=='remove' and intent and intent.kind=='edit' and name and name in item.quote and not any(name in (e.get('value') or '') or (e.get('value') and e['value'] in name) for e in current) and not any(e.get('id')==item.target_id if item.target_id else e.get('value')==name for e in current):
                 reason='当前列表没有该条目，未删除其他项'
             destructive=item.action in {'remove','replace'} or (item.action=='update' and any((e.get('id')==item.target_id or e.get('value')==item.target_value) and (item.status!='specified' or e.get('value')!=item.value) for e in existing))
