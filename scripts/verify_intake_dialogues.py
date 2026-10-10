@@ -9,8 +9,10 @@ import httpx,instructor
 from openai import OpenAI
 from pydantic import BaseModel,ConfigDict,Field
 from lapis_intake import SYSTEM_PROMPT,PROPOSAL_PROMPT,LABELS
-from lapis_graph import run_intake_turn
-from lapis_store import create_task,get_task,initialize_schema
+from lapis_graph import run_intake_turn, build_intake_graph
+from lapis_store import create_task,get_task,initialize_schema,db_config
+from langgraph.checkpoint.postgres import PostgresSaver
+from psycopg.conninfo import make_conninfo
 from lapis_core import digest
 from lapis import render_intake_result
 from test_lapis_proposals import proposal
@@ -25,7 +27,7 @@ class UserReply(BaseModel):
 USER_PROMPT="""你是材料研究软件的独立模拟用户，不是测试修复者。你只能看到自己的背景和产品实际显示对话。按背景自然交流，一轮最多两三句话。始终保留背景中明确的基本用途与要求；产品反问不能让你把已知用途改成未知，具体器件细分未知也不等于基本用途未知。不能一次填八项，不能为了产品过关改变既定意图。初学者可以从所见推荐产生新决定，写入decisions；不确定保持不确定。引用提案不代表要求。纠正误解和暂停是合理行为。未知不填造科学参数，不能把材料功能当已证实。不要输出产品内部字段或测试答案。确认前应看完整规约；只有发言明确请求暂停、暂不继续时stop=pause；正在提问、纠正、请求修改并等待答复时必须continue，不能仅因等待标pause。背景有“随后/后来”时按多轮顺序行动，不在首句假装已有未发生的发言。把背景当成自己的想法，不向产品提到私有背景、测试、步骤或模拟规则；不得说产品提到过实际对话里没有的内容。需要提案就自然请求推荐，不能索取不存在的“所见提案”。确认前自行核对背景要求的实际行动是否已在可见对话中发生；未来打算不算已完成的新增、引用或用途改变。未发生就本轮自然执行该行动，不能提前确认结束。认可核对后自然明确确认；stop=confirm必须对应发言中批准整份规约，不只确认某条约束。输出text/decisions/stop。"""
 
 def main():
- p=argparse.ArgumentParser();p.add_argument('--mode',choices=['fixed','simulated'],required=True);p.add_argument('--scenarios',default='long_additive');p.add_argument('--set',choices=['development','holdout','supplementary'],default='development');p.add_argument('--max-calls',type=int,default=60);p.add_argument('--max-tokens',type=int,default=400000);p.add_argument('--output',type=Path,required=True);a=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--mode',choices=['fixed','simulated'],required=True);p.add_argument('--scenarios',default='long_additive');p.add_argument('--set',choices=['development','holdout','supplementary'],default='development');p.add_argument('--max-calls',type=int,default=60);p.add_argument('--max-tokens',type=int,default=400000);p.add_argument('--output',type=Path,required=True);p.add_argument('--resume-from',type=Path);a=p.parse_args()
  if os.getenv('LAPIS_TEST_PG')!='1' or os.getenv('LAPIS_DB_NAME')!='lapis_test':p.error('Requires isolated lapis_test')
  initialize_schema();run=str(uuid4());calls=[];current_role='product';tokens=0;budget_stops=[]
  def before(request):
@@ -51,9 +53,22 @@ def main():
  a.output.mkdir(parents=True,exist_ok=True)
  manifest={'run_id':run,'mode':a.mode,'set':a.set,'commit':baseline,'model_alias':model,'seed':'provider_unavailable','prompt_hash':prompt,'user_prompt_hash':digest(USER_PROMPT),'dirty':bool(subprocess.check_output(['git','status','--porcelain'],text=True,cwd=ROOT).strip()),'origin':'synthetic','max_calls':a.max_calls,'max_tokens':a.max_tokens,'code_hashes':{f.name:hashlib.sha256(f.read_bytes()).hexdigest() for f in ROOT.glob('lapis*.py')}}
  (a.output/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
+ if a.resume_from and a.mode!='simulated':p.error('Resume supports simulated users only')
+ resumed_rows=[json.loads(line) for line in (a.resume_from/'turns.jsonl').read_text(encoding='utf-8').splitlines()] if a.resume_from else []
  verdicts=[]
  for scene in chosen:
-  task=create_task('dialogue-acceptance');context={};transcript=[];previous={};metric_id=None;failed=[];decisions=[];last=None;paused=False;stalled=0
+  saved=[r for r in resumed_rows if r['scenario']==scene['id']]
+  if a.resume_from and not saved:p.error('No saved dialogue for '+scene['id'])
+  task=saved[0]['task_id'] if saved else create_task('dialogue-acceptance');context={};transcript=[];previous={};metric_id=None;failed=[];decisions=[];last=None;paused=False;stalled=0;retry=None
+  if saved:
+   persisted=get_task(task);last=persisted['intake_result'];context=last['input_context'];previous=deepcopy(last['request']['fields'])
+   for r in saved:transcript.extend([{'role':'user','text':r['input']},{'role':'assistant','text':r['actual_display']}])
+   with PostgresSaver.from_conn_string(make_conninfo(**db_config())) as saver:
+    checkpoint=build_intake_graph(client,model,prompt,saver).get_state({'configurable':{'thread_id':task}})
+    if checkpoint.next==('process',):retry=checkpoint.values
+   manifest.setdefault('resumed_tasks',{})[scene['id']]={'task_id':task,'parent':str(a.resume_from),'parent_turns':len(saved),'checkpoint_retry':bool(retry),'parent_sha256':hashlib.sha256((a.resume_from/'turns.jsonl').read_bytes()).hexdigest()}
+   (a.output/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
+   metric_id=next((g['id'] for g in previous['target_performance'] if '氧化诱导期' in (g.get('value') or '')),None)
   fixed=['我想研究呋喃分子的抗氧化性','高分子材料的抗氧化添加剂','比较 吧','你推荐一下','__select__','__purpose__','__assumptions__','__limitations__','氧化诱导期','随便你，无所谓这些','没有约束条件','都研究','都包含','没有不研究的','之前不是选过了吗','你推荐吧','可以了，进行下一步吧','确认'] if scene['id']=='long_additive' else (['研究储能电池电解液，关注传输和稳定性。不能使用含氟添加剂，尽量低成本。','工作条件还不知道，范围就是这轮电解液材料研究。','可以下一步了吗','确认'] if scene['id']=='multisentence' else ['研究高分子抗氧化添加剂，关注抗氧化性。','也记录氧化诱导期，条件和方法还不知道。','范围仅限这轮添加剂研究，没有其他用途。','可以下一步了吗','确认'])
   # Only this original-case recommendation is a controlled fixture. Product extraction remains real.
   body=proposal();option=body['options'][0]
@@ -73,7 +88,9 @@ def main():
   try:
    for n in range(18 if a.mode=='fixed' and scene['id']=='long_additive' else 12):
     text=None
-    if a.mode=='fixed':
+    if retry and n==0:
+     text=retry['user_text'];context=retry.get('input_context') or {};user_decisions=[]
+    elif a.mode=='fixed':
      if n>=len(fixed):break
      text=fixed[n]
      rec=(get_task(task)['intake_state'].get('recommendation_set') or {}).get('options',[])
@@ -86,7 +103,7 @@ def main():
      user=client.create(model=model,response_model=UserReply,messages=[{'role':'system','content':USER_PROMPT},{'role':'user','content':json.dumps({'background':scene['background'],'visible_dialogue':transcript},ensure_ascii=False)}],max_retries=1,max_tokens=550,temperature=0,**opts)
      text=user.text;user_decisions=user.decisions;decisions.extend(user_decisions);paused=user.stop=='pause'
     current_role='product';start=time.perf_counter();old=deepcopy(previous)
-    with patch('lapis_intake.generate_recommendations',side_effect=recommended):out=run_intake_turn(task,text,'dialogue-acceptance',client,model,prompt,str(uuid4()),input_context=context)
+    with patch('lapis_intake.generate_recommendations',side_effect=recommended):out=run_intake_turn(task,text,'dialogue-acceptance',client,model,prompt,retry['operation_id'] if retry and n==0 else str(uuid4()),input_context=context)
     last=out['result'];context=last['input_context'];previous=last['request']['fields'];view=last['view']['text'];transcript.extend([{'role':'user','text':text},{'role':'assistant','text':view}])
     goals=previous['target_performance'];fresh_errors=[]
     if '氧化诱导期' in text and not text.startswith(('限制','假设')):
@@ -108,7 +125,7 @@ def main():
     diff={f:{'before':old.get(f),'after':v} for f,v in previous.items() if old.get(f)!=v}
     stalled=stalled+1 if not diff and not last['ready_for_design'] and ('confirm' in (last.get('interpretation') or {}).get('actions',[]) or last['intake_status']=='needs_clarification') else 0
     if stalled>=3:fresh_errors.append('连续三轮核对或澄清仍未推进，停止本例并复核')
-    row={'run_id':run,'scenario':scene['id'],'task_id':task,'turn':n+1,'input':text,'actual_display':view,'interpretation':last.get('interpretation'),'operation_decisions':last.get('operation_decisions'),'field_diff':diff,'request':last['request'],'result_status':last['intake_status'],'context':context,'seconds':time.perf_counter()-start,'errors':fresh_errors,'user_decisions':user_decisions,'mode':('hybrid_fixed_recommendation_real_extraction' if a.mode=='fixed' and scene['id']=='long_additive' else a.mode)}
+    row={'run_id':run,'scenario':scene['id'],'task_id':task,'turn':n+1+len(saved),'input':text,'actual_display':view,'interpretation':last.get('interpretation'),'operation_decisions':last.get('operation_decisions'),'field_diff':diff,'request':last['request'],'result_status':last['intake_status'],'context':context,'seconds':time.perf_counter()-start,'errors':fresh_errors,'user_decisions':user_decisions,'mode':('hybrid_fixed_recommendation_real_extraction' if a.mode=='fixed' and scene['id']=='long_additive' else a.mode)}
     with (a.output/'turns.jsonl').open('a',encoding='utf-8') as f:f.write(json.dumps(row,ensure_ascii=False,default=str)+'\n')
     with (a.output/'actual-display.md').open('a',encoding='utf-8') as f:f.write('\n## '+scene['id']+' '+str(n+1)+'\n你> '+text+'\n```text\n'+view+'```\n')
     print(scene['id'],n+1,last['intake_status'],fresh_errors,flush=True);failed.extend(fresh_errors)

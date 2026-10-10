@@ -1,0 +1,17 @@
+{
+  "scenarios": {
+    "fresh_context_actual": {
+      "verdict": "product_failed",
+      "reason": "真实切换后的约束澄清已恢复正常；但第7轮方向采用之后，反复确认并重申同一方向，被rec.draft_id旧版本误当新选择。第9-11轮字段不变仍阻止确认。"
+    },
+    "fresh_conflict_preserved": {
+      "verdict": "passed",
+      "reason": "两轮明确同配方必须含水/必须不含水，保留两要求并具体阻断，拒绝软件选边，无active_request_version。"
+    },
+    "fresh_delayed_indicator_quote": {
+      "verdict": "budget_stopped",
+      "reason": "第一轮真实推荐已留存；第二轮选方向的产品请求在预算预检停止，图中原操作待恢复。"
+    }
+  },
+  "next": "修复幂等重申后，利用既有合成任务与原图检查点继续，保持旧失败verdict；不重建隐含标准答案或跳过用户动作"
+}

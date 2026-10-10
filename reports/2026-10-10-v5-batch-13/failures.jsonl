@@ -1,0 +1,1 @@
+{"scenario": "fresh_delayed_indicator_quote", "verdict": "error", "error_type": "InstructorRetryException", "error": "Connection error.", "failed_input": "我想选第1个方向：酚类抗氧化添加剂在橡胶中的抗氧化功能与结构关系研究。", "turn": 2, "task_id": "fd7852d4-a5ed-4ba7-b53d-4171666b768d"}

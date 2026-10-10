@@ -479,6 +479,11 @@ def _ground_actions(state, extraction):
 def _select(state, extraction, text, context):
     rec = state.get("recommendation_set")
     expected = context.get("recommendation_ref")
+    if rec and extraction.selected_option and 1 <= extraction.selected_option <= len(rec["options"]):
+        option = rec["options"][extraction.selected_option - 1]
+        # Reaffirming the live direction keeps later refinements; stale new choices still fail below.
+        if context.get("draft_id") == state["draft_id"] and expected == {"id":rec["id"],"version":rec["version"]} and all((state["fields"][field].get("recommendation_ref") or {}).get("direction_id") == option["id"] for field in ("research_object", "application")):
+            return None
     if not rec or expected != {"id": rec["id"], "version": rec["version"]} or rec["draft_id"] != state["draft_id"]:
         return "推荐已经变化，请请求重新展示方向后再选择。"
     index = extraction.selected_option

@@ -178,6 +178,16 @@ class SemanticTest(unittest.TestCase):
         self.assertEqual(state['fields']['constraints'][0]['value'],'不能含FEC')
         self.assertEqual(result['operation_decisions'][0]['decision'],'not_applied')
 
+    def test_reaffirming_adopted_direction_preserves_scope_refinement(self):
+        state=new_state();r=advice(state);r=select(state,r['input_context']);text='范围只限本轮材料功能研究'
+        e=Extraction(actions=['edit'],updates=[Update(field='research_scope',status='specified',value='只限本轮材料功能研究',quote=text,change_relation='refinement')])
+        r=self.send(state,text,e,r['input_context']);before=deepcopy(state['fields']['research_scope']);option=state['recommendation_set']['options'][0]
+        text='我确认这份规约，仍采用第一个方向'
+        e=Extraction(actions=['confirm','select','progress'],selected_option=1,intents=[Intent(id='C',kind='confirm',quote='我确认这份规约'),Intent(id='A',kind='adopt',quote='仍采用第一个方向',target_refs=[option['id']])])
+        result=self.send(state,text,e,r['input_context'])
+        self.assertTrue(result['ready_for_design'])
+        self.assertEqual(state['fields']['research_scope'],before)
+
     def test_coarse_purpose_can_be_reviewed_without_choosing_a_paradigm(self):
         state=new_state();text='电解液用于储能电池，关注传输，条件还不知道'
         e=Extraction(domain='materials_application',domain_quote='用于储能电池',updates=[Update(field='research_object',status='specified',value='电解液',quote='电解液'),Update(field='application',status='specified',value='储能电池',quote='用于储能电池'),Update(field='target_performance',status='specified',value='传输',direction='考察',quote='关注传输'),Update(field='work_conditions',status='unknown',quote='条件还不知道')])
