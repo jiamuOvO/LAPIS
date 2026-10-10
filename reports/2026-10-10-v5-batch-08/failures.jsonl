@@ -1,0 +1,1 @@
+{"scenario": "holdout_conflict", "verdict": "error", "error_type": "InstructorRetryException", "error": "Connection error.", "failed_input": "我这边有个电极浆料的配方要录入，但里面有个矛盾：同一配方我既标了必须含水，又标了不能含水。先别帮我改掉任何一边，把草稿保留下来，并把这个冲突明确标出来给我看。", "turn": 2, "task_id": "c5d98eb1-d537-43b4-a4af-c34b9d212121"}

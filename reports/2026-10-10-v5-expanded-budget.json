@@ -1,6 +1,6 @@
 {
   "authorization": "用户：继续吧 新增验收预算上限",
-  "max_new_http_calls": 300,
+  "max_new_http_calls": 400,
   "max_new_total_tokens": 2000000,
   "previous_batch_http_calls": 58,
   "previous_batch_total_tokens": 363573,
@@ -10,6 +10,12 @@
   "batches": [
     "2026-10-10-v5-batch-01",
     "2026-10-10-v5-batch-02",
-    "2026-10-10-v5-batch-03"
-  ]
+    "2026-10-10-v5-batch-03",
+    "2026-10-10-v5-batch-04",
+    "2026-10-10-v5-batch-05",
+    "2026-10-10-v5-batch-06",
+    "2026-10-10-v5-batch-07",
+    "2026-10-10-v5-batch-08"
+  ],
+  "additional_authorization": "用户：提高到400次，保留200万token上限"
 }

@@ -1,0 +1,18 @@
+{
+  "scenarios": {
+    "holdout_long_additive": {
+      "verdict": "coverage_incomplete",
+      "reason": "三轮真实独立对话保留氧化诱导期并确认恢复，但未产生推荐引用，也未测试后来新增指标；只算普通指标路径。"
+    },
+    "holdout_context_change": {
+      "verdict": "coverage_incomplete",
+      "reason": "用户始终表示散热为未来计划，未实际从过滤切换用途；不算用途切换验收。"
+    },
+    "holdout_indicator": {
+      "verdict": "passed",
+      "reason": "极限氧指数明确保留，具体标准、方法、条件未知，未承诺能直接计算，确认和子进程恢复。"
+    }
+  },
+  "raw_program_passes_not_overwritten": true,
+  "simulator_update": "只强化背景阶段真实发生的要求，不给产品内部状态或正确答案"
+}

@@ -1,0 +1,17 @@
+{
+  "scenarios": {
+    "holdout_unknown_delegate": {
+      "verdict": "passed",
+      "reason": "用户委托推荐工况但不选具体材料类别，含铅禁用硬约束保留，工况仍待定，确认及恢复。"
+    },
+    "holdout_pause_correct": {
+      "verdict": "passed",
+      "reason": "明确暂不确认并暂停；产品保存草稿、停止追问，active_request_version为null。"
+    },
+    "holdout_conflict": {
+      "verdict": "budget_stopped",
+      "reason": "第一轮保留must/forbid水要求并明确指出冲突；第二轮模拟用户请求被18调用批次上限拒绝，未完成两轮阻断验证。失败输入字段实际为上一轮输入，不能当第二轮已生成话语。"
+    }
+  },
+  "raw_records_preserved": true
+}
