@@ -9,6 +9,12 @@ from test_lapis_intake import TEXT, full_updates, turn
 from test_lapis_review import advice, select
 
 class SemanticTest(unittest.TestCase):
+    def test_confirmation_at_sentence_boundary_is_accepted(self):
+        state,r=self.base();text='已核对全部规约，没有需要修改的地方。确认按此规约进入研究设计。'
+        result=self.send(state,text,Extraction(actions=['confirm'],intents=[Intent(id='C',kind='confirm',quote='确认按此规约进入研究设计。')]),r['input_context'])
+        self.assertTrue(result['ready_for_design'])
+        self.assertTrue(result['confirmation_event'])
+
     def test_adopted_context_keeps_menu_and_review_without_mutating_state(self):
         state=new_state();r=advice(state);select(state,r['input_context']);before=deepcopy(state)
         context=build_context(state,'引用限制')

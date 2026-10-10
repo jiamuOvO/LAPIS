@@ -1,9 +1,9 @@
 {
-  "max_calls": 400,
-  "max_tokens": 2000000,
-  "calls": 400,
-  "tokens": 1791988,
-  "remaining_tokens": 208012,
+  "max_calls": 450,
+  "max_tokens": 2100000,
+  "calls": 444,
+  "tokens": 1997981,
+  "remaining_tokens": 102019,
   "batches": [
     {
       "batch": 1,
@@ -12,14 +12,17 @@
       "roles": {
         "simulated_user": {
           "calls": 21,
-          "tokens": 29730
+          "tokens": 29730,
+          "missing_usage": 0
         },
         "product": {
           "calls": 27,
-          "tokens": 174223
+          "tokens": 174223,
+          "missing_usage": 0
         }
       },
-      "commit": "f745e19ada8859a10da9bd46eb06fe6dd64f99b7"
+      "commit": "f745e19ada8859a10da9bd46eb06fe6dd64f99b7",
+      "budget_stops": 0
     },
     {
       "batch": 2,
@@ -28,14 +31,17 @@
       "roles": {
         "simulated_user": {
           "calls": 20,
-          "tokens": 24016
+          "tokens": 24016,
+          "missing_usage": 0
         },
         "product": {
           "calls": 23,
-          "tokens": 135441
+          "tokens": 135441,
+          "missing_usage": 1
         }
       },
-      "commit": "f745e19ada8859a10da9bd46eb06fe6dd64f99b7"
+      "commit": "f745e19ada8859a10da9bd46eb06fe6dd64f99b7",
+      "budget_stops": 0
     },
     {
       "batch": 3,
@@ -44,14 +50,17 @@
       "roles": {
         "simulated_user": {
           "calls": 18,
-          "tokens": 31174
+          "tokens": 31174,
+          "missing_usage": 0
         },
         "product": {
           "calls": 21,
-          "tokens": 160759
+          "tokens": 160759,
+          "missing_usage": 0
         }
       },
-      "commit": "f745e19ada8859a10da9bd46eb06fe6dd64f99b7"
+      "commit": "f745e19ada8859a10da9bd46eb06fe6dd64f99b7",
+      "budget_stops": 0
     },
     {
       "batch": 4,
@@ -60,14 +69,17 @@
       "roles": {
         "simulated_user": {
           "calls": 21,
-          "tokens": 29923
+          "tokens": 29923,
+          "missing_usage": 0
         },
         "product": {
           "calls": 27,
-          "tokens": 185153
+          "tokens": 185153,
+          "missing_usage": 0
         }
       },
-      "commit": "219b7c1f015a92cbb8a3b6d956b940649c40451c"
+      "commit": "219b7c1f015a92cbb8a3b6d956b940649c40451c",
+      "budget_stops": 0
     },
     {
       "batch": 5,
@@ -76,14 +88,17 @@
       "roles": {
         "simulated_user": {
           "calls": 17,
-          "tokens": 33946
+          "tokens": 33946,
+          "missing_usage": 0
         },
         "product": {
           "calls": 18,
-          "tokens": 152681
+          "tokens": 152681,
+          "missing_usage": 0
         }
       },
-      "commit": "968edf0b3a7910ae1bbef3d84a03682e5f6beaaa"
+      "commit": "968edf0b3a7910ae1bbef3d84a03682e5f6beaaa",
+      "budget_stops": 1
     },
     {
       "batch": 6,
@@ -92,14 +107,17 @@
       "roles": {
         "simulated_user": {
           "calls": 13,
-          "tokens": 18937
+          "tokens": 18937,
+          "missing_usage": 0
         },
         "product": {
           "calls": 17,
-          "tokens": 137608
+          "tokens": 137608,
+          "missing_usage": 0
         }
       },
-      "commit": "d39efa0cacb82f5c4f049717e5c075fa5c83ead5"
+      "commit": "d39efa0cacb82f5c4f049717e5c075fa5c83ead5",
+      "budget_stops": 1
     },
     {
       "batch": 7,
@@ -108,14 +126,17 @@
       "roles": {
         "simulated_user": {
           "calls": 11,
-          "tokens": 11102
+          "tokens": 11102,
+          "missing_usage": 0
         },
         "product": {
           "calls": 13,
-          "tokens": 71819
+          "tokens": 71819,
+          "missing_usage": 0
         }
       },
-      "commit": "bf0a3b08cc808030ac0e8f07d858cc2ecaa8f56a"
+      "commit": "bf0a3b08cc808030ac0e8f07d858cc2ecaa8f56a",
+      "budget_stops": 0
     },
     {
       "batch": 8,
@@ -124,14 +145,17 @@
       "roles": {
         "simulated_user": {
           "calls": 8,
-          "tokens": 8987
+          "tokens": 8987,
+          "missing_usage": 0
         },
         "product": {
           "calls": 10,
-          "tokens": 65223
+          "tokens": 65223,
+          "missing_usage": 0
         }
       },
-      "commit": "bf0a3b08cc808030ac0e8f07d858cc2ecaa8f56a"
+      "commit": "bf0a3b08cc808030ac0e8f07d858cc2ecaa8f56a",
+      "budget_stops": 1
     },
     {
       "batch": 9,
@@ -140,14 +164,17 @@
       "roles": {
         "simulated_user": {
           "calls": 16,
-          "tokens": 22496
+          "tokens": 22496,
+          "missing_usage": 0
         },
         "product": {
           "calls": 18,
-          "tokens": 116752
+          "tokens": 116752,
+          "missing_usage": 0
         }
       },
-      "commit": "186dc6a3a72f46e771ecc39235699d51617d573e"
+      "commit": "186dc6a3a72f46e771ecc39235699d51617d573e",
+      "budget_stops": 0
     },
     {
       "batch": 10,
@@ -156,14 +183,17 @@
       "roles": {
         "simulated_user": {
           "calls": 13,
-          "tokens": 20789
+          "tokens": 20789,
+          "missing_usage": 0
         },
         "product": {
           "calls": 17,
-          "tokens": 117550
+          "tokens": 117550,
+          "missing_usage": 0
         }
       },
-      "commit": "2035c72c88b00449130f624499fd2b71efea0030"
+      "commit": "2035c72c88b00449130f624499fd2b71efea0030",
+      "budget_stops": 1
     },
     {
       "batch": 11,
@@ -172,14 +202,17 @@
       "roles": {
         "simulated_user": {
           "calls": 12,
-          "tokens": 20752
+          "tokens": 20752,
+          "missing_usage": 0
         },
         "product": {
           "calls": 13,
-          "tokens": 103561
+          "tokens": 103561,
+          "missing_usage": 0
         }
       },
-      "commit": "c39d8f9c7fe67c0d0db336fe93b46006775dc6cf"
+      "commit": "c39d8f9c7fe67c0d0db336fe93b46006775dc6cf",
+      "budget_stops": 1
     },
     {
       "batch": 12,
@@ -188,15 +221,103 @@
       "roles": {
         "simulated_user": {
           "calls": 10,
-          "tokens": 20113
+          "tokens": 20113,
+          "missing_usage": 0
         },
         "product": {
           "calls": 16,
-          "tokens": 99253
+          "tokens": 99253,
+          "missing_usage": 0
         }
       },
-      "commit": "6e95998ff6ee588e82325cdc4942905ff55e72dd"
+      "commit": "6e95998ff6ee588e82325cdc4942905ff55e72dd",
+      "budget_stops": 1
+    },
+    {
+      "batch": 13,
+      "calls": 33,
+      "tokens": 147146,
+      "roles": {
+        "simulated_user": {
+          "calls": 15,
+          "tokens": 27303,
+          "missing_usage": 0
+        },
+        "product": {
+          "calls": 18,
+          "tokens": 119843,
+          "missing_usage": 0
+        }
+      },
+      "commit": "d17b5aa8fba5b1c404a82f08e7bdc4c4712edcd3",
+      "budget_stops": 1
+    },
+    {
+      "batch": 14,
+      "calls": 4,
+      "tokens": 22987,
+      "roles": {
+        "simulated_user": {
+          "calls": 2,
+          "tokens": 5911,
+          "missing_usage": 0
+        },
+        "product": {
+          "calls": 2,
+          "tokens": 17076,
+          "missing_usage": 0
+        }
+      },
+      "commit": "05206e8301c55e0b16d2950c090dfa7808b1aa69",
+      "budget_stops": 1
+    },
+    {
+      "batch": 15,
+      "calls": 2,
+      "tokens": 9315,
+      "roles": {
+        "product": {
+          "calls": 1,
+          "tokens": 7963,
+          "missing_usage": 0
+        },
+        "simulated_user": {
+          "calls": 1,
+          "tokens": 1352,
+          "missing_usage": 0
+        }
+      },
+      "commit": "eb7c1a1f922add9d0f1da479dcb22b98ae47372a",
+      "budget_stops": 1
+    },
+    {
+      "batch": 16,
+      "calls": 0,
+      "tokens": 0,
+      "roles": {},
+      "commit": "cbf42738e21e7b12940f0f24d065dfc3db9199b8",
+      "budget_stops": 1
+    },
+    {
+      "batch": 17,
+      "calls": 5,
+      "tokens": 26545,
+      "roles": {
+        "product": {
+          "calls": 3,
+          "tokens": 23455,
+          "missing_usage": 0
+        },
+        "simulated_user": {
+          "calls": 2,
+          "tokens": 3090,
+          "missing_usage": 0
+        }
+      },
+      "commit": "cbf42738e21e7b12940f0f24d065dfc3db9199b8",
+      "budget_stops": 0
     }
   ],
-  "prices_unavailable": true
+  "prices_unavailable": true,
+  "usage_basis": "provider reported tokens; failed requests without usage are not assumed free"
 }

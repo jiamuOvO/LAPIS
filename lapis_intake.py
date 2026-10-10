@@ -731,7 +731,7 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
         if "progress" in extraction.actions:
             result = _result(state, changed, notice="确认规约后才进入研究设计，当前没有授权计算。" if not request_issues(make_draft(state)) else None)
         if "confirm" in extraction.actions and not changed and not action_notice and "edit" not in extraction.actions and "pause" not in extraction.actions and not any(d["decision"] == "not_applied" for d in state.get("_operation_decisions", [])):
-            if re.search(r"我(?:确认|同意)(?!一下|下)|(?:确认|同意)(?:这份|本版|当前|上述|以上)?(?:研究)?(?:规约|请求|意图)|^(?:确认|同意)(?!一下|下)", text):
+            if re.search(r"我(?:确认|同意)(?!一下|下)|(?:确认|同意)(?:这份|本版|当前|上述|以上)?(?:研究)?(?:规约|请求|意图)|(?:^|[。；;！!\n])\s*(?:确认|同意)(?!一下|下)", text):
                 result = _confirm(state, context)
             else:
                 result = _result(state, notice="请明确回复‘确认’以采用本版规约；进度询问没有新增确认。")

@@ -1,0 +1,9 @@
+{
+  "scenarios": {
+    "fresh_delayed_indicator_quote": {
+      "verdict": "budget_stopped",
+      "reason": "恢复原指标输入时，保守预留33855超过剩余28564 token；零HTTP调用。"
+    }
+  },
+  "not_scientific_evidence": true
+}

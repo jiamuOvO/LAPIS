@@ -1,0 +1,98 @@
+{
+  "run_id": "4191ea62-ddd8-47c7-81f7-533f44f85faf",
+  "verdicts": [
+    {
+      "scenario": "fresh_context_actual",
+      "task_id": "7e61b81d-7d11-4dce-a415-64077460e83f",
+      "verdict": "passed",
+      "errors": [],
+      "active_request_version": 1
+    },
+    {
+      "scenario": "fresh_delayed_indicator_quote",
+      "verdict": "error",
+      "error_type": "InstructorRetryException",
+      "error": "Connection error.",
+      "failed_input": "我想引用一下所选方向里的一段限制，作为参考：\n限制：未指定具体橡胶类型和酚类型号，研究结论可能因体系不同而异；抗氧化性能的评估方法和指标尚未确定。\n这只是我看到提案里的原文，不是我新增的要求。",
+      "turn": 2,
+      "task_id": "fd7852d4-a5ed-4ba7-b53d-4171666b768d"
+    }
+  ],
+  "calls": [
+    {
+      "role": "simulated_user",
+      "seconds": 2.88931159999629,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 4182,
+        "completion_tokens": 183,
+        "total_tokens": 4365,
+        "prompt_tokens_details": {
+          "cached_tokens": 3712
+        },
+        "prompt_cache_hit_tokens": 3712,
+        "prompt_cache_miss_tokens": 470
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 3.0773748999999953,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 9609,
+        "completion_tokens": 521,
+        "total_tokens": 10130,
+        "prompt_tokens_details": {
+          "cached_tokens": 5632
+        },
+        "prompt_cache_hit_tokens": 5632,
+        "prompt_cache_miss_tokens": 3977
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 2.166285399995104,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 6661,
+        "completion_tokens": 285,
+        "total_tokens": 6946,
+        "prompt_tokens_details": {
+          "cached_tokens": 3840
+        },
+        "prompt_cache_hit_tokens": 3840,
+        "prompt_cache_miss_tokens": 2821
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "simulated_user",
+      "seconds": 1.4103962000008323,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 1448,
+        "completion_tokens": 98,
+        "total_tokens": 1546,
+        "prompt_tokens_details": {
+          "cached_tokens": 1152
+        },
+        "prompt_cache_hit_tokens": 1152,
+        "prompt_cache_miss_tokens": 296
+      },
+      "server_model": "deepseek-flash"
+    }
+  ],
+  "total_tokens": 22987,
+  "budget_stops": [
+    {
+      "role": "product",
+      "used_tokens": 22987,
+      "reserved_tokens": 40244,
+      "used_calls": 4
+    }
+  ],
+  "semantic_review": "requires_human_review",
+  "not_scientific_evidence": true
+}

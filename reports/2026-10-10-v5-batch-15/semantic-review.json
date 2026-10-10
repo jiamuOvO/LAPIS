@@ -1,0 +1,9 @@
+{
+  "scenarios": {
+    "fresh_delayed_indicator_quote": {
+      "verdict": "partial_budget_stopped",
+      "reason": "原引用操作恢复：识别引用，不新增要求或重新选择。独立用户随后实际新增氧化诱导期，产品请求被预算预检阻止，仍在检查点待恢复。"
+    }
+  },
+  "not_scientific_evidence": true
+}

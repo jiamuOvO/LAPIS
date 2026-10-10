@@ -1,0 +1,13 @@
+{
+  "scenarios": {
+    "fresh_context_actual": {
+      "verdict": "passed_resumed",
+      "reason": "沿用原合成对话；修复后明确确认与重复选择幂等，规约持久化和子进程重启通过；第13批失败保留。"
+    },
+    "fresh_delayed_indicator_quote": {
+      "verdict": "budget_stopped",
+      "reason": "原方向选择检查点恢复成功；独立用户实际引用限制，产品请求发送前预算拦截。"
+    }
+  },
+  "not_scientific_evidence": true
+}

@@ -1,0 +1,1 @@
+{"scenario": "fresh_delayed_indicator_quote", "verdict": "error", "error_type": "InstructorRetryException", "error": "Connection error.", "failed_input": "我先把本轮关注指标明确一下：氧化诱导期，作为抗氧化性能的考察指标；具体测试条件和方法待定。之前的方向和关注点不撤回。", "turn": 2, "task_id": "fd7852d4-a5ed-4ba7-b53d-4171666b768d"}

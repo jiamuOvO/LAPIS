@@ -1,0 +1,1 @@
+{"scenario": "fresh_delayed_indicator_quote", "verdict": "error", "error_type": "InstructorRetryException", "error": "Connection error.", "failed_input": "我想引用一下所选方向里的一段限制，作为参考：\n限制：未指定具体橡胶类型和酚类型号，研究结论可能因体系不同而异；抗氧化性能的评估方法和指标尚未确定。\n这只是我看到提案里的原文，不是我新增的要求。", "turn": 2, "task_id": "fd7852d4-a5ed-4ba7-b53d-4171666b768d"}

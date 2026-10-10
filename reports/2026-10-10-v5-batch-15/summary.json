@@ -1,0 +1,59 @@
+{
+  "run_id": "0ee6f099-48ad-4bb6-b5ce-a837aaf79b32",
+  "verdicts": [
+    {
+      "scenario": "fresh_delayed_indicator_quote",
+      "verdict": "error",
+      "error_type": "InstructorRetryException",
+      "error": "Connection error.",
+      "failed_input": "我先把本轮关注指标明确一下：氧化诱导期，作为抗氧化性能的考察指标；具体测试条件和方法待定。之前的方向和关注点不撤回。",
+      "turn": 2,
+      "task_id": "fd7852d4-a5ed-4ba7-b53d-4171666b768d"
+    }
+  ],
+  "calls": [
+    {
+      "role": "product",
+      "seconds": 2.99847679999948,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 7684,
+        "completion_tokens": 279,
+        "total_tokens": 7963,
+        "prompt_tokens_details": {
+          "cached_tokens": 3840
+        },
+        "prompt_cache_hit_tokens": 3840,
+        "prompt_cache_miss_tokens": 3844
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "simulated_user",
+      "seconds": 1.154301899994607,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 1285,
+        "completion_tokens": 67,
+        "total_tokens": 1352,
+        "prompt_tokens_details": {
+          "cached_tokens": 512
+        },
+        "prompt_cache_hit_tokens": 512,
+        "prompt_cache_miss_tokens": 773
+      },
+      "server_model": "deepseek-flash"
+    }
+  ],
+  "total_tokens": 9315,
+  "budget_stops": [
+    {
+      "role": "product",
+      "used_tokens": 9315,
+      "reserved_tokens": 36771,
+      "used_calls": 2
+    }
+  ],
+  "semantic_review": "requires_human_review",
+  "not_scientific_evidence": true
+}

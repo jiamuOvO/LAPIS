@@ -1,7 +1,7 @@
 {
   "authorization": "用户：继续吧 新增验收预算上限",
   "max_new_http_calls": 450,
-  "max_new_total_tokens": 2000000,
+  "max_new_total_tokens": 2100000,
   "previous_batch_http_calls": 58,
   "previous_batch_total_tokens": 363573,
   "scope": "synthetic independent users and held-out intake acceptance only",
@@ -19,10 +19,16 @@
     "2026-10-10-v5-batch-09",
     "2026-10-10-v5-batch-10",
     "2026-10-10-v5-batch-11",
-    "2026-10-10-v5-batch-12"
+    "2026-10-10-v5-batch-12",
+    "2026-10-10-v5-batch-13",
+    "2026-10-10-v5-batch-14",
+    "2026-10-10-v5-batch-15",
+    "2026-10-10-v5-batch-16",
+    "2026-10-10-v5-batch-17"
   ],
   "additional_authorization": "用户：提高到400次，保留200万token上限",
-  "used_new_http_calls": 400,
-  "used_new_total_tokens": 1791988,
-  "final_authorization": "用户：提高到450次，继续完成三个案例；200万token上限不变"
+  "used_new_http_calls": 444,
+  "used_new_total_tokens": 1997981,
+  "final_authorization": "用户：提高到450次，继续完成三个案例；200万token上限不变",
+  "token_authorization": "用户：提高到210万，完成剩余验收；调用上限450次不变"
 }

@@ -1,0 +1,26 @@
+{
+  "run_id": "cc45bb25-062f-4a1a-86f9-24868e62c356",
+  "verdicts": [
+    {
+      "scenario": "fresh_delayed_indicator_quote",
+      "verdict": "error",
+      "error_type": "InstructorRetryException",
+      "error": "Connection error.",
+      "failed_input": "我先把本轮关注指标明确一下：氧化诱导期，作为抗氧化性能的考察指标；具体测试条件和方法待定。之前的方向和关注点不撤回。",
+      "turn": 1,
+      "task_id": "fd7852d4-a5ed-4ba7-b53d-4171666b768d"
+    }
+  ],
+  "calls": [],
+  "total_tokens": 0,
+  "budget_stops": [
+    {
+      "role": "product",
+      "used_tokens": 0,
+      "reserved_tokens": 33855,
+      "used_calls": 0
+    }
+  ],
+  "semantic_review": "requires_human_review",
+  "not_scientific_evidence": true
+}

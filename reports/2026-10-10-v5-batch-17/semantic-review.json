@@ -1,0 +1,9 @@
+{
+  "scenarios": {
+    "fresh_delayed_indicator_quote": {
+      "verdict": "passed_resumed_with_confirmation_friction",
+      "reason": "沿用13→14→15的实际对话和原操作。15批引用原文不新增要求；17批真实新增氧化诱导期，原抗氧化目标ID保持，条件/方法待定，明确确认后新进程显示八字段和指标，active_request_version=1。中间完整自然确认被额外追问一次，最终确认通过不掩盖该缺陷；句末确认修复后118项软件回归及保存真实抽取的内存重放通过，未再重复收费整段对话。"
+    }
+  },
+  "not_scientific_evidence": true
+}
