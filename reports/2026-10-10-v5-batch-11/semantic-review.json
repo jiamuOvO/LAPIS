@@ -1,0 +1,17 @@
+{
+  "scenarios": {
+    "holdout_beginner": {
+      "verdict": "passed",
+      "reason": "八轮真实独立对话明确选择阻隔方向、不采用其余方向、条件未知；核对并明确确认，子进程恢复。"
+    },
+    "holdout_context_change": {
+      "verdict": "coverage_incomplete_then_budget_stopped",
+      "reason": "future只记录后续意图、没有覆盖当前过滤用途；暂缓批准不再暂停交流。但用户仍未实际切换到散热，并在25调用上限停止。"
+    },
+    "holdout_conflict": {
+      "verdict": "not_executed",
+      "reason": "本批上限停止，未开始。"
+    }
+  },
+  "supplementary": "新增不同研究背景，明确本次对话阶段发生的改变和引用；冻结后再试跑，不读产品内部状态"
+}

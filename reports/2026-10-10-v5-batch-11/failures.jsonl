@@ -1,0 +1,1 @@
+{"scenario": "holdout_context_change", "verdict": "error", "error_type": "InstructorRetryException", "error": "Connection error.", "failed_input": "确认，采用这版规约：当前只研究碳材料在过滤中的吸附表现，应用场景为过滤，目标性能是考察对不同物质的吸附效果，材料功能为吸附；工作条件、约束条件和具体候选/方法留待研究设计。散热用途只作为后续意图记录，不并入当前目标，之后需要重新核对它在散热场景下的功能。", "turn": 4, "task_id": "e851f7e2-ba78-4c0b-a1b5-673f80e662c0"}
