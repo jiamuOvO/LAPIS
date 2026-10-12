@@ -7,6 +7,7 @@ from lapis import render_intake_result, render_sources, run_chat
 from lapis_intake import Extraction, Update, handle_turn, new_state
 from lapis_proposals import Guidance
 from test_lapis_proposals import proposal
+from test_lapis_intake import edit_fixture
 
 
 def advice(state, body=None, text='请推荐', actions=None, context=None, mode="auto"):
@@ -40,7 +41,7 @@ class ReviewTest(unittest.TestCase):
         state=new_state(); state['fields']['constraints']=[{'id':'cost','status':'unclear','value':'性价比高','source':'user','quote':'性价比高','turn':1,'strength':'preference'}]
         body=proposal();body['options'][0]['fields']['constraints']=[{'status':'specified','value':'性价比高','strength':'preference'}]
         r=advice(state,body)
-        extraction=Extraction(actions=['select','edit'],selected_option=1,updates=[Update(field='constraints',status='none',quote='先不考虑成本',action='remove',target_value='性价比高')])
+        extraction=edit_fixture('采用第一个，但先不考虑成本',Extraction(actions=['select','edit'],selected_option=1,updates=[Update(field='constraints',status='none',quote='先不考虑成本',action='remove',target_value='性价比高')]))
         with patch('lapis_intake.extract',return_value=extraction):
             result=handle_turn(None,'test',state,'采用第一个，但先不考虑成本',r['input_context'])
         self.assertFalse(any(e.get('value')=='性价比高' for e in state['fields']['constraints']))

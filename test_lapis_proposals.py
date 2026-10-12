@@ -116,8 +116,9 @@ class DynamicProposalTest(unittest.TestCase):
             {"id":"cost", "status":"specified", "value":"成本尽量低", "strength":"preference", "source":"user", "quote":"成本尽量低", "turn":1},
             {"id":"hard", "status":"specified", "value":"不能使用铅", "strength":"hard", "source":"user", "quote":"不能使用铅", "turn":1}]
         state, advice, _ = self.advice(state)
-        with patch("lapis_intake.extract", return_value=Extraction(actions=["select","edit"], selected_option=1,
-                updates=[Update(field="constraints",status="none",quote="先不考虑成本",action="remove",target_id="cost")])):
+        from test_lapis_intake import edit_fixture
+        with patch("lapis_intake.extract", return_value=edit_fixture('采用第一个方向，但先不考虑成本',Extraction(actions=["select","edit"], selected_option=1,
+                updates=[Update(field="constraints",status="none",quote="先不考虑成本",action="remove",target_id="cost")]))):
             handle_turn(None,"test",state,"采用第一个方向，但先不考虑成本",advice["input_context"])
         self.assertFalse(any(e.get("id")=="cost" for e in state["fields"]["constraints"]))
         self.assertTrue(any(e.get("id")=="hard" for e in state["fields"]["constraints"]))

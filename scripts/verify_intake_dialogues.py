@@ -35,7 +35,7 @@ def request_reserve(content):
  return size+body.get('max_tokens',2600)
 
 def main():
- p=argparse.ArgumentParser();p.add_argument('--mode',choices=['fixed','simulated'],required=True);p.add_argument('--scenarios',default='long_additive');p.add_argument('--set',choices=['development','holdout','supplementary'],default='development');p.add_argument('--max-calls',type=int,default=60);p.add_argument('--max-tokens',type=int,default=400000);p.add_argument('--output',type=Path,required=True);p.add_argument('--resume-from',type=Path);a=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--mode',choices=['fixed','simulated'],required=True);p.add_argument('--scenarios',default='long_additive');p.add_argument('--set',choices=['development','holdout','supplementary','rework_holdout'],default='development');p.add_argument('--max-calls',type=int,default=60);p.add_argument('--max-tokens',type=int,default=400000);p.add_argument('--output',type=Path,required=True);p.add_argument('--resume-from',type=Path);a=p.parse_args()
  if os.getenv('LAPIS_TEST_PG')!='1' or os.getenv('LAPIS_DB_NAME')!='lapis_test':p.error('Requires isolated lapis_test')
  initialize_schema();run=str(uuid4());calls=[];current_role='product';tokens=0;budget_stops=[]
  def before(request):
@@ -130,10 +130,14 @@ def main():
     edits=[d['operation'] for d in last.get('operation_decisions',[]) if d.get('decision')=='accepted' and d['operation']['field']=='target_performance' and d['operation']['action'] in {'remove','replace'}]
     for gid in old_ids.keys()-new_ids:
      if not any(e['action']=='replace' or e.get('target_id')==gid or e.get('target_value')==old_ids[gid].get('value') for e in edits):fresh_errors.append('目标条目消失但没有接受的撤回/替换操作')
+    # Accepted by the product is not proof of user authorization. Preserve a separate review queue.
+    loss_review=[{'entry':old_ids[gid],'user_text':text,'user_decisions':user_decisions,'product_operations':edits,'requires_independent_review':True} for gid in old_ids.keys()-new_ids]
+    if loss_review:
+     with (a.output/'goal-loss-review.jsonl').open('a',encoding='utf-8') as f:f.write(json.dumps({'scenario':scene['id'],'turn':n+1,'cases':loss_review},ensure_ascii=False)+'\n')
     diff={f:{'before':old.get(f),'after':v} for f,v in previous.items() if old.get(f)!=v}
     stalled=stalled+1 if not diff and not last['ready_for_design'] and ('confirm' in (last.get('interpretation') or {}).get('actions',[]) or last['intake_status']=='needs_clarification') else 0
     if stalled>=3:fresh_errors.append('连续三轮核对或澄清仍未推进，停止本例并复核')
-    row={'run_id':run,'scenario':scene['id'],'task_id':task,'turn':n+1+len(saved),'input':text,'actual_display':view,'interpretation':last.get('interpretation'),'operation_decisions':last.get('operation_decisions'),'field_diff':diff,'request':last['request'],'result_status':last['intake_status'],'context':context,'seconds':time.perf_counter()-start,'errors':fresh_errors,'user_decisions':user_decisions,'mode':('hybrid_fixed_recommendation_real_extraction' if a.mode=='fixed' and scene['id']=='long_additive' else a.mode)}
+    row={'run_id':run,'scenario':scene['id'],'task_id':task,'turn':n+1+len(saved),'input':text,'actual_display':view,'interpretation':last.get('interpretation'),'operation_decisions':last.get('operation_decisions'),'field_diff':diff,'request':last['request'],'result_status':last['intake_status'],'context':context,'seconds':time.perf_counter()-start,'errors':fresh_errors,'user_decisions':user_decisions,'goal_loss_review':loss_review,'mode':('hybrid_fixed_recommendation_real_extraction' if a.mode=='fixed' and scene['id']=='long_additive' else a.mode)}
     with (a.output/'turns.jsonl').open('a',encoding='utf-8') as f:f.write(json.dumps(row,ensure_ascii=False,default=str)+'\n')
     with (a.output/'actual-display.md').open('a',encoding='utf-8') as f:f.write('\n## '+scene['id']+' '+str(n+1)+'\n你> '+text+'\n```text\n'+view+'```\n')
     print(scene['id'],n+1,last['intake_status'],fresh_errors,flush=True);failed.extend(fresh_errors)

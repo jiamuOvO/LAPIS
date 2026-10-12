@@ -12,6 +12,7 @@ from uuid import uuid4
 from lapis_contract import component_predicate, FIELDS, LIST_FIELDS, content_hash
 
 RUN_ID = str(uuid4())
+OPERATION_RULE_VERSION = 'intake-operations-5.1'
 
 @lru_cache(maxsize=1)
 def runtime_fingerprint():
@@ -56,13 +57,13 @@ def proposal_echo(state,text):
     norm=lambda s:re.sub(r'[\s；;，,。:：]+','',s)
     known=[]
     for option in (state.get('recommendation_set') or {}).get('options',[]):
-        for key in ('label','reason','assumptions','limitations','clarifications'):
+        for key in ('assumptions','limitations','clarifications'):
             v=option.get(key,[]);known.append(norm(v if isinstance(v,str) else '；'.join(v)))
         value=(option.get('fields',{}).get('purpose') or {})
         known.append(norm(value.get('value','') if isinstance(value,dict) else value))
     for proposal in state.get('proposals',{}).values():
         for item in proposal.get('review',{}).values():
-            for key in ('label','reason','assumptions','limitations','clarifications'):
+            for key in ('assumptions','limitations','clarifications'):
                 v=item.get(key,[]);known.append(norm(v if isinstance(v,str) else '；'.join(v)))
     lines=[line.strip() for line in text.splitlines() if line.strip()]
     if not lines:return False
@@ -70,7 +71,7 @@ def proposal_echo(state,text):
         value=re.sub(r'^(?:拟研究|假设|限制|待澄清|待研究设计核查)\s*[:：]\s*','',line)
         value=norm(value)
         labeled=bool(re.match(r'^(?:拟研究|假设|限制|待澄清|待研究设计核查)\s*[:：]',line))
-        if (len(value)<8 and not labeled) or not any(value==k or value in k for k in known if k):return False
+        if not labeled or not any(value==k or value in k for k in known if k):return False
     return True
 
 
@@ -78,10 +79,14 @@ def check_operations(state,text,extraction):
     """Check referential/operation scope; semantic ambiguity remains a user question."""
     intents={i.id:i for i in extraction.intents}
     question=state.get('current_question') or {}
-    refs=set(FIELDS)|{e.get('id') for v in state['fields'].values() for e in (v if isinstance(v,list) else [v]) if e.get('id')}
+    refs=set(FIELDS)|{'reference_note','task_type'}|{e.get('id') for v in state['fields'].values() for e in (v if isinstance(v,list) else [v]) if e.get('id')}
+    entries=[e for v in state['fields'].values() for e in (v if isinstance(v,list) else [v])]+state.get('reference_notes',[])
+    refs.update(e['id'] for e in entries if e.get('id'))
+    targets=refs|{e['value'] for e in entries if e.get('value')}|{'reference_note','task_type'}
     rec=state.get('recommendation_set') or {}
     refs.update(o['id'] for o in rec.get('options',[]));refs.update(state.get('proposals',{}));refs.update(p for proposal in state.get('proposals',{}).values() for p in proposal.get('direction_ids',[]))
     if rec.get('id'):refs.add(rec['id'])
+    targets.update(refs)
     accepted=[];decisions=[]
     for item in extraction.updates:
         if item.field == 'research_scope' and item.scope_mode in {'current_scope','no_extra_exclusions'}:
@@ -101,6 +106,7 @@ def check_operations(state,text,extraction):
         elif item.intent_ref and not intent:reason='意图引用不存在'
         elif any(ref not in refs for ref in item.basis_refs):reason='上下文依据不存在'
         elif intent and intent.quote not in text:reason='意图依据不属于本轮'
+        elif intent and any(ref not in targets for ref in intent.target_refs):reason='意图目标不存在，请明确要修改的当前条目'
         elif intent and intent.kind=='quote':reason='引用不是新增用户要求'
         elif intent and intent.kind=='answer' and (intent.question_ref!=question.get('id') or item.field not in question.get('fields',[])):
             labels=dict(zip(FIELDS,('研究目的','研究对象','应用场景','工作条件','目标性能','约束条件','研究范围','材料功能')))
@@ -113,8 +119,8 @@ def check_operations(state,text,extraction):
             existing=state['fields'][item.field]
             if existing.get('status')=='specified' and item.status!='specified' and item.change_relation=='restatement':
                 reason='重述没有撤回既有研究内容；保持当前值'
-        if item.field in LIST_FIELDS:
-            current=state['fields'][item.field]
+        if item.field in LIST_FIELDS or item.field=='reference_note':
+            current=state['fields'][item.field] if item.field in LIST_FIELDS else state.get('reference_notes',[])
             existing=[e for e in current if e.get('status')=='specified']
             name=item.target_value or item.value
             matched=any((item.target_id and e.get('id')==item.target_id) or (not item.target_id and name and e.get('value')==name) for e in current)
@@ -123,17 +129,32 @@ def check_operations(state,text,extraction):
                 reason='更新未定位现有条目，保留当前目标；请明确对应项或新增'
             if item.action=='remove' and intent and intent.kind=='edit' and name and name in item.quote and not any(name in (e.get('value') or '') or (e.get('value') and e['value'] in name) for e in current) and not any(e.get('id')==item.target_id if item.target_id else e.get('value')==name for e in current):
                 reason='当前列表没有该条目，未删除其他项'
-            matched_entries=[e for e in existing if e.get('id')==item.target_id or e.get('value')==item.target_value]
+            matched_entries=[e for e in current if (item.target_id and e.get('id')==item.target_id) or (not item.target_id and (item.target_value or item.value) and e.get('value')==(item.target_value or item.value))]
+            if item.target_id and item.target_value and any(e.get('value')!=item.target_value for e in matched_entries):
+                reason='条目ID与名称指向不同目标，原条目保持不变'
             clarification=item.field=='constraints' and item.change_relation in {'restatement','refinement'} and item.status=='specified' and any((item.strength is None or e.get('strength')==item.strength) and component_predicate(e)==component_predicate(item.model_dump()) for e in matched_entries)
-            destructive=item.action in {'remove','replace'} or (item.action=='update' and any(item.status!='specified' or (item.value is not None and e.get('value')!=item.value and not clarification) for e in matched_entries))
-            if destructive and existing:
-                if intent and intent.kind != 'edit':reason='该意图没有授权撤回或替换既有条目'
-                elif not intent and item.action=='replace' and not re.search(r'目标.*(?:只|仅|改为|替换)|只(?:比较|保留)|没有.*约束|不设置.*约束',item.quote):
-                    reason='整体替换缺少明确修改依据'
-                if intent and item.action=='replace' and item.field not in intent.target_refs and not {e['id'] for e in existing}.issubset(set(intent.target_refs)):
-                    reason='整体替换没有明确指向当前完整字段'
-                if intent and item.action=='remove' and not (item.target_id in intent.target_refs or item.target_value in intent.target_refs):
-                    reason='撤回没有对应的目标引用'
+            destructive=item.action in {'remove','replace'} or (item.action=='update' and any(e.get('status')=='specified' and (item.status!='specified' or (item.value is not None and e.get('value')!=item.value and not clarification) or (item.strength is not None and item.strength!=e.get('strength')) or (item.predicate is not None and component_predicate(item.model_dump())!=component_predicate(e))) for e in matched_entries))
+            bound=item.action in {'remove','replace'} or (item.action=='update' and bool(matched_entries) and any(e.get('value') for e in matched_entries))
+            if bound and not reason:
+                if not intent:reason='操作缺少有效意图关联，原条目保持不变；请说明要修改或撤回哪一项'
+                elif not item.basis_refs:reason='操作缺少当前条目依据，原条目保持不变'
+                elif destructive and intent.kind!='edit':reason='该意图没有授权撤回或替换既有条目'
+                elif not destructive and intent.kind not in {'edit','answer','inform'}:reason='该意图没有授权更新当前条目'
+                elif item.action=='replace':
+                    if item.field not in intent.target_refs and not (existing and {e['id'] for e in existing}.issubset(set(intent.target_refs))):reason='整体替换没有明确指向当前完整字段'
+                    elif item.field not in item.basis_refs and not (existing and {e['id'] for e in existing}.issubset(set(item.basis_refs))):reason='整体替换缺少完整字段依据'
+                elif len(matched_entries)!=1:reason='修改项无法唯一定位，原列表保持不变；请明确条目名称'
+                elif not ({matched_entries[0].get('id'),matched_entries[0].get('value')} & set(intent.target_refs)):reason='修改没有对应的目标引用'
+                elif not ({item.field,matched_entries[0].get('id')} & set(item.basis_refs)):reason='修改依据不对应当前条目'
+        elif item.field in FIELDS:
+            existing=state['fields'][item.field]
+            if item.target_id and item.target_id!=item.field:reason='修改目标ID不对应当前字段'
+            if item.target_value and item.target_value!=existing.get('value'):reason='修改目标名称不对应当前字段'
+            destructive=existing.get('status')=='specified' and bool(existing.get('value')) and (item.status!=existing.get('status') or item.value!=existing.get('value'))
+            if destructive and not reason:
+                if not intent:reason='修改缺少有效意图关联，原字段保持不变'
+                elif intent.kind!='edit' and not (intent.kind=='answer' and item.change_relation in {'restatement','refinement'}):reason='替换既有字段须有明确修改意图'
+                elif item.field not in intent.target_refs or item.field not in item.basis_refs:reason='修改意图或依据未指向当前字段'
         if reason:
             decisions.append({'operation':item.model_dump(),'decision':'not_applied','reason':reason})
         else:

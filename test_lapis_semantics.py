@@ -5,7 +5,7 @@ from unittest.mock import patch
 from lapis_intake import Extraction, Intent, Update, handle_turn, new_state
 from lapis_contract import validate_current_request, validate_research_request_v4
 from lapis_semantics import build_context, proposal_echo
-from test_lapis_intake import TEXT, full_updates, turn
+from test_lapis_intake import TEXT, full_updates, turn, edit_fixture
 from test_lapis_review import advice, select
 
 class SemanticTest(unittest.TestCase):
@@ -33,6 +33,7 @@ class SemanticTest(unittest.TestCase):
     def base(self):
         state=new_state();r=turn(state,TEXT,full_updates());return state,r
     def send(self,state,text,extraction,context=None):
+        if 'edit' in extraction.actions and not extraction.intents:extraction=edit_fixture(text,extraction)
         with patch('lapis_intake.extract',return_value=extraction):return handle_turn(None,'test',state,text,context)
 
     def test_scope_answer_cannot_replace_selected_indicator(self):
@@ -46,7 +47,7 @@ class SemanticTest(unittest.TestCase):
 
     def test_comparison_answer_only_updates_direction(self):
         state,r=self.base();goal=state['fields']['target_performance'][0];state['current_question']={'id':'goal-Q','fields':['target_performance']}
-        e=Extraction(intents=[Intent(id='I',kind='answer',quote='比较吧',question_ref='goal-Q')],updates=[Update(field='target_performance',intent_ref='I',status='specified',direction='比较',quote='比较吧',action='update',target_id=goal['id'],basis_refs=[goal['id']])])
+        e=Extraction(intents=[Intent(id='I',kind='answer',quote='比较吧',question_ref='goal-Q',target_refs=[goal['id']])],updates=[Update(field='target_performance',intent_ref='I',status='specified',direction='比较',quote='比较吧',action='update',target_id=goal['id'],basis_refs=[goal['id']])])
         self.send(state,'比较吧',e,r['input_context'])
         self.assertEqual(len(state['fields']['target_performance']),2)
         self.assertEqual(state['fields']['target_performance'][0]['id'],goal['id'])
@@ -54,7 +55,7 @@ class SemanticTest(unittest.TestCase):
 
     def test_explicit_mixed_edit_is_allowed(self):
         state,r=self.base();goal=state['fields']['target_performance'][0];state['current_question']={'id':'scope-Q','fields':['research_scope']}
-        e=Extraction(intents=[Intent(id='S',kind='answer',quote='范围不变',question_ref='scope-Q'),Intent(id='E',kind='edit',quote='撤回稳定性',target_refs=[goal['id']])],updates=[Update(field='target_performance',intent_ref='E',status='none',quote='撤回稳定性',action='remove',target_id=goal['id']),Update(field='research_scope',intent_ref='S',status='specified',quote='范围不变',value=state['fields']['research_scope']['value'],change_relation='restatement')])
+        e=Extraction(intents=[Intent(id='S',kind='answer',quote='范围不变',question_ref='scope-Q'),Intent(id='E',kind='edit',quote='撤回稳定性',target_refs=[goal['id']])],updates=[Update(field='target_performance',intent_ref='E',status='none',quote='撤回稳定性',action='remove',target_id=goal['id'],basis_refs=[goal['id']]),Update(field='research_scope',intent_ref='S',status='specified',quote='范围不变',value=state['fields']['research_scope']['value'],change_relation='restatement')])
         self.send(state,'范围不变，撤回稳定性',e,r['input_context'])
         self.assertEqual([g['value'] for g in state['fields']['target_performance']],['离子传输'])
 
@@ -76,13 +77,13 @@ class SemanticTest(unittest.TestCase):
         self.assertFalse(state['reference_notes'])
 
     def test_compatible_refinement_does_not_reopen_goals(self):
-        state,r=self.base();e=Extraction(updates=[Update(field='application',status='specified',value='高电压储能电池',quote='高电压储能电池',change_relation='refinement')])
+        state,r=self.base();e=Extraction(actions=['edit'],updates=[Update(field='application',status='specified',value='高电压储能电池',quote='高电压储能电池',change_relation='refinement')])
         self.send(state,'高电压储能电池',e,r['input_context'])
         self.assertFalse(any(g.get('needs_review') for g in state['fields']['target_performance']))
 
     def test_real_switch_retains_but_rechecks_related_fields(self):
         state,r=self.base();before=[g['id'] for g in state['fields']['target_performance']]
-        e=Extraction(updates=[Update(field='application',status='specified',value='聚合物包装',quote='聚合物包装',change_relation='switch')])
+        e=Extraction(actions=['edit'],updates=[Update(field='application',status='specified',value='聚合物包装',quote='聚合物包装',change_relation='switch')])
         self.send(state,'改到聚合物包装',e,r['input_context'])
         self.assertEqual([g['id'] for g in state['fields']['target_performance']],before)
         self.assertTrue(all(g.get('needs_review') for g in state['fields']['target_performance']))
@@ -111,7 +112,7 @@ class SemanticTest(unittest.TestCase):
 
     def test_old_view_after_edit_is_rejected(self):
         state,r=self.base();old=r['input_context']
-        r=self.send(state,'研究传输',Extraction(updates=[Update(field='purpose',status='specified',value='研究传输',quote='研究传输')]),old)
+        r=self.send(state,'研究传输',Extraction(actions=['edit'],updates=[Update(field='purpose',status='specified',value='研究传输',quote='研究传输')]),old)
         self.assertFalse(handle_turn(None,'test',state,'确认',old)['ready_for_design'])
 
     def test_proposal_derived_context_and_goals_keep_their_source(self):
@@ -184,7 +185,7 @@ class SemanticTest(unittest.TestCase):
     def test_constraint_clarification_preserves_strength_and_rechecks(self):
         state,r=self.base();entry=state['fields']['constraints'][1];entry.update(value='低成本',strength='preference',needs_review=True);state['current_question']={'id':'cost-Q','fields':['constraints']}
         text='低成本偏好保留，原料和加工成本尽量低'
-        e=Extraction(intents=[Intent(id='I',kind='answer',quote=text,question_ref='cost-Q',target_refs=[entry['id']])],updates=[Update(field='constraints',status='specified',value='低成本（原料与加工成本尽量低）',strength='preference',quote=text,intent_ref='I',action='update',target_id=entry['id'],change_relation='refinement')])
+        e=Extraction(intents=[Intent(id='I',kind='answer',quote=text,question_ref='cost-Q',target_refs=[entry['id']])],updates=[Update(field='constraints',status='specified',value='低成本（原料与加工成本尽量低）',strength='preference',quote=text,intent_ref='I',action='update',target_id=entry['id'],basis_refs=[entry['id']],change_relation='refinement')])
         result=self.send(state,text,e,r['input_context'])
         current=next(c for c in state['fields']['constraints'] if c['id']==entry['id'])
         self.assertEqual(current['strength'],'preference');self.assertNotIn('needs_review',current)
@@ -194,7 +195,7 @@ class SemanticTest(unittest.TestCase):
     def test_constraint_refinement_cannot_reverse_component_prohibition(self):
         state,r=self.base();entry=state['fields']['constraints'][0];entry.update(value='不能含FEC',strength='hard',predicate={'target':'FEC','operator':'forbid','scope':'current'});state['current_question']={'id':'cost-Q','fields':['constraints']}
         text='必须含FEC'
-        e=Extraction(intents=[Intent(id='I',kind='answer',quote=text,question_ref='cost-Q',target_refs=[entry['id']])],updates=[Update(field='constraints',status='specified',value=text,strength='hard',quote=text,intent_ref='I',action='update',target_id=entry['id'],change_relation='refinement',predicate={'target':'FEC','operator':'require'})])
+        e=Extraction(intents=[Intent(id='I',kind='answer',quote=text,question_ref='cost-Q',target_refs=[entry['id']])],updates=[Update(field='constraints',status='specified',value=text,strength='hard',quote=text,intent_ref='I',action='update',target_id=entry['id'],basis_refs=[entry['id']],change_relation='refinement',predicate={'target':'FEC','operator':'require'})])
         result=self.send(state,text,e,r['input_context'])
         self.assertEqual(state['fields']['constraints'][0]['value'],'不能含FEC')
         self.assertEqual(result['operation_decisions'][0]['decision'],'not_applied')

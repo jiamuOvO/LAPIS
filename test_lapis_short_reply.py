@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import patch
 from lapis_intake import Extraction, Update, Issue, handle_turn, new_state
 from test_lapis_review import advice, select, shown
+from test_lapis_intake import edit_fixture
 
 class ShortReplyTest(unittest.TestCase):
     def test_partial_reply_does_not_adopt_whole_option(self):
@@ -77,7 +78,7 @@ class ShortReplyTest(unittest.TestCase):
 
     def test_old_display_after_edit_cannot_confirm(self):
         state=new_state();r=advice(state);r=select(state,r['input_context']);old=r['input_context']
-        with patch('lapis_intake.extract',return_value=Extraction(updates=[Update(field='purpose',status='specified',value='比较材料',quote='比较材料')])):
+        with patch('lapis_intake.extract',return_value=edit_fixture('比较材料',Extraction(updates=[Update(field='purpose',status='specified',value='比较材料',quote='比较材料')]))):
             handle_turn(None,'test',state,'比较材料',old)
         result=handle_turn(None,'test',state,'确认',old)
         self.assertFalse(result.get('confirmation_event'))

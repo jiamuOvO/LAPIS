@@ -8,6 +8,7 @@ from lapis_intake import Extraction, Intent, Update, handle_turn, new_state
 from lapis_contract import validate_current_request
 from test_lapis_review import advice, select
 from test_lapis_proposals import proposal
+from test_lapis_intake import edit_fixture
 
 class CompleteDialogueTest(unittest.TestCase):
     def say(self,state,text,e,context=None):
@@ -36,7 +37,7 @@ class CompleteDialogueTest(unittest.TestCase):
                 elif scene['id']=='multi_goal_edit':
                     r=self.say(state,'新增导热关注点',Extraction(updates=[Update(field='target_performance',status='specified',value='导热',direction='考察',quote='导热')]),r['input_context'])
                     goal=state['fields']['target_performance'][0]
-                    e=Extraction(intents=[Intent(id='E',kind='edit',quote='撤回稳定性',target_refs=[goal['id']])],updates=[Update(field='target_performance',intent_ref='E',status='none',quote='撤回稳定性',action='remove',target_id=goal['id'])])
+                    e=Extraction(intents=[Intent(id='E',kind='edit',quote='撤回稳定性',target_refs=[goal['id']])],updates=[Update(field='target_performance',intent_ref='E',status='none',quote='撤回稳定性',action='remove',target_id=goal['id'],basis_refs=[goal['id']])])
                     r=self.say(state,'撤回稳定性',e,r['input_context']);self.assertEqual([g['value'] for g in state['fields']['target_performance']],['导热'])
                 elif scene['id']=='unknown_delegate':
                     r=self.say(state,'不能使用有毒溶剂',Extraction(updates=[Update(field='constraints',status='specified',value='不能使用有毒溶剂',strength='hard',quote='不能使用有毒溶剂')]),r['input_context'])
@@ -44,9 +45,9 @@ class CompleteDialogueTest(unittest.TestCase):
                     e=Extraction(intents=[Intent(id='I',kind='delegate',quote='随便你')],updates=[Update(field='constraints',intent_ref='I',status='none',quote='随便你',action='replace')])
                     r=self.say(state,'随便你',e,r['input_context']);self.assertEqual(state['fields']['constraints'],hard)
                 elif scene['id']=='context_change':
-                    r=self.say(state,'改为器件表面材料',Extraction(updates=[Update(field='application',status='specified',value='器件表面材料',quote='器件表面材料',change_relation='refinement')]),r['input_context'])
+                    r=self.say(state,'改为器件表面材料',edit_fixture('改为器件表面材料',Extraction(updates=[Update(field='application',status='specified',value='器件表面材料',quote='器件表面材料',change_relation='refinement')])),r['input_context'])
                     self.assertFalse(any(g.get('needs_review') for g in state['fields']['target_performance']))
-                    r=self.say(state,'改到室内吸附用途',Extraction(domain='materials_application',domain_quote='室内吸附',updates=[Update(field='application',status='specified',value='室内吸附',quote='室内吸附',change_relation='switch')]),r['input_context'])
+                    r=self.say(state,'改到室内吸附用途',edit_fixture('改到室内吸附用途',Extraction(domain='materials_application',domain_quote='室内吸附',updates=[Update(field='application',status='specified',value='室内吸附',quote='室内吸附',change_relation='switch')])),r['input_context'])
                     self.assertTrue(any(g.get('needs_review') for g in state['fields']['target_performance']))
                     r=self.say(state,'目标、功能和条件重新核对后仍沿用',Extraction(actions=['reaffirm'],reaffirm_fields=['target_performance','material_function','work_conditions','constraints']),r['input_context'])
                 elif scene['id']=='indicator':

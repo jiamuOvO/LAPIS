@@ -5,7 +5,7 @@ from unittest.mock import patch
 from lapis_core import intake_is_confirmed
 from lapis_contract import validate_current_request
 from lapis_guidance import load_catalog, recommendations
-from lapis_intake import Extraction, Update, handle_turn, new_state, normalize_state, process_turn
+from lapis_intake import Extraction, Intent, Update, handle_turn, new_state, normalize_state, process_turn
 
 TEXT = "在高电压电池中，仅比较碳酸酯电解液的稳定性和传输，不用含氟添加剂，尽量低成本"
 BASE = [
@@ -33,8 +33,21 @@ def catalogue_fixture(client, model, state, text, operation_id=None):
 
 
 def turn(state, text, extraction, context=None):
+    if 'edit' in extraction.actions and not extraction.intents:
+        extraction=edit_fixture(text,extraction)
     with patch("lapis_intake.extract", return_value=extraction), patch("lapis_intake.generate_recommendations", side_effect=catalogue_fixture):
         return handle_turn(None, "mock", state, text, input_context=context)
+
+
+def edit_fixture(text,extraction):
+    """Explicitly authored edit fixtures; negative boundary tests never use this."""
+    updates=[];intents=[]
+    for n,item in enumerate(extraction.updates):
+        ref='fixture-edit-'+str(n)
+        targets=[item.target_id or item.target_value or (item.value if item.action=='remove' else item.field)]
+        updates.append(item.model_copy(update={'intent_ref':ref,'basis_refs':[item.field]}))
+        intents.append(Intent(id=ref,kind='edit',quote=text,target_refs=targets))
+    return extraction.model_copy(update={'intents':intents,'updates':updates})
 
 
 def guide(state=None):
@@ -139,7 +152,7 @@ class IntakeV3Test(unittest.TestCase):
         state = new_state()
         turn(state, TEXT, full_updates())
         result = turn(state, "先不考虑成本", Extraction(actions=["edit"], updates=[
-            Update(field="constraints", status="specified", value="先不考虑成本", strength="preference", quote="先不考虑成本")]))
+            Update(field="constraints", status="specified", value="先不考虑成本", strength="preference", quote="先不考虑成本", target_id=state['fields']['constraints'][1]['id'])]))
         self.assertEqual(len(result["request"]["fields"]["constraints"]), 1)
         self.assertEqual(result["request"]["fields"]["constraints"][0]["strength"], "hard")
 
@@ -254,7 +267,7 @@ class IntakeV3Test(unittest.TestCase):
         state = new_state()
         turn(state, TEXT, full_updates())
         first = state["fields"]["target_performance"][0]
-        turn(state, "稳定性改为提高", Extraction(updates=[
+        turn(state, "稳定性改为提高", Extraction(actions=["edit"], updates=[
             Update(field="target_performance", status="specified", value="稳定性", direction="提高",
                    quote="稳定性改为提高", action="update", target_id=first["id"])]))
         self.assertEqual(len(state["fields"]["target_performance"]), 2)
@@ -271,14 +284,15 @@ class IntakeV3Test(unittest.TestCase):
         unresolved = turn(state, "删掉稳定", Extraction(updates=[
             Update(field="target_performance", status="specified", value="稳定", action="remove", quote="删掉稳定")]))
         self.assertEqual(len(state["fields"]["target_performance"]), 1)
-        self.assertEqual(unresolved["intake_status"], "needs_clarification")
+        self.assertTrue(any(d['decision']=='not_applied' for d in unresolved['operation_decisions']))
+        self.assertFalse(state['issues'])  # Bad model operation must not create a permanent ambiguity.
 
     def test_unclear_placeholder_is_replaced_by_clarification(self):
         state = new_state()
         turn(state, TEXT, full_updates())
-        turn(state, "整体目标替换为未明确指标", Extraction(updates=[
+        turn(state, "整体目标替换为未明确指标", Extraction(actions=["edit"], updates=[
             Update(field="target_performance", status="unclear", quote="整体目标替换为未明确指标", action="replace")]))
-        clarified = turn(state, "改为比较稳定性", Extraction(updates=[
+        clarified = turn(state, "改为比较稳定性", Extraction(actions=["edit"], updates=[
             Update(field="target_performance", status="specified", value="稳定性", direction="比较",
                    quote="比较稳定性", action="update")]))
         self.assertEqual(clarified["intake_status"], "needs_confirmation")
@@ -287,7 +301,7 @@ class IntakeV3Test(unittest.TestCase):
     def test_object_change_marks_old_context_for_review_and_requires_display_binding(self):
         state = new_state()
         draft = turn(state, TEXT, full_updates())
-        changed = turn(state, "改成聚合物包装材料", Extraction(updates=[
+        changed = turn(state, "改成聚合物包装材料", Extraction(actions=["edit"], updates=[
             Update(field="research_object", status="specified", value="聚合物包装材料", quote="聚合物包装材料")]))
         self.assertTrue(state["fields"]["constraints"][0]["needs_review"])
         stale = turn(state, "沿用原约束", Extraction(actions=["reaffirm"], reaffirm_fields=["constraints"]), draft["input_context"])
@@ -302,7 +316,7 @@ class IntakeV3Test(unittest.TestCase):
         draft = turn(state, TEXT + "，用分子动力学", Extraction(updates=full_updates().updates + [note]))
         ref = draft["request"]["reference_notes"][0]
         self.assertEqual(ref["status"], "unverified_user_reference")
-        turn(state, "撤回分子动力学", Extraction(updates=[
+        turn(state, "撤回分子动力学", Extraction(actions=["edit"], updates=[
             Update(field="reference_note", status="specified", value="分子动力学", quote="撤回分子动力学", action="remove")]))
         self.assertFalse(state["reference_notes"][0]["active"])
         self.assertNotIn("method", draft["request"]["fields"])
@@ -338,6 +352,7 @@ class IntakeV3Test(unittest.TestCase):
         handle_turn(None, "mock", state, "没有")
         self.assertEqual(state["fields"]["work_conditions"]["status"], "none")
         state["asked_field"] = "work_conditions"
+        state['current_question']={'id':'conditions-question','fields':['work_conditions']}
         with patch("lapis_intake.generate_recommendations", side_effect=catalogue_fixture):
             handle_turn(None, "mock", state, "交给研究设计确定")
         self.assertEqual(state["fields"]["work_conditions"]["status"], "open")

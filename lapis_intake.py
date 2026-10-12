@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from lapis_contract import (CONTRACT_VERSION, RULE_VERSION, FIELDS, LIST_FIELDS, CONFIRM_WORDS,
                             content_hash, domain_from_fields, request_issues,
                             validate_current_request)
-from lapis_semantics import (build_context, proposal_echo, check_operations, prepare_summaries, adopt_summaries, runtime_fingerprint)
+from lapis_semantics import (build_context, proposal_echo, check_operations, prepare_summaries, adopt_summaries, runtime_fingerprint, OPERATION_RULE_VERSION)
 from lapis_proposals import generate_recommendations, GUIDANCE_PROMPT, direction_fingerprint
 
 class StrictModel(BaseModel):
@@ -88,7 +88,7 @@ class Issue(StrictModel):
 
 
 class Intent(StrictModel):
-    id: str
+    id: str = Field(min_length=1)
     kind: Literal["answer", "inform", "edit", "adopt", "reject", "quote", "delegate", "progress", "confirm", "pause"]
     quote: str = Field(min_length=1)
     question_ref: str | None = None
@@ -114,6 +114,12 @@ class Extraction(StrictModel):
     resolve_issue_ids: list[str] = Field(default_factory=list)
     reaffirm_fields: list[str] = Field(default_factory=list)
 
+    @model_validator(mode="after")
+    def unique_intents(self):
+        if len({i.id for i in self.intents}) != len(self.intents):
+            raise ValueError("意图ID必须唯一，不能覆盖同名意图")
+        return self
+
 
 # Kept as a readable compatibility type, not an unconstrained scientific recommender.
 class SuggestedGoal(BaseModel):
@@ -128,7 +134,7 @@ class IntakeSuggestion(BaseModel):
 
 
 SYSTEM_PROMPT = """你是 LAPIS 第一模块的结构化语义解释器。一次调用输出简短可检查的理解、意图和拟修改，只输出语义结论和引用，不输出推理过程、不虚构科学事实。一句话可以同时明确对象、用途和目标；application只需基本用途，不要求具体器件细分。材料名中清楚的用途限定词也要分拆为application，而不是再索取更细用途；务必分拆隐含但清楚的使用背景，不只把整个短语塞进研究对象后再问用户已说过的用途。明确命名其他字段是独立inform/edit，不要绑到正在回答的另一问题。固定八项：purpose研究行动/判断，research_object材料类别/体系，application基本用途，work_conditions条件，target_performance关注点和方向，constraints硬约束/偏好，research_scope本轮边界，material_function拟承担作用。
-所有原话quote必须来自本轮连续片段。上下文用于解释省略，不冒充原话。intents每条有id/kind/quote；回答必须以question_ref指向current_question.id；修改指向target_refs。updates逐条intent_ref，引用当前条目ID或字段作为basis_refs。不重复输出未修改字段。
+所有原话quote必须来自本轮连续片段。上下文用于解释省略，不冒充原话。intents每条有唯一id/kind/quote；回答必须以question_ref指向current_question.id；修改指向target_refs。updates逐条intent_ref，引用当前条目ID或字段作为basis_refs。不重复输出未修改字段。撤回、整体替换、清空或改写已有内容须关联edit意图并指向真实当前条目；按名称撤回可用当前条目原名称target_value及同名target_refs，用户不必提供ID。整体替换指向完整字段。只改方向或澄清约束也须引用对应条目，不撤回已有名称；不得省略关联绕过检查。裸推荐名称不是引用，结合当前选择问题判断采用或具体澄清；局部功能不采用整套方案。明确引用与新增要求混合时分别解释。
 kind:answer回答当前问题；inform新信息；edit主动修改/撤回；adopt采用提案；reject拒绝；quote引用原提案；delegate委托建议；progress查询下一步；confirm明确批准；pause暂停。用户混合编辑可以有多条意图；回答某字段不能改另一个字段，独立主动编辑须另列意图。actions维持inform/edit/select/recommend/explain/unsure/reaffirm/reject/progress/confirm/pause/quote/delegate调用分工。
 “比较吧”回答目标方向时，更新现有目标direction，不改value，不删除具体指标；也可独立明确研究目的但不要再重复追问已知目标。研究/考察/探索本身是合法目的，无需强选筛选或比较。定性关注点可以进入研究设计，无需具体指标、公式、单位、模型或计算路线。
 add增加，update唯一指向现有项只改明确属性，remove需撤回意图并指向target_refs，replace只在明确整个字段替换时使用。已采用的目标/指标默认保留。仅选推荐中一子目标不加入未选提案目标，但不能删除此前用户已选项。推荐之外的新指标可以add，即使当前追问其他字段；用inform或edit独立意图。
@@ -221,8 +227,13 @@ def contextual_reply(state, text):
     field = state.get("asked_field")
     if field in FIELDS and text in {"没有", "无", "暂无", "不知道", "不清楚", "不确定", "没想好", "交给研究设计确定"}:
         status = "none" if text in {"没有", "无", "暂无"} else "open"
+        # A short unknown answer cannot erase a known requirement.
+        values=state['fields'][field];values=values if isinstance(values,list) else [values]
+        if any(v.get('value') for v in values):return None
+        question=state.get('current_question') or {}
         return Extraction(actions=["unsure"] if status == "open" else ["inform"],
-                          updates=[Update(field=field, status=status, quote=text, action="update")])
+                          intents=[Intent(id='short-answer',kind='answer' if question.get('id') else 'inform',quote=text,question_ref=question.get('id'),target_refs=[field])],
+                          updates=[Update(field=field, status=status, quote=text, action="update",intent_ref='short-answer',basis_refs=[field])])
     return None
 
 
@@ -425,10 +436,6 @@ def _ground_actions(state, extraction):
             else:
                 retained.append(item)
         extraction = extraction.model_copy(update={"updates":retained})
-    extraction, decisions = check_operations(state, state.get("_input_text", ""), extraction)
-    decisions = covered + decisions
-    state["_operation_decisions"] = decisions
-    state["_intents"] = extraction.intents
     rec = state.get("recommendation_set")
     adopted = {}
     if "select" in extraction.actions and extraction.selection_mode == "full" and rec and extraction.selected_option and 1 <= extraction.selected_option <= len(rec["options"]):
@@ -473,7 +480,10 @@ def _ground_actions(state, extraction):
                     item = item.model_copy(update={"action": "remove", "status": "none", "target_value": name,
                                                   "target_id": found[0]["id"] if len(found) == 1 else item.target_id})
         retained.append(item)
-    return extraction.model_copy(update={"updates": retained})
+    extraction,decisions=check_operations(state,state.get('_input_text',''),extraction.model_copy(update={'updates':retained}))
+    state['_operation_decisions']=covered+decisions
+    state['_intents']=extraction.intents
+    return extraction
 
 
 def _select(state, extraction, text, context):
@@ -484,7 +494,7 @@ def _select(state, extraction, text, context):
         # Reaffirming the live direction keeps later refinements; stale new choices still fail below.
         if context.get("draft_id") == state["draft_id"] and expected == {"id":rec["id"],"version":rec["version"]} and all((state["fields"][field].get("recommendation_ref") or {}).get("direction_id") == option["id"] for field in ("research_object", "application")):
             return None
-    if not rec or expected != {"id": rec["id"], "version": rec["version"]} or rec["draft_id"] != state["draft_id"]:
+    if not rec or context.get('draft_id') != state['draft_id'] or expected != {"id": rec["id"], "version": rec["version"]} or rec["draft_id"] != state["draft_id"]:
         return "推荐已经变化，请请求重新展示方向后再选择。"
     index = extraction.selected_option
     if not index or not 1 <= index <= len(rec["options"]):
@@ -748,6 +758,7 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
         result["operation_decisions"] = state.get("_operation_decisions", [])
         result["important_changes"] = [LABELS.get(d["operation"]["field"],d["operation"]["field"]) + "：" + d["operation"]["action"] + "；原话：" + d["operation"]["quote"] for d in result["operation_decisions"] if d["decision"] == "accepted" and (d["operation"]["action"] in {"remove","replace"} or d["operation"]["field"] == "research_scope")]
     result["metadata"] = {"model": model, "rule_version": RULE_VERSION, "contract_version": CONTRACT_VERSION,
+                          "operation_rule_version": OPERATION_RULE_VERSION,
                           "elapsed_seconds": round(time.perf_counter() - started, 3),
                           "runtime": runtime_fingerprint(),
                           "catalog_version": (state.get("recommendation_set") or {}).get("catalog_version")}
