@@ -9,6 +9,21 @@ from test_lapis_review import advice,select
 
 
 class BoundaryTest(unittest.TestCase):
+    def test_current_unique_bare_name_requires_adoption_or_clarification(self):
+        state,r=self.seed();name='任意材料方向甲'
+        state['recommendation_set']={'draft_id':state['draft_id'],'options':[{'id':'opt-A','label':name,'fields':{}}]}
+        context={'current_model_output':True,'fields':state['fields'],'state':state,'input':name}
+        data={'intents':[{'id':'I','kind':'inform','quote':name}],'actions':['inform']}
+        with self.assertRaises(ValidationError):Extraction.model_validate(data,context=context)
+        adopted={'intents':[{'id':'I','kind':'adopt','quote':name}],'actions':['select'],'selected_option':1}
+        Extraction.model_validate(adopted,context=context)
+        Extraction.model_validate({'actions':['unsure'],'clarification_question':'你希望这一方向同时包含哪些候选范围？'},context=context)
+        Extraction.model_validate(data)  # historical reads do not reinterpret old records
+        context['input']='引用：'+name
+        Extraction.model_validate({'actions':['quote']},context=context)
+        state['recommendation_set']['draft_id']='old-draft';context['input']=name
+        Extraction.model_validate(data,context=context)  # stale adoption remains checked by _select
+
     def test_current_intent_is_not_a_context_basis_and_error_names_it(self):
         state,r=self.seed();text='调整范围为只研究材料'
         e=Extraction(intents=[Intent(id='I',kind='edit',quote=text,target_refs=['research_scope'])],updates=[Update(field='research_scope',status='specified',value='只研究材料',quote=text,action='update',intent_ref='I',basis_refs=['I'],change_relation='refinement')])

@@ -126,6 +126,15 @@ class Extraction(StrictModel):
             raise ValueError("意图ID必须唯一，不能覆盖同名意图")
         context=info.context or {}
         if context.get('current_model_output') and context.get('state'):
+            state=context['state'];rec=state.get('recommendation_set') or {}
+            matches=[(n,o) for n,o in enumerate(rec.get('options',[]),1) if o['label'].strip()==context['input'].strip()]
+            if rec.get('draft_id')==state.get('draft_id') and len(matches)==1:
+                index,option=matches[0]
+                already=all((state['fields'][f].get('recommendation_ref') or {}).get('direction_id')==option['id'] for f in ('research_object','application'))
+                adopted='select' in self.actions and self.selected_option==index and self.selection_mode=='full' and any(i.kind=='adopt' and i.quote in context['input'] for i in self.intents)
+                clarifying='unsure' in self.actions and bool(self.clarification_question)
+                if not already and not adopted and not clarifying:
+                    raise ValueError('本轮原样回复当前菜单唯一完整方向名称，应记录adopt意图、select动作和该序号；若确有歧义，用unsure及具体问题澄清，不能静默作为inform或quote忽略选择。')
             # Use the same final-operation guard, without mutating the live turn.
             checking=deepcopy(context['state']);checking['_input_text']=context['input']
             _ground_actions(checking,self)
