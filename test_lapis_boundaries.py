@@ -9,6 +9,16 @@ from test_lapis_review import advice,select
 
 
 class BoundaryTest(unittest.TestCase):
+    def test_added_goal_conflicting_scope_requires_review(self):
+        state,r=self.seed();state['fields']['research_scope']['value']='只研究材料表现，不新增其他指标'
+        text='新增耐热性，原目标保留'
+        e=Extraction(intents=[Intent(id='I',kind='inform',quote=text)],updates=[Update(field='target_performance',status='specified',value='耐热性',direction='考察',quote='新增耐热性',intent_ref='I')])
+        out=self.apply(state,r,text,e)
+        self.assertTrue(any(g.get('value')=='耐热性' for g in state['fields']['target_performance']))
+        self.assertIn('不新增其他指标',str(state['issues']))
+        out=handle_turn(None,'controlled',state,'确认',out['input_context'])
+        self.assertFalse(out['ready_for_design'])
+
     def seed(self):
         state,r=semantic_tests.SemanticTest().base();goal=state['fields']['target_performance'][0]
         text='把稳定性改为氧化诱导期'

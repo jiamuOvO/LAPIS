@@ -397,6 +397,10 @@ def _merge(state, text, extraction, context=None):
         if before != after:
             state["history"].append({"field": field, "before": before, "after": deepcopy(after), "turn": turn})
     retired=old_goals-{e['value'] for e in state['fields']['target_performance'] if e.get('status')=='specified' and e.get('value')}
+    added={e['value'] for e in state['fields']['target_performance'] if e.get('status')=='specified' and e.get('value')}-old_goals
+    # ponytail: catch the observed literal conflict; broader scope interpretation stays with the model and reviewer.
+    if added and '不新增其他指标' in (state['fields']['research_scope'].get('value') or ''):
+        _edit_issue(state,'research_scope','已新增目标“'+'、'.join(sorted(added))+'”，但当前范围仍写“不新增其他指标”；请同步修改范围或说明保留理由。',text)
     for field in ('purpose','research_scope'):
         entry=state['fields'][field]
         affected=[name for name in sorted(retired) if name in (entry.get('value') or '')]

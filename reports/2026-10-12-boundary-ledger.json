@@ -405,10 +405,10 @@
   "old_oct10_budget_not_reset": true,
   "full_fresh_live_acceptance_completed": false,
   "software_tests": {
-    "count": 139,
-    "passed": 139,
+    "count": 140,
+    "passed": 140,
     "skipped": 0,
-    "log": "2026-10-12-boundary-full-final-13-tests.log"
+    "log": "2026-10-12-boundary-full-final-15-tests.log"
   },
   "current_source_sha256": {
     "lapis.py": "02ee3898add93b464707c82856fdde97fc84d0b4601e45bc2a6529411fb5d49d",
@@ -417,7 +417,7 @@
     "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
     "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
     "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
-    "lapis_intake.py": "981edd0b1160065ab4e1a5d5fe3621814285061312fc25fc1b28aa34b14ae724",
+    "lapis_intake.py": "b5ca646e0f469144031a3ca6ab0039d65516e51f0cf928b557d3c477f93df0f7",
     "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
     "lapis_semantics.py": "46c00be174724ed9281129ec40c2b92cfb41c9e402d54a1486b529af9c44a44c",
     "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
