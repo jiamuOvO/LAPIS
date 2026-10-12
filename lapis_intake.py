@@ -9,7 +9,7 @@ import time
 from typing import Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, model_validator
 from lapis_contract import (CONTRACT_VERSION, RULE_VERSION, FIELDS, LIST_FIELDS, CONFIRM_WORDS,
                             content_hash, domain_from_fields, request_issues,
                             validate_current_request)
@@ -67,7 +67,13 @@ class Update(StrictModel):
     temperatures: list[Temperature] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def qualifiers(self):
+    def qualifiers(self, info: ValidationInfo):
+        context=info.context or {}
+        existing=(context.get('fields') or {}).get(self.field)
+        overwrites_scalar=isinstance(existing,dict) and existing.get('status')=='specified' and existing.get('value') and (self.value!=existing['value'] or self.status!='specified')
+        if context.get('current_model_output') and (self.action in {'remove','replace'} or (self.action=='update' and (self.target_id or self.target_value)) or overwrites_scalar):
+            if not (self.intent_ref or '').strip() or not self.basis_refs:
+                raise ValueError('撤回/替换/已有条目更新须填写intent_ref和当前目标basis_refs；不得省略操作依据')
         partial_update = self.action == "update" and (self.target_id or self.target_value)
         if self.status == "specified" and self.action != "remove" and not partial_update:
             if not (self.value or "").strip():
@@ -218,6 +224,7 @@ def extract(client, model, state, text):
     return client.create(model=model, response_model=Extraction,
                          messages=[{"role": "system", "content": SYSTEM_PROMPT},
                                    {"role": "user", "content": json.dumps(context, ensure_ascii=False)}],
+                         validation_context={'current_model_output':True,'fields':state['fields']},
                          max_retries=2, max_tokens=2600, temperature=0, **options)
 
 

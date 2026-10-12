@@ -59,6 +59,15 @@ class BoundaryTest(unittest.TestCase):
         for ids in (['E','E'],['']):
             with self.assertRaises(ValidationError):Extraction(intents=[Intent(id=i,kind='edit',quote='撤回') for i in ids])
 
+    def test_current_model_validation_requests_format_repair_before_merge(self):
+        state,r=self.seed();goal=state['fields']['target_performance'][0]
+        data={'updates':[{'field':'target_performance','status':'none','quote':'撤回氧化诱导期','action':'remove','target_id':goal['id'],'intent_ref':'E'}]}
+        with self.assertRaises(ValidationError):Extraction.model_validate(data,context={'current_model_output':True,'fields':state['fields']})
+        # Historical decoding can read it; shared execution guard still refuses it.
+        historical=Extraction.model_validate(data)
+        before=deepcopy(state['fields']);out=self.apply(state,r,'撤回氧化诱导期',historical)
+        self.assertEqual(state['fields'],before);self.assertEqual(out['operation_decisions'][0]['decision'],'not_applied')
+
     def test_explicit_named_removal_and_whole_list_replace_work(self):
         state,r=self.seed();text='撤回氧化诱导期，其余保留'
         e=Extraction(actions=['edit'],intents=[Intent(id='E',kind='edit',quote=text,target_refs=['氧化诱导期'])],updates=[Update(field='target_performance',status='none',quote='撤回氧化诱导期',action='remove',target_value='氧化诱导期',intent_ref='E',basis_refs=['target_performance'])])
@@ -101,6 +110,14 @@ class BoundaryTest(unittest.TestCase):
     def test_known_requirement_short_unknown_cannot_use_trusted_shortcut(self):
         state,r=self.seed();state['asked_field']='target_performance'
         self.assertIsNone(contextual_reply(state,'不知道'))
+
+    def test_changed_goals_keep_immutable_source_labeled_as_history(self):
+        state=new_state();r=advice(state);r=select(state,r['input_context']);original=deepcopy(state['proposals']);goal=state['fields']['target_performance'][0];text='撤回'+goal['value']
+        e=Extraction(actions=['edit'],intents=[Intent(id='E',kind='edit',quote=text,target_refs=[goal['id']])],updates=[Update(field='target_performance',status='none',quote=text,action='remove',target_id=goal['id'],intent_ref='E',basis_refs=[goal['id']]),Update(field='target_performance',status='specified',value='新关注点',direction='考察',quote='新关注点')])
+        out=self.apply(state,r,text+'，新增新关注点',e)
+        self.assertEqual(state['proposals'],original)
+        self.assertIn('原始快照',out['view']['text']);self.assertIn('原提案被撤回的内容不再适用',out['view']['text'])
+        self.assertNotIn(goal['value'],out['request']['fields']['target_performance'][0]['value'])
 
 
 if __name__=='__main__':unittest.main()

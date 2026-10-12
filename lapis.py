@@ -155,7 +155,9 @@ def render_sources(result, detail=True, stream=None):
             displayed_notes.add(note_key)
             shown = True
             pending = any(e.get("source") == "system_suggestion" and (e.get("recommendation_ref") or {}).get("direction_id") == direction for v in request.get("fields", {}).values() for e in (v if isinstance(v,list) else [v]))
-            print(("待核对提案：" if pending else "已采用提案：") + str(detail.get("label", "")))
+            print(("待核对提案：" if pending else "已采用提案来源（原始快照）：") + str(detail.get("label", "")))
+            if not pending:
+                print("当前要求以本轮八项规约为准；原提案被撤回的内容不再适用。以下原假设与限制用于追溯，须在研究设计重新核查。")
             for key, label in (("assumptions", "假设"), ("limitations", "限制"), ("clarifications", "待研究设计核查")):
                 if detail.get(key):
                     print(label + "：" + ("；".join(detail[key]) if detail_view else "；".join(short_text(x, 85) for x in detail[key][:2])))
