@@ -1,0 +1,17 @@
+{
+  "reviewer": "implementation-agent manual review; independent audit pending",
+  "verdict": "incomplete_simulator_and_ui_ambiguity",
+  "checks": {
+    "actual_bare_name_visible": true,
+    "actual_adopt_recorded": true,
+    "retired_goal_absent": true,
+    "new_goal_present": true,
+    "old_goal_id_kept": true,
+    "cost_kept": true,
+    "purpose_scope_synced": true,
+    "snapshots_unchanged": true,
+    "confirmed": false
+  },
+  "reason": "Adoption, authorized goal edit and source preservation correct. Simulated user later demanded rewriting provenance assumptions, contrary to declared background and prior utterance. Product confirmation wording still asked to review old assumptions, contributing ambiguity. User did not approve; next request stopped by budget preflight, not network. Latest UI fix untested live.",
+  "not_scientific_evidence": true
+}

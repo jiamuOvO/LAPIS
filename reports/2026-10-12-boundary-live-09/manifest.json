@@ -1,0 +1,26 @@
+{
+  "run_id": "6be98862-5180-423e-8303-44e43dacc6fe",
+  "mode": "simulated",
+  "set": "rework_acceptance_holdout",
+  "commit": "81dbbe2852521081d9e0a44dbe4332785735839c",
+  "model_alias": "deepseek-flash",
+  "seed": "provider_unavailable",
+  "prompt_hash": "a8d502b46d6b87f4a0d79d5bfd341850ca5be95fc88118fdf66873ee7c4247e1",
+  "user_prompt_hash": "317e4a7c9848a0aaf3a8fb1ee70e44f98b97fd4f880de40ef8e01ee9e81f4a89",
+  "dirty": true,
+  "origin": "synthetic",
+  "max_calls": 42,
+  "max_tokens": 234685,
+  "code_hashes": {
+    "lapis.py": "02ee3898add93b464707c82856fdde97fc84d0b4601e45bc2a6529411fb5d49d",
+    "lapis_contract.py": "a582798d37a99a33cfe46982e568eddae79bf832da08089d158489a01fe5f94b",
+    "lapis_contract_v4.py": "01a1f085557ad5750dc6ce12e5c598021bc7f69080e5b51f9707b124a7e57bb0",
+    "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
+    "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
+    "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
+    "lapis_intake.py": "5d210ad9dd20d8159163f1a390cf4d4f7f07e1294d722a8e821beebfedf745d6",
+    "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
+    "lapis_semantics.py": "6d0cce918231f6df85284bd30e8996541db16f867c0b3013c3ae3dd323267f66",
+    "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
+  }
+}

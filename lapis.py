@@ -160,6 +160,7 @@ def render_sources(result, detail=True, stream=None):
                 print("当前要求以本轮八项规约为准；原提案被撤回的内容不再适用。以下原假设与限制用于追溯，须在研究设计重新核查。")
             for key, label in (("assumptions", "假设"), ("limitations", "限制"), ("clarifications", "待研究设计核查")):
                 if detail.get(key):
+                    if not pending and key in {"assumptions", "limitations"}:label="历史"+label
                     print(label + "：" + ("；".join(detail[key]) if detail_view else "；".join(short_text(x, 85) for x in detail[key][:2])))
     for note in request.get("reference_notes", []):
         if note.get("active", True) and note.get("value"):

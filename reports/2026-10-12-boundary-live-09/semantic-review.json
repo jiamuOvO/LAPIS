@@ -1,0 +1,40 @@
+{
+  "reviewer": "implementation-agent manual review; independent audit pending",
+  "verdict": "partial",
+  "not_scientific_evidence": true,
+  "scenarios": {
+    "acceptance_pla_name_edit": {
+      "verdict": "failed",
+      "reason": "Full goal edit and confirmation/restart successful, but actual bare name was inform, not adopted. Do not count as F2 acceptance."
+    },
+    "acceptance_pp_scope_metric": {
+      "verdict": "passed_limited",
+      "checks": {
+        "quote_fields_unchanged": true,
+        "scope_exclusion": true,
+        "goals_kept": true,
+        "cost_kept": true,
+        "snapshot_kept": true,
+        "metric_only_later": true,
+        "no_stale_scope_clause": true,
+        "confirmed_and_resume": true
+      }
+    }
+  },
+  "program_verdicts": [
+    {
+      "scenario": "acceptance_pla_name_edit",
+      "task_id": "5d7eb602-722c-4e0c-9ebf-b37478a6af2e",
+      "verdict": "passed",
+      "errors": [],
+      "active_request_version": 1
+    },
+    {
+      "scenario": "acceptance_pp_scope_metric",
+      "task_id": "bb4ce5e6-1e61-44da-9318-264e6fc3ef86",
+      "verdict": "passed",
+      "errors": [],
+      "active_request_version": 1
+    }
+  ]
+}

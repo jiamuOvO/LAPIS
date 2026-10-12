@@ -650,7 +650,7 @@ def _result(state, changed=False, guide=False, text="", notice=None, generated=N
             question = issue["message"] + " " + question
     else:
         status = "ready_for_design" if state["stage"] == "ready_for_design" else "needs_confirmation"
-        question = None if status == "ready_for_design" else "请核对以下八项规约及提案假设、限制，确认后进入研究设计；也可以直接修改。"
+        question = None if status == "ready_for_design" else "请核对当前八项规约，确认后进入研究设计；也可以直接修改。历史提案只供追溯，原假设与限制留待研究设计重新核查。"
         state["asked_field"] = None
         if status == "needs_confirmation":
             state["stage"] = "review"

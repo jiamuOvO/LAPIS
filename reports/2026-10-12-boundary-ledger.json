@@ -1,11 +1,11 @@
 {
   "date": "2026-10-12",
   "authorized_cumulative_cap": {
-    "attempts": 175,
-    "provider_tokens": 950000
+    "attempts": 215,
+    "provider_tokens": 1150000
   },
-  "actual_attempts": 173,
-  "actual_provider_tokens": 915315,
+  "actual_attempts": 213,
+  "actual_provider_tokens": 1122237,
   "runs": [
     {
       "directory": "reports\\2026-10-12-boundary-live-01",
@@ -530,25 +530,168 @@
           }
         ]
       }
+    },
+    {
+      "directory": "reports\\2026-10-12-boundary-live-09",
+      "attempts": 28,
+      "provider_tokens": 154566,
+      "missing_usage": 0,
+      "status_codes": [
+        200
+      ],
+      "roles": {
+        "product": 17,
+        "simulated_user": 11
+      },
+      "budget_stops": [],
+      "manifest": {
+        "run_id": "6be98862-5180-423e-8303-44e43dacc6fe",
+        "mode": "simulated",
+        "set": "rework_acceptance_holdout",
+        "commit": "81dbbe2852521081d9e0a44dbe4332785735839c",
+        "model_alias": "deepseek-flash",
+        "seed": "provider_unavailable",
+        "prompt_hash": "a8d502b46d6b87f4a0d79d5bfd341850ca5be95fc88118fdf66873ee7c4247e1",
+        "user_prompt_hash": "317e4a7c9848a0aaf3a8fb1ee70e44f98b97fd4f880de40ef8e01ee9e81f4a89",
+        "dirty": true,
+        "origin": "synthetic",
+        "max_calls": 42,
+        "max_tokens": 234685,
+        "code_hashes": {
+          "lapis.py": "02ee3898add93b464707c82856fdde97fc84d0b4601e45bc2a6529411fb5d49d",
+          "lapis_contract.py": "a582798d37a99a33cfe46982e568eddae79bf832da08089d158489a01fe5f94b",
+          "lapis_contract_v4.py": "01a1f085557ad5750dc6ce12e5c598021bc7f69080e5b51f9707b124a7e57bb0",
+          "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
+          "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
+          "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
+          "lapis_intake.py": "5d210ad9dd20d8159163f1a390cf4d4f7f07e1294d722a8e821beebfedf745d6",
+          "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
+          "lapis_semantics.py": "6d0cce918231f6df85284bd30e8996541db16f867c0b3013c3ae3dd323267f66",
+          "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
+        }
+      },
+      "semantic_review": {
+        "reviewer": "implementation-agent manual review; independent audit pending",
+        "verdict": "partial",
+        "not_scientific_evidence": true,
+        "scenarios": {
+          "acceptance_pla_name_edit": {
+            "verdict": "failed",
+            "reason": "Full goal edit and confirmation/restart successful, but actual bare name was inform, not adopted. Do not count as F2 acceptance."
+          },
+          "acceptance_pp_scope_metric": {
+            "verdict": "passed_limited",
+            "checks": {
+              "quote_fields_unchanged": true,
+              "scope_exclusion": true,
+              "goals_kept": true,
+              "cost_kept": true,
+              "snapshot_kept": true,
+              "metric_only_later": true,
+              "no_stale_scope_clause": true,
+              "confirmed_and_resume": true
+            }
+          }
+        },
+        "program_verdicts": [
+          {
+            "scenario": "acceptance_pla_name_edit",
+            "task_id": "5d7eb602-722c-4e0c-9ebf-b37478a6af2e",
+            "verdict": "passed",
+            "errors": [],
+            "active_request_version": 1
+          },
+          {
+            "scenario": "acceptance_pp_scope_metric",
+            "task_id": "bb4ce5e6-1e61-44da-9318-264e6fc3ef86",
+            "verdict": "passed",
+            "errors": [],
+            "active_request_version": 1
+          }
+        ]
+      }
+    },
+    {
+      "directory": "reports\\2026-10-12-boundary-live-10",
+      "attempts": 12,
+      "provider_tokens": 52356,
+      "missing_usage": 0,
+      "status_codes": [
+        200
+      ],
+      "roles": {
+        "product": 6,
+        "simulated_user": 6
+      },
+      "budget_stops": [
+        {
+          "role": "product",
+          "used_tokens": 52356,
+          "reserved_tokens": 37015,
+          "used_calls": 12
+        }
+      ],
+      "manifest": {
+        "run_id": "4fbce66a-2b90-40e3-8e14-6085efa62dd9",
+        "mode": "simulated",
+        "set": "rework_acceptance_holdout",
+        "commit": "0efb1a80e1a096b6f20cee8309b6da7100774cc4",
+        "model_alias": "deepseek-flash",
+        "seed": "provider_unavailable",
+        "prompt_hash": "a8d502b46d6b87f4a0d79d5bfd341850ca5be95fc88118fdf66873ee7c4247e1",
+        "user_prompt_hash": "317e4a7c9848a0aaf3a8fb1ee70e44f98b97fd4f880de40ef8e01ee9e81f4a89",
+        "dirty": true,
+        "origin": "synthetic",
+        "max_calls": 14,
+        "max_tokens": 80119,
+        "code_hashes": {
+          "lapis.py": "02ee3898add93b464707c82856fdde97fc84d0b4601e45bc2a6529411fb5d49d",
+          "lapis_contract.py": "a582798d37a99a33cfe46982e568eddae79bf832da08089d158489a01fe5f94b",
+          "lapis_contract_v4.py": "01a1f085557ad5750dc6ce12e5c598021bc7f69080e5b51f9707b124a7e57bb0",
+          "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
+          "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
+          "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
+          "lapis_intake.py": "075d086c656ef146bef4c87898bb75fd360a347280b459dfe12f1d01b41a9ca2",
+          "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
+          "lapis_semantics.py": "6d0cce918231f6df85284bd30e8996541db16f867c0b3013c3ae3dd323267f66",
+          "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
+        }
+      },
+      "semantic_review": {
+        "reviewer": "implementation-agent manual review; independent audit pending",
+        "verdict": "incomplete_simulator_and_ui_ambiguity",
+        "checks": {
+          "actual_bare_name_visible": true,
+          "actual_adopt_recorded": true,
+          "retired_goal_absent": true,
+          "new_goal_present": true,
+          "old_goal_id_kept": true,
+          "cost_kept": true,
+          "purpose_scope_synced": true,
+          "snapshots_unchanged": true,
+          "confirmed": false
+        },
+        "reason": "Adoption, authorized goal edit and source preservation correct. Simulated user later demanded rewriting provenance assumptions, contrary to declared background and prior utterance. Product confirmation wording still asked to review old assumptions, contributing ambiguity. User did not approve; next request stopped by budget preflight, not network. Latest UI fix untested live.",
+        "not_scientific_evidence": true
+      }
     }
   ],
   "old_oct10_budget_not_reset": true,
   "full_fresh_live_acceptance_completed": false,
   "software_tests": {
-    "count": 141,
-    "passed": 141,
+    "count": 142,
+    "passed": 142,
     "skipped": 0,
-    "log": "2026-10-12-boundary-full-final-17-tests.log",
-    "final_message_boundary_log": "2026-10-12-boundary-final-reference-message-tests.log"
+    "log": "2026-10-12-boundary-full-final-20-tests.log"
   },
   "current_source_sha256": {
-    "lapis.py": "02ee3898add93b464707c82856fdde97fc84d0b4601e45bc2a6529411fb5d49d",
+    "lapis.py": "55bfb119a9327c51aaf2157288218a30ed96b9d70e9f0e5c2848ae659e4d444f",
     "lapis_contract.py": "a582798d37a99a33cfe46982e568eddae79bf832da08089d158489a01fe5f94b",
     "lapis_contract_v4.py": "01a1f085557ad5750dc6ce12e5c598021bc7f69080e5b51f9707b124a7e57bb0",
     "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
     "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
     "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
-    "lapis_intake.py": "5d210ad9dd20d8159163f1a390cf4d4f7f07e1294d722a8e821beebfedf745d6",
+    "lapis_intake.py": "2c5a7637d09ca19a2c3313a72705d06fce7cbf7f36dfd9a7406bc74e989442e6",
     "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
     "lapis_semantics.py": "6d0cce918231f6df85284bd30e8996541db16f867c0b3013c3ae3dd323267f66",
     "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
@@ -557,7 +700,7 @@
   "final_related_source_sha256": {
     "scripts\\verify_intake_dialogues.py": "65466ad5890b560763ebe8d905d78f61f882690d9d783c6ed1a752af5877abcf",
     "scripts\\verify_boundary_rework.py": "95c6bb423201f7e7a218c895ba4a2a1d8ebc695dc2117261af1ba95f5c2bb145",
-    "test_lapis_boundaries.py": "d128b3ee772601557d7d5d9b7f15fb1ffead00335ad29e7f1af1b3593c709f7a",
+    "test_lapis_boundaries.py": "fdadcedb410e86153edac12216a538c5704deaf2a06655039315d4a706ee37c4",
     "tests\\fixtures\\intake_dialogues\\rework_acceptance_holdout.json": "2b6749da0b5c15718fec43b152f5e4842d5ffc071e3961ce157caedf0e54d8a4"
   }
 }
