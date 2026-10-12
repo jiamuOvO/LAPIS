@@ -1,0 +1,22 @@
+{
+  "verdict": "partial",
+  "reason": "两例程序确认和重启成功。PLA实际裸名称被误判inform，未记录采用，F2不通过；撤回／新增、目的范围同步和偏好保留正确。PP引用不改字段，范围排除与延迟指标、确认重启正确，但范围残留“不新增其他指标”文字，需清理。",
+  "reviewer": "implementation-agent manual review; independent audit pending",
+  "program_verdicts": [
+    {
+      "scenario": "acceptance_pla_name_edit",
+      "task_id": "43f41c3d-9163-4f89-8e5c-02e525671e32",
+      "verdict": "passed",
+      "errors": [],
+      "active_request_version": 1
+    },
+    {
+      "scenario": "acceptance_pp_scope_metric",
+      "task_id": "a596f62e-0be9-4c39-b963-0fcbaa00c656",
+      "verdict": "passed",
+      "errors": [],
+      "active_request_version": 1
+    }
+  ],
+  "not_scientific_evidence": true
+}

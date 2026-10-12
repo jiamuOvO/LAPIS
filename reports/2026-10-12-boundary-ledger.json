@@ -1,11 +1,11 @@
 {
   "date": "2026-10-12",
   "authorized_cumulative_cap": {
-    "attempts": 110,
-    "provider_tokens": 550000
+    "attempts": 140,
+    "provider_tokens": 750000
   },
-  "actual_attempts": 97,
-  "actual_provider_tokens": 515999,
+  "actual_attempts": 137,
+  "actual_provider_tokens": 720061,
   "runs": [
     {
       "directory": "reports\\2026-10-12-boundary-live-01",
@@ -16,8 +16,8 @@
         200
       ],
       "roles": {
-        "product": 16,
-        "simulated_user": 14
+        "simulated_user": 14,
+        "product": 16
       },
       "budget_stops": [
         {
@@ -87,8 +87,8 @@
         200
       ],
       "roles": {
-        "product": 13,
-        "simulated_user": 10
+        "simulated_user": 10,
+        "product": 13
       },
       "budget_stops": [],
       "manifest": {
@@ -149,8 +149,8 @@
         200
       ],
       "roles": {
-        "product": 14,
-        "simulated_user": 10
+        "simulated_user": 10,
+        "product": 14
       },
       "budget_stops": [],
       "manifest": {
@@ -211,8 +211,8 @@
         200
       ],
       "roles": {
-        "product": 13,
-        "simulated_user": 7
+        "simulated_user": 7,
+        "product": 13
       },
       "budget_stops": [
         {
@@ -274,6 +274,132 @@
         ],
         "not_scientific_evidence": true
       }
+    },
+    {
+      "directory": "reports\\2026-10-12-boundary-live-05",
+      "attempts": 32,
+      "provider_tokens": 168517,
+      "missing_usage": 0,
+      "status_codes": [
+        200
+      ],
+      "roles": {
+        "simulated_user": 14,
+        "product": 18
+      },
+      "budget_stops": [],
+      "manifest": {
+        "run_id": "64edfd23-92d7-41ea-95f8-05447098b020",
+        "mode": "simulated",
+        "set": "rework_acceptance_holdout",
+        "commit": "922550b143deb78786a258dd8cc5636bbcce8925",
+        "model_alias": "deepseek-flash",
+        "seed": "provider_unavailable",
+        "prompt_hash": "814ef7d817b2567b5c45b7565dacb403f5bd9d8539656bdf877b55a9b62db9cb",
+        "user_prompt_hash": "317e4a7c9848a0aaf3a8fb1ee70e44f98b97fd4f880de40ef8e01ee9e81f4a89",
+        "dirty": true,
+        "origin": "synthetic",
+        "max_calls": 43,
+        "max_tokens": 234001,
+        "code_hashes": {
+          "lapis.py": "02ee3898add93b464707c82856fdde97fc84d0b4601e45bc2a6529411fb5d49d",
+          "lapis_contract.py": "a582798d37a99a33cfe46982e568eddae79bf832da08089d158489a01fe5f94b",
+          "lapis_contract_v4.py": "01a1f085557ad5750dc6ce12e5c598021bc7f69080e5b51f9707b124a7e57bb0",
+          "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
+          "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
+          "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
+          "lapis_intake.py": "018252ba930c97864482d99b2d935872f382ac2b0a2a58fb80d92d071aa5ae7a",
+          "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
+          "lapis_semantics.py": "46c00be174724ed9281129ec40c2b92cfb41c9e402d54a1486b529af9c44a44c",
+          "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
+        }
+      },
+      "semantic_review": {
+        "verdict": "partial",
+        "reason": "两例程序确认和重启成功。PLA实际裸名称被误判inform，未记录采用，F2不通过；撤回／新增、目的范围同步和偏好保留正确。PP引用不改字段，范围排除与延迟指标、确认重启正确，但范围残留“不新增其他指标”文字，需清理。",
+        "reviewer": "implementation-agent manual review; independent audit pending",
+        "program_verdicts": [
+          {
+            "scenario": "acceptance_pla_name_edit",
+            "task_id": "43f41c3d-9163-4f89-8e5c-02e525671e32",
+            "verdict": "passed",
+            "errors": [],
+            "active_request_version": 1
+          },
+          {
+            "scenario": "acceptance_pp_scope_metric",
+            "task_id": "a596f62e-0be9-4c39-b963-0fcbaa00c656",
+            "verdict": "passed",
+            "errors": [],
+            "active_request_version": 1
+          }
+        ],
+        "not_scientific_evidence": true
+      }
+    },
+    {
+      "directory": "reports\\2026-10-12-boundary-live-06",
+      "attempts": 8,
+      "provider_tokens": 35545,
+      "missing_usage": 0,
+      "status_codes": [
+        200
+      ],
+      "roles": {
+        "simulated_user": 3,
+        "product": 5
+      },
+      "budget_stops": [
+        {
+          "role": "product",
+          "used_tokens": 35545,
+          "reserved_tokens": 34911,
+          "used_calls": 8
+        }
+      ],
+      "manifest": {
+        "run_id": "2a83c94d-c37f-4571-ab70-11b50a93955b",
+        "mode": "simulated",
+        "set": "rework_name_holdout",
+        "commit": "72c5b7f767088376f2874b0709fd9da6188ef117",
+        "model_alias": "deepseek-flash",
+        "seed": "provider_unavailable",
+        "prompt_hash": "a8d502b46d6b87f4a0d79d5bfd341850ca5be95fc88118fdf66873ee7c4247e1",
+        "user_prompt_hash": "317e4a7c9848a0aaf3a8fb1ee70e44f98b97fd4f880de40ef8e01ee9e81f4a89",
+        "dirty": true,
+        "origin": "synthetic",
+        "max_calls": 11,
+        "max_tokens": 65484,
+        "code_hashes": {
+          "lapis.py": "02ee3898add93b464707c82856fdde97fc84d0b4601e45bc2a6529411fb5d49d",
+          "lapis_contract.py": "a582798d37a99a33cfe46982e568eddae79bf832da08089d158489a01fe5f94b",
+          "lapis_contract_v4.py": "01a1f085557ad5750dc6ce12e5c598021bc7f69080e5b51f9707b124a7e57bb0",
+          "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
+          "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
+          "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
+          "lapis_intake.py": "981edd0b1160065ab4e1a5d5fe3621814285061312fc25fc1b28aa34b14ae724",
+          "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
+          "lapis_semantics.py": "46c00be174724ed9281129ec40c2b92cfb41c9e402d54a1486b529af9c44a44c",
+          "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
+        }
+      },
+      "semantic_review": {
+        "verdict": "incomplete",
+        "reason": "最终提示词的全新PET背景裸名称正确产生adopt/select及实际来源快照；确认请求因预算预留不足未发送，尚无确认重启。",
+        "reviewer": "implementation-agent manual review; independent audit pending",
+        "program_verdicts": [
+          {
+            "scenario": "name_pet_storage",
+            "verdict": "error",
+            "error_type": "InstructorRetryException",
+            "error": "Connection error.",
+            "failed_input": "我核对了这份规约：研究目的、研究对象、应用场景、目标性能、成本偏好，以及牌号、测试条件和评价方法留待研究设计，都符合我的意图。可以进入研究设计，但先不授权计算。",
+            "turn": 3,
+            "task_id": "6c31ddc1-2068-477e-844d-dcce424383bc"
+          }
+        ],
+        "not_scientific_evidence": true
+      }
     }
   ],
   "old_oct10_budget_not_reset": true,
@@ -282,7 +408,7 @@
     "count": 139,
     "passed": 139,
     "skipped": 0,
-    "log": "2026-10-12-boundary-full-final-12-tests.log"
+    "log": "2026-10-12-boundary-full-final-13-tests.log"
   },
   "current_source_sha256": {
     "lapis.py": "02ee3898add93b464707c82856fdde97fc84d0b4601e45bc2a6529411fb5d49d",
@@ -291,7 +417,7 @@
     "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
     "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
     "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
-    "lapis_intake.py": "018252ba930c97864482d99b2d935872f382ac2b0a2a58fb80d92d071aa5ae7a",
+    "lapis_intake.py": "981edd0b1160065ab4e1a5d5fe3621814285061312fc25fc1b28aa34b14ae724",
     "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
     "lapis_semantics.py": "46c00be174724ed9281129ec40c2b92cfb41c9e402d54a1486b529af9c44a44c",
     "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"

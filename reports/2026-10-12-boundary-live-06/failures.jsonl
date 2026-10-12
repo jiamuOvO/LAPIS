@@ -1,0 +1,1 @@
+{"scenario": "name_pet_storage", "verdict": "error", "error_type": "InstructorRetryException", "error": "Connection error.", "failed_input": "我核对了这份规约：研究目的、研究对象、应用场景、目标性能、成本偏好，以及牌号、测试条件和评价方法留待研究设计，都符合我的意图。可以进入研究设计，但先不授权计算。", "turn": 3, "task_id": "6c31ddc1-2068-477e-844d-dcce424383bc"}
