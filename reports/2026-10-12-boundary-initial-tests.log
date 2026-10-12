@@ -1,0 +1,195 @@
+......F...F..F...F.....F...........F...F...F.............F.F..F..F...E.FF..F.F.Fs...s..F....
+======================================================================
+ERROR: test_object_change_marks_old_context_for_review_and_requires_display_binding (test_lapis_intake.IntakeV3Test.test_object_change_marks_old_context_for_review_and_requires_display_binding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_intake.py", line 292, in test_object_change_marks_old_context_for_review_and_requires_display_binding
+    self.assertTrue(state["fields"]["constraints"][0]["needs_review"])
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+KeyError: 'needs_review'
+
+======================================================================
+FAIL: test_constraint_clarification_preserves_strength_and_rechecks (test_lapis_semantics.SemanticTest.test_constraint_clarification_preserves_strength_and_rechecks)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_semantics.py", line 190, in test_constraint_clarification_preserves_strength_and_rechecks
+    self.assertEqual(current['strength'],'preference');self.assertNotIn('needs_review',current)
+                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'needs_review' unexpectedly found in {'status': 'specified', 'value': '低成本', 'quote': '尽量低成本', 'source': 'user', 'turn': 1, 'id': 'constraints-3ad9c10507', 'strength': 'preference', 'needs_review': True}
+
+======================================================================
+FAIL: test_explicit_mixed_edit_is_allowed (test_lapis_semantics.SemanticTest.test_explicit_mixed_edit_is_allowed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_semantics.py", line 59, in test_explicit_mixed_edit_is_allowed
+    self.assertEqual([g['value'] for g in state['fields']['target_performance']],['离子传输'])
+AssertionError: Lists differ: ['稳定性', '离子传输'] != ['离子传输']
+
+First differing element 0:
+'稳定性'
+'离子传输'
+
+First list contains 1 additional elements.
+First extra element 1:
+'离子传输'
+
+- ['稳定性', '离子传输']
++ ['离子传输']
+
+======================================================================
+FAIL: test_invalid_basis_reference_is_not_applied (test_lapis_semantics.SemanticTest.test_invalid_basis_reference_is_not_applied)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_semantics.py", line 105, in test_invalid_basis_reference_is_not_applied
+    self.assertIn('依据不存在',r['operation_decisions'][0]['reason'])
+AssertionError: '依据不存在' not found in '修改缺少有效意图关联，原字段保持不变'
+
+======================================================================
+FAIL: test_old_view_after_edit_is_rejected (test_lapis_semantics.SemanticTest.test_old_view_after_edit_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_semantics.py", line 115, in test_old_view_after_edit_is_rejected
+    self.assertFalse(handle_turn(None,'test',state,'确认',old)['ready_for_design'])
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_real_switch_retains_but_rechecks_related_fields (test_lapis_semantics.SemanticTest.test_real_switch_retains_but_rechecks_related_fields)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_semantics.py", line 88, in test_real_switch_retains_but_rechecks_related_fields
+    self.assertTrue(all(g.get('needs_review') for g in state['fields']['target_performance']))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_old_display_after_edit_cannot_confirm (test_lapis_short_reply.ShortReplyTest.test_old_display_after_edit_cannot_confirm)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_short_reply.py", line 83, in test_old_display_after_edit_cannot_confirm
+    self.assertFalse(result.get('confirmation_event'))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_scalar_clarification_supersedes_old_ambiguity_not_conflict (test_lapis_short_reply.ShortReplyTest.test_scalar_clarification_supersedes_old_ambiguity_not_conflict)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_short_reply.py", line 61, in test_scalar_clarification_supersedes_old_ambiguity_not_conflict
+    self.assertEqual(state["issues"][0]["status"],"resolved")
+AssertionError: 'open' != 'resolved'
+- open
++ resolved
+
+
+======================================================================
+FAIL: test_economic_withdrawal_uses_model_resolved_name (test_lapis_review.ReviewTest.test_economic_withdrawal_uses_model_resolved_name)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_review.py", line 46, in test_economic_withdrawal_uses_model_resolved_name
+    self.assertFalse(any(e.get('value')=='性价比高' for e in state['fields']['constraints']))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_confirm_plus_edit_requires_another_confirmation (test_lapis_intake.IntakeV3Test.test_confirm_plus_edit_requires_another_confirmation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_intake.py", line 225, in test_confirm_plus_edit_requires_another_confirmation
+    self.assertEqual(state["fields"]["constraints"][1]["strength"], "hard")
+AssertionError: 'preference' != 'hard'
+- preference
++ hard
+
+
+======================================================================
+FAIL: test_cost_opt_out_removes_only_uniquely_named_constraint (test_lapis_intake.IntakeV3Test.test_cost_opt_out_removes_only_uniquely_named_constraint)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_intake.py", line 143, in test_cost_opt_out_removes_only_uniquely_named_constraint
+    self.assertEqual(len(result["request"]["fields"]["constraints"]), 1)
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_goal_direction_update_preserves_id_and_other_goal (test_lapis_intake.IntakeV3Test.test_goal_direction_update_preserves_id_and_other_goal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_intake.py", line 262, in test_goal_direction_update_preserves_id_and_other_goal
+    self.assertEqual(state["fields"]["target_performance"][0]["direction"], "提高")
+AssertionError: '比较' != '提高'
+- 比较
++ 提高
+
+
+======================================================================
+FAIL: test_method_reference_withdrawal_is_logged_not_execution_permission (test_lapis_intake.IntakeV3Test.test_method_reference_withdrawal_is_logged_not_execution_permission)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_intake.py", line 307, in test_method_reference_withdrawal_is_logged_not_execution_permission
+    self.assertFalse(state["reference_notes"][0]["active"])
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_qualifier_only_update_preserves_existing_value_and_id (test_lapis_intake.IntakeV3Test.test_qualifier_only_update_preserves_existing_value_and_id)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_intake.py", line 248, in test_qualifier_only_update_preserves_existing_value_and_id
+    self.assertEqual(new["strength"], "hard")
+AssertionError: 'preference' != 'hard'
+- preference
++ hard
+
+
+======================================================================
+FAIL: test_removal_is_exact_and_preserves_other_goal (test_lapis_intake.IntakeV3Test.test_removal_is_exact_and_preserves_other_goal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_intake.py", line 269, in test_removal_is_exact_and_preserves_other_goal
+    self.assertEqual([x["value"] for x in state["fields"]["target_performance"]], ["稳定性"])
+AssertionError: Lists differ: ['稳定性', '离子传输'] != ['稳定性']
+
+First list contains 1 additional elements.
+First extra element 1:
+'离子传输'
+
+- ['稳定性', '离子传输']
++ ['稳定性']
+
+======================================================================
+FAIL: test_stale_selection_cannot_adopt_or_poison_new_draft (test_lapis_intake.IntakeV3Test.test_stale_selection_cannot_adopt_or_poison_new_draft)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_intake.py", line 173, in test_stale_selection_cannot_adopt_or_poison_new_draft
+    self.assertEqual(state["fields"]["research_object"]["value"], "铝合金")
+AssertionError: '呋喃基' != '铝合金'
+- 呋喃基
++ 铝合金
+
+
+======================================================================
+FAIL: test_unclear_placeholder_is_replaced_by_clarification (test_lapis_intake.IntakeV3Test.test_unclear_placeholder_is_replaced_by_clarification)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_intake.py", line 285, in test_unclear_placeholder_is_replaced_by_clarification
+    self.assertEqual(len(state["fields"]["target_performance"]), 1)
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_unknown_open_none_and_ungrounded_updates (test_lapis_intake.IntakeV3Test.test_unknown_open_none_and_ungrounded_updates)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_intake.py", line 339, in test_unknown_open_none_and_ungrounded_updates
+    self.assertEqual(state["fields"]["work_conditions"]["status"], "none")
+AssertionError: 'unknown' != 'none'
+- unknown
++ none
+
+
+======================================================================
+FAIL: test_selection_does_not_swallow_cost_removal_against_unknown_proposal (test_lapis_proposals.DynamicProposalTest.test_selection_does_not_swallow_cost_removal_against_unknown_proposal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_proposals.py", line 122, in test_selection_does_not_swallow_cost_removal_against_unknown_proposal
+    self.assertFalse(any(e.get("id")=="cost" for e in state["fields"]["constraints"]))
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 92 tests in 0.523s
+
+FAILED (failures=18, errors=1, skipped=2)

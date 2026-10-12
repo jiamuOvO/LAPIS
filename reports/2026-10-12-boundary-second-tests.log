@@ -1,0 +1,61 @@
+...........................................F...............F.....F......F......Fs...s..F....
+======================================================================
+FAIL: test_economic_withdrawal_uses_model_resolved_name (test_lapis_review.ReviewTest.test_economic_withdrawal_uses_model_resolved_name)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_review.py", line 46, in test_economic_withdrawal_uses_model_resolved_name
+    self.assertFalse(any(e.get('value')=='性价比高' for e in state['fields']['constraints']))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_cost_opt_out_removes_only_uniquely_named_constraint (test_lapis_intake.IntakeV3Test.test_cost_opt_out_removes_only_uniquely_named_constraint)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_intake.py", line 156, in test_cost_opt_out_removes_only_uniquely_named_constraint
+    self.assertEqual(len(result["request"]["fields"]["constraints"]), 1)
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_method_reference_withdrawal_is_logged_not_execution_permission (test_lapis_intake.IntakeV3Test.test_method_reference_withdrawal_is_logged_not_execution_permission)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_intake.py", line 320, in test_method_reference_withdrawal_is_logged_not_execution_permission
+    self.assertFalse(state["reference_notes"][0]["active"])
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_removal_is_exact_and_preserves_other_goal (test_lapis_intake.IntakeV3Test.test_removal_is_exact_and_preserves_other_goal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_intake.py", line 287, in test_removal_is_exact_and_preserves_other_goal
+    self.assertEqual(unresolved["intake_status"], "needs_clarification")
+AssertionError: 'needs_confirmation' != 'needs_clarification'
+- needs_confirmation
+?        ^^  ^^
++ needs_clarification
+?        ^^^^  ^
+
+
+======================================================================
+FAIL: test_unknown_open_none_and_ungrounded_updates (test_lapis_intake.IntakeV3Test.test_unknown_open_none_and_ungrounded_updates)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_intake.py", line 356, in test_unknown_open_none_and_ungrounded_updates
+    self.assertEqual(state["fields"]["work_conditions"]["status"], "open")
+AssertionError: 'none' != 'open'
+- none
++ open
+
+
+======================================================================
+FAIL: test_selection_does_not_swallow_cost_removal_against_unknown_proposal (test_lapis_proposals.DynamicProposalTest.test_selection_does_not_swallow_cost_removal_against_unknown_proposal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "F:\LAPIS\test_lapis_proposals.py", line 122, in test_selection_does_not_swallow_cost_removal_against_unknown_proposal
+    self.assertFalse(any(e.get("id")=="cost" for e in state["fields"]["constraints"]))
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 92 tests in 0.543s
+
+FAILED (failures=6, skipped=2)

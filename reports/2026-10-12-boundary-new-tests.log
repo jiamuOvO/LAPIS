@@ -1,0 +1,16 @@
+test_audit_missing_null_empty_invalid_and_wrong_intent_cannot_remove (test_lapis_boundaries.BoundaryTest.test_audit_missing_null_empty_invalid_and_wrong_intent_cannot_remove) ... ok
+test_bare_names_route_to_understanding_and_correct_selection (test_lapis_boundaries.BoundaryTest.test_bare_names_route_to_understanding_and_correct_selection) ... ok
+test_clear_replace_scalar_and_constraint_strength_require_link (test_lapis_boundaries.BoundaryTest.test_clear_replace_scalar_and_constraint_strength_require_link) ... ok
+test_duplicate_or_empty_intent_id_fails_contract_without_state_change (test_lapis_boundaries.BoundaryTest.test_duplicate_or_empty_intent_id_fails_contract_without_state_change) ... ok
+test_explicit_named_removal_and_whole_list_replace_work (test_lapis_boundaries.BoundaryTest.test_explicit_named_removal_and_whole_list_replace_work) ... ok
+test_known_requirement_short_unknown_cannot_use_trusted_shortcut (test_lapis_boundaries.BoundaryTest.test_known_requirement_short_unknown_cannot_use_trusted_shortcut) ... ok
+test_post_normalization_remove_does_not_bypass_guard (test_lapis_boundaries.BoundaryTest.test_post_normalization_remove_does_not_bypass_guard) ... ok
+test_quote_mixed_requirement_and_multiple_names_do_not_force_quote (test_lapis_boundaries.BoundaryTest.test_quote_mixed_requirement_and_multiple_names_do_not_force_quote) ... ok
+test_stale_menu_and_partial_choice_do_not_adopt_context (test_lapis_boundaries.BoundaryTest.test_stale_menu_and_partial_choice_do_not_adopt_context) ... ok
+test_unlinked_item_is_rejected_even_with_another_valid_edit (test_lapis_boundaries.BoundaryTest.test_unlinked_item_is_rejected_even_with_another_valid_edit) ... ok
+test_wrong_target_name_refs_and_basis_are_rejected (test_lapis_boundaries.BoundaryTest.test_wrong_target_name_refs_and_basis_are_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.219s
+
+OK

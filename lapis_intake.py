@@ -129,7 +129,7 @@ class Extraction(StrictModel):
             # Use the same final-operation guard, without mutating the live turn.
             checking=deepcopy(context['state']);checking['_input_text']=context['input']
             _ground_actions(checking,self)
-            rejected=[d['reason'] for d in checking['_operation_decisions'] if d['decision']=='not_applied']
+            rejected=[d['operation']['field']+'，quote='+repr(d['operation']['quote'])+'：'+d['reason'] for d in checking['_operation_decisions'] if d['decision']=='not_applied']
             if rejected:raise ValueError('依据本轮原话重新解释；未见授权时保留当前内容并澄清，不能只改意图标签来通过校验：'+'；'.join(rejected[:3]))
         return self
 

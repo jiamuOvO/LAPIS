@@ -1,0 +1,22 @@
+{
+  "reviewer": "implementation-agent manual review; independent auditor review pending",
+  "verdict": "failed",
+  "reason": "程序通过但语义未全部合格：聚酰胺名称加了我选，未验证裸名称；再生PE明确范围排除项被inform规范化覆盖。",
+  "program_verdicts": [
+    {
+      "scenario": "verified_polyamide_name_edit",
+      "task_id": "db1ac164-c2fc-4b23-9b69-e0071d56924f",
+      "verdict": "passed",
+      "errors": [],
+      "active_request_version": 1
+    },
+    {
+      "scenario": "verified_recycled_pe_quote_metric",
+      "task_id": "c199814d-e957-47a8-9a7f-6cd93613969f",
+      "verdict": "passed",
+      "errors": [],
+      "active_request_version": 1
+    }
+  ],
+  "not_scientific_evidence": true
+}

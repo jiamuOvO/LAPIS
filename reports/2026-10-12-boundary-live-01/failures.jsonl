@@ -1,0 +1,1 @@
+{"scenario": "rework_quote_scope_delayed_metric", "verdict": "error", "error_type": "InstructorRetryException", "error": "Connection error.", "failed_input": "我想采用方向1：聚酯薄膜热氧化老化行为与包装适用性关联研究，先建立老化行为与包装适用性的关联。", "turn": 2, "task_id": "a5425e0d-534d-4903-b231-cb61bc3acbc2"}

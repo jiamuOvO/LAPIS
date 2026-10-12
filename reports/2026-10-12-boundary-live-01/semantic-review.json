@@ -1,0 +1,24 @@
+{
+  "reviewer": "implementation-agent manual review; independent auditor review pending",
+  "verdict": "failed",
+  "reason": "裸名称已执行；撤回缺依据曾拒绝，后修正；旧快照显示造成重复修改，未闭环。",
+  "program_verdicts": [
+    {
+      "scenario": "rework_name_and_edit",
+      "task_id": "ae8a189c-6c86-4c63-aa6e-d7ed38e7018c",
+      "verdict": "failed",
+      "errors": [],
+      "active_request_version": null
+    },
+    {
+      "scenario": "rework_quote_scope_delayed_metric",
+      "verdict": "error",
+      "error_type": "InstructorRetryException",
+      "error": "Connection error.",
+      "failed_input": "我想采用方向1：聚酯薄膜热氧化老化行为与包装适用性关联研究，先建立老化行为与包装适用性的关联。",
+      "turn": 2,
+      "task_id": "a5425e0d-534d-4903-b231-cb61bc3acbc2"
+    }
+  ],
+  "not_scientific_evidence": true
+}

@@ -1,0 +1,1793 @@
+{
+  "mode": "controlled-software-new-run",
+  "model_calls": 0,
+  "database_writes": false,
+  "not_scientific_evidence": true,
+  "audit_reproductions": [
+    {
+      "case": "audit-linked-answer",
+      "fields_preserved": true,
+      "decisions": [
+        {
+          "operation": {
+            "field": "target_performance",
+            "status": "none",
+            "value": null,
+            "quote": "都包含",
+            "action": "remove",
+            "intent_ref": "A",
+            "basis_refs": [],
+            "scope_mode": "unspecified",
+            "change_timing": "current",
+            "change_relation": "unspecified",
+            "target_id": "target_performance-829eb5ecdf",
+            "target_value": null,
+            "direction": null,
+            "strength": null,
+            "category": null,
+            "predicate": null,
+            "temperatures": []
+          },
+          "decision": "not_applied",
+          "reason": "回答操作不属于当前问题；跨字段编辑须有独立意图"
+        }
+      ],
+      "actual_display": "当前研究规约：\n研究目的：比较电解液配方\n研究对象：碳酸酯电解液\n应用场景：高电压电池\n工作条件：尚未指定，研究设计阶段确定\n目标性能：氧化诱导期（比较）；离子传输（比较）\n约束条件：硬约束：不使用含氟添加剂；偏好：成本尽量低\n研究范围：仅研究碳酸酯电解液\n材料功能：提供离子传输并保持稳定\n暂无可核查引用；研究提案尚未科学核验。\n暂未应用：目标性能；回答操作不属于当前问题；跨字段编辑须有独立意图。\nLAPIS> 请核对以下八项规约及提案假设、限制，确认后进入研究设计；也可以直接修改。\n"
+    },
+    {
+      "case": "audit-missing-association",
+      "fields_preserved": true,
+      "decisions": [
+        {
+          "operation": {
+            "field": "target_performance",
+            "status": "none",
+            "value": null,
+            "quote": "都包含",
+            "action": "remove",
+            "intent_ref": null,
+            "basis_refs": [],
+            "scope_mode": "unspecified",
+            "change_timing": "current",
+            "change_relation": "unspecified",
+            "target_id": "target_performance-a71fc10084",
+            "target_value": null,
+            "direction": null,
+            "strength": null,
+            "category": null,
+            "predicate": null,
+            "temperatures": []
+          },
+          "decision": "not_applied",
+          "reason": "操作缺少有效意图关联，原条目保持不变；请说明要修改或撤回哪一项"
+        }
+      ],
+      "actual_display": "当前研究规约：\n研究目的：比较电解液配方\n研究对象：碳酸酯电解液\n应用场景：高电压电池\n工作条件：尚未指定，研究设计阶段确定\n目标性能：氧化诱导期（比较）；离子传输（比较）\n约束条件：硬约束：不使用含氟添加剂；偏好：成本尽量低\n研究范围：仅研究碳酸酯电解液\n材料功能：提供离子传输并保持稳定\n暂无可核查引用；研究提案尚未科学核验。\n暂未应用：目标性能；操作缺少有效意图关联，原条目保持不变；请说明要修改或撤回哪一项。\nLAPIS> 请核对以下八项规约及提案假设、限制，确认后进入研究设计；也可以直接修改。\n"
+    }
+  ],
+  "complete_dialogue": [
+    {
+      "input": "请推荐",
+      "actual_display": "可选方向（模型提案尚未科学核验）：\n1. 陶瓷散热基板比较：将材料用途限定到散热基板。\n拟研究：比较陶瓷基板\n假设：用户愿意比较陶瓷基板\n限制：未核验材料性能，不提供实算结论\nLAPIS> 你想采用哪个方向，或修改哪些内容？\n",
+      "interpretation": {
+        "summary": "",
+        "intents": [],
+        "context_change": "unspecified",
+        "pause_scope": "conversation",
+        "guidance_mode": "auto",
+        "actions": [
+          "recommend"
+        ],
+        "updates": [],
+        "selected_option": 1,
+        "selection_mode": "full",
+        "clarification_field": null,
+        "clarification_question": null,
+        "domain": null,
+        "domain_quote": null,
+        "issues": [],
+        "resolve_issue_ids": [],
+        "reaffirm_fields": []
+      },
+      "operations": [],
+      "request": {
+        "contract_version": 5,
+        "rule_version": "intake-rules-5.0",
+        "original_intent": "请推荐",
+        "draft_revision": 0,
+        "draft_id": "D0",
+        "fields": {
+          "purpose": {
+            "status": "unknown",
+            "value": null,
+            "source": null,
+            "quote": null,
+            "turn": null
+          },
+          "research_object": {
+            "status": "unknown",
+            "value": null,
+            "source": null,
+            "quote": null,
+            "turn": null
+          },
+          "application": {
+            "status": "unknown",
+            "value": null,
+            "source": null,
+            "quote": null,
+            "turn": null
+          },
+          "work_conditions": {
+            "status": "unknown",
+            "value": null,
+            "source": null,
+            "quote": null,
+            "turn": null
+          },
+          "target_performance": [
+            {
+              "status": "unknown",
+              "value": null,
+              "source": null,
+              "quote": null,
+              "turn": null,
+              "id": "target_performance-unknown"
+            }
+          ],
+          "constraints": [
+            {
+              "status": "unknown",
+              "value": null,
+              "source": null,
+              "quote": null,
+              "turn": null,
+              "id": "constraints-unknown"
+            }
+          ],
+          "research_scope": {
+            "status": "unknown",
+            "value": null,
+            "source": null,
+            "quote": null,
+            "turn": null
+          },
+          "material_function": {
+            "status": "unknown",
+            "value": null,
+            "source": null,
+            "quote": null,
+            "turn": null
+          }
+        },
+        "task_pattern": null,
+        "domain": "uncertain",
+        "issues": [],
+        "reference_notes": [],
+        "sources": {},
+        "proposals": {}
+      },
+      "status": "needs_guidance"
+    },
+    {
+      "input": "陶瓷散热基板比较",
+      "actual_display": "当前研究规约：\n研究目的：比较陶瓷基板\n研究对象：陶瓷基板\n应用场景：电子器件散热\n工作条件：留待研究设计阶段确定\n目标性能：热传导（比较）\n约束条件：尚未指定，研究设计阶段确定\n研究范围：仅比较候选基板材料，不验证器件\n材料功能：拟传导热量\n已采用提案来源（原始快照）：陶瓷散热基板比较\n当前要求以本轮八项规约为准；原提案被撤回的内容不再适用。以下原假设与限制用于追溯，须在研究设计重新核查。\n假设：用户愿意比较陶瓷基板\n限制：未核验材料性能，不提供实算结论\n待研究设计核查：温度范围和成本口径待定\nLAPIS> 请核对以下八项规约及提案假设、限制，确认后进入研究设计；也可以直接修改。\n",
+      "interpretation": {
+        "summary": "",
+        "intents": [
+          {
+            "id": "A",
+            "kind": "adopt",
+            "quote": "陶瓷散热基板比较",
+            "question_ref": null,
+            "target_refs": [
+              "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            ]
+          }
+        ],
+        "context_change": "unspecified",
+        "pause_scope": "conversation",
+        "guidance_mode": "auto",
+        "actions": [
+          "select"
+        ],
+        "updates": [],
+        "selected_option": 1,
+        "selection_mode": "full",
+        "clarification_field": null,
+        "clarification_question": null,
+        "domain": null,
+        "domain_quote": null,
+        "issues": [],
+        "resolve_issue_ids": [],
+        "reaffirm_fields": []
+      },
+      "operations": [],
+      "request": {
+        "contract_version": 5,
+        "rule_version": "intake-rules-5.0",
+        "original_intent": "请推荐",
+        "draft_revision": 1,
+        "draft_id": "D1-50b35575b15d",
+        "fields": {
+          "purpose": {
+            "status": "specified",
+            "value": "比较陶瓷基板",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "research_object": {
+            "status": "specified",
+            "value": "陶瓷基板",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "application": {
+            "status": "specified",
+            "value": "电子器件散热",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "work_conditions": {
+            "status": "open",
+            "value": null,
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "target_performance": [
+            {
+              "status": "specified",
+              "value": "热传导",
+              "direction": "比较",
+              "source": "confirmed_suggestion",
+              "suggestion_origin": "model",
+              "evidence_status": "unverified",
+              "quote": null,
+              "turn": null,
+              "suggested_after_turn": 1,
+              "selection_quote": "陶瓷散热基板比较",
+              "confirmed_turn": 2,
+              "recommendation_ref": {
+                "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+                "version": 1,
+                "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+              },
+              "source_refs": [],
+              "id": "target_performance-474dfbb58a"
+            }
+          ],
+          "constraints": [
+            {
+              "status": "unknown",
+              "value": null,
+              "source": "confirmed_suggestion",
+              "suggestion_origin": "model",
+              "evidence_status": "unverified",
+              "quote": null,
+              "turn": null,
+              "suggested_after_turn": 1,
+              "selection_quote": "陶瓷散热基板比较",
+              "confirmed_turn": 2,
+              "recommendation_ref": {
+                "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+                "version": 1,
+                "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+              },
+              "source_refs": [],
+              "id": "constraints-8dbfc51711",
+              "direction": null
+            }
+          ],
+          "research_scope": {
+            "status": "specified",
+            "value": "仅比较候选基板材料，不验证器件",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "material_function": {
+            "status": "specified",
+            "value": "拟传导热量",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          }
+        },
+        "task_pattern": null,
+        "domain": "materials_application",
+        "issues": [],
+        "reference_notes": [],
+        "sources": {},
+        "proposals": {
+          "4eda8164-01a9-4c4f-a3cd-f06672f982e1": {
+            "version": 1,
+            "draft_id": "D0",
+            "generation": {
+              "origin": "model",
+              "model": "review-test",
+              "prompt_sha256": "6c0b2d73d2704f977ed0c400962d9e312b9147da69278a3711bf5e7be8466679",
+              "operation_id": null
+            },
+            "direction_ids": [
+              "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            ],
+            "content_sha256": "5a50f2bdfaf7089e255fcaea3005b78bb8d51d704cbd8fa4a7dbec6d3251cf86",
+            "review": {
+              "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1": {
+                "label": "陶瓷散热基板比较",
+                "reason": "将材料用途限定到散热基板。",
+                "assumptions": [
+                  "用户愿意比较陶瓷基板"
+                ],
+                "limitations": [
+                  "未核验材料性能，不提供实算结论"
+                ],
+                "clarifications": [
+                  "温度范围和成本口径待定"
+                ],
+                "source_refs": []
+              }
+            }
+          }
+        }
+      },
+      "status": "needs_confirmation"
+    },
+    {
+      "input": "限制：未核验材料性能，不提供实算结论",
+      "actual_display": "当前研究规约：\n研究目的：比较陶瓷基板\n研究对象：陶瓷基板\n应用场景：电子器件散热\n工作条件：留待研究设计阶段确定\n目标性能：热传导（比较）\n约束条件：尚未指定，研究设计阶段确定\n研究范围：仅比较候选基板材料，不验证器件\n材料功能：拟传导热量\n已采用提案来源（原始快照）：陶瓷散热基板比较\n当前要求以本轮八项规约为准；原提案被撤回的内容不再适用。以下原假设与限制用于追溯，须在研究设计重新核查。\n假设：用户愿意比较陶瓷基板\n限制：未核验材料性能，不提供实算结论\n待研究设计核查：温度范围和成本口径待定\nLAPIS> 已识别为原提案引用，未新增用户要求或重新选择方向。\nLAPIS> 请核对以下八项规约及提案假设、限制，确认后进入研究设计；也可以直接修改。\n",
+      "interpretation": {
+        "summary": "引用原提案；来源及当前已采用内容保持不变",
+        "intents": [],
+        "context_change": "unspecified",
+        "pause_scope": "conversation",
+        "guidance_mode": "auto",
+        "actions": [
+          "quote"
+        ],
+        "updates": [],
+        "selected_option": null,
+        "selection_mode": "full",
+        "clarification_field": null,
+        "clarification_question": null,
+        "domain": null,
+        "domain_quote": null,
+        "issues": [],
+        "resolve_issue_ids": [],
+        "reaffirm_fields": []
+      },
+      "operations": [],
+      "request": {
+        "contract_version": 5,
+        "rule_version": "intake-rules-5.0",
+        "original_intent": "请推荐",
+        "draft_revision": 1,
+        "draft_id": "D1-50b35575b15d",
+        "fields": {
+          "purpose": {
+            "status": "specified",
+            "value": "比较陶瓷基板",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "research_object": {
+            "status": "specified",
+            "value": "陶瓷基板",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "application": {
+            "status": "specified",
+            "value": "电子器件散热",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "work_conditions": {
+            "status": "open",
+            "value": null,
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "target_performance": [
+            {
+              "status": "specified",
+              "value": "热传导",
+              "direction": "比较",
+              "source": "confirmed_suggestion",
+              "suggestion_origin": "model",
+              "evidence_status": "unverified",
+              "quote": null,
+              "turn": null,
+              "suggested_after_turn": 1,
+              "selection_quote": "陶瓷散热基板比较",
+              "confirmed_turn": 2,
+              "recommendation_ref": {
+                "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+                "version": 1,
+                "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+              },
+              "source_refs": [],
+              "id": "target_performance-474dfbb58a"
+            }
+          ],
+          "constraints": [
+            {
+              "status": "unknown",
+              "value": null,
+              "source": "confirmed_suggestion",
+              "suggestion_origin": "model",
+              "evidence_status": "unverified",
+              "quote": null,
+              "turn": null,
+              "suggested_after_turn": 1,
+              "selection_quote": "陶瓷散热基板比较",
+              "confirmed_turn": 2,
+              "recommendation_ref": {
+                "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+                "version": 1,
+                "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+              },
+              "source_refs": [],
+              "id": "constraints-8dbfc51711",
+              "direction": null
+            }
+          ],
+          "research_scope": {
+            "status": "specified",
+            "value": "仅比较候选基板材料，不验证器件",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "material_function": {
+            "status": "specified",
+            "value": "拟传导热量",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          }
+        },
+        "task_pattern": null,
+        "domain": "materials_application",
+        "issues": [],
+        "reference_notes": [],
+        "sources": {},
+        "proposals": {
+          "4eda8164-01a9-4c4f-a3cd-f06672f982e1": {
+            "version": 1,
+            "draft_id": "D0",
+            "generation": {
+              "origin": "model",
+              "model": "review-test",
+              "prompt_sha256": "6c0b2d73d2704f977ed0c400962d9e312b9147da69278a3711bf5e7be8466679",
+              "operation_id": null
+            },
+            "direction_ids": [
+              "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            ],
+            "content_sha256": "5a50f2bdfaf7089e255fcaea3005b78bb8d51d704cbd8fa4a7dbec6d3251cf86",
+            "review": {
+              "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1": {
+                "label": "陶瓷散热基板比较",
+                "reason": "将材料用途限定到散热基板。",
+                "assumptions": [
+                  "用户愿意比较陶瓷基板"
+                ],
+                "limitations": [
+                  "未核验材料性能，不提供实算结论"
+                ],
+                "clarifications": [
+                  "温度范围和成本口径待定"
+                ],
+                "source_refs": []
+              }
+            }
+          }
+        }
+      },
+      "status": "needs_confirmation"
+    },
+    {
+      "input": "新增氧化诱导期，原关注点保留",
+      "actual_display": "当前研究规约：\n研究目的：比较陶瓷基板\n研究对象：陶瓷基板\n应用场景：电子器件散热\n工作条件：留待研究设计阶段确定\n目标性能：热传导（比较）；氧化诱导期（考察）\n约束条件：尚未指定，研究设计阶段确定\n研究范围：仅比较候选基板材料，不验证器件\n材料功能：拟传导热量\n已采用提案来源（原始快照）：陶瓷散热基板比较\n当前要求以本轮八项规约为准；原提案被撤回的内容不再适用。以下原假设与限制用于追溯，须在研究设计重新核查。\n假设：用户愿意比较陶瓷基板\n限制：未核验材料性能，不提供实算结论\n待研究设计核查：温度范围和成本口径待定\nLAPIS> 请核对以下八项规约及提案假设、限制，确认后进入研究设计；也可以直接修改。\n",
+      "interpretation": {
+        "summary": "",
+        "intents": [
+          {
+            "id": "G",
+            "kind": "inform",
+            "quote": "新增氧化诱导期，原关注点保留",
+            "question_ref": null,
+            "target_refs": []
+          }
+        ],
+        "context_change": "unspecified",
+        "pause_scope": "conversation",
+        "guidance_mode": "auto",
+        "actions": [
+          "inform"
+        ],
+        "updates": [
+          {
+            "field": "target_performance",
+            "status": "specified",
+            "value": "氧化诱导期",
+            "quote": "氧化诱导期",
+            "action": "add",
+            "intent_ref": "G",
+            "basis_refs": [
+              "target_performance"
+            ],
+            "scope_mode": "unspecified",
+            "change_timing": "current",
+            "change_relation": "unspecified",
+            "target_id": null,
+            "target_value": null,
+            "direction": "考察",
+            "strength": null,
+            "category": null,
+            "predicate": null,
+            "temperatures": []
+          }
+        ],
+        "selected_option": null,
+        "selection_mode": "full",
+        "clarification_field": null,
+        "clarification_question": null,
+        "domain": null,
+        "domain_quote": null,
+        "issues": [],
+        "resolve_issue_ids": [],
+        "reaffirm_fields": []
+      },
+      "operations": [
+        {
+          "operation": {
+            "field": "target_performance",
+            "status": "specified",
+            "value": "氧化诱导期",
+            "quote": "氧化诱导期",
+            "action": "add",
+            "intent_ref": "G",
+            "basis_refs": [
+              "target_performance"
+            ],
+            "scope_mode": "unspecified",
+            "change_timing": "current",
+            "change_relation": "unspecified",
+            "target_id": null,
+            "target_value": null,
+            "direction": "考察",
+            "strength": null,
+            "category": null,
+            "predicate": null,
+            "temperatures": []
+          },
+          "decision": "accepted"
+        }
+      ],
+      "request": {
+        "contract_version": 5,
+        "rule_version": "intake-rules-5.0",
+        "original_intent": "请推荐",
+        "draft_revision": 2,
+        "draft_id": "D2-9aedd3cc7c72",
+        "fields": {
+          "purpose": {
+            "status": "specified",
+            "value": "比较陶瓷基板",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "research_object": {
+            "status": "specified",
+            "value": "陶瓷基板",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "application": {
+            "status": "specified",
+            "value": "电子器件散热",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "work_conditions": {
+            "status": "open",
+            "value": null,
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "target_performance": [
+            {
+              "status": "specified",
+              "value": "热传导",
+              "direction": "比较",
+              "source": "confirmed_suggestion",
+              "suggestion_origin": "model",
+              "evidence_status": "unverified",
+              "quote": null,
+              "turn": null,
+              "suggested_after_turn": 1,
+              "selection_quote": "陶瓷散热基板比较",
+              "confirmed_turn": 2,
+              "recommendation_ref": {
+                "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+                "version": 1,
+                "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+              },
+              "source_refs": [],
+              "id": "target_performance-474dfbb58a"
+            },
+            {
+              "status": "specified",
+              "value": "氧化诱导期",
+              "quote": "氧化诱导期",
+              "source": "user",
+              "turn": 4,
+              "id": "target_performance-90c1ef16cd",
+              "direction": "考察",
+              "basis_refs": [
+                "target_performance"
+              ]
+            }
+          ],
+          "constraints": [
+            {
+              "status": "unknown",
+              "value": null,
+              "source": "confirmed_suggestion",
+              "suggestion_origin": "model",
+              "evidence_status": "unverified",
+              "quote": null,
+              "turn": null,
+              "suggested_after_turn": 1,
+              "selection_quote": "陶瓷散热基板比较",
+              "confirmed_turn": 2,
+              "recommendation_ref": {
+                "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+                "version": 1,
+                "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+              },
+              "source_refs": [],
+              "id": "constraints-8dbfc51711",
+              "direction": null
+            }
+          ],
+          "research_scope": {
+            "status": "specified",
+            "value": "仅比较候选基板材料，不验证器件",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "material_function": {
+            "status": "specified",
+            "value": "拟传导热量",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          }
+        },
+        "task_pattern": null,
+        "domain": "materials_application",
+        "issues": [],
+        "reference_notes": [],
+        "sources": {},
+        "proposals": {
+          "4eda8164-01a9-4c4f-a3cd-f06672f982e1": {
+            "version": 1,
+            "draft_id": "D0",
+            "generation": {
+              "origin": "model",
+              "model": "review-test",
+              "prompt_sha256": "6c0b2d73d2704f977ed0c400962d9e312b9147da69278a3711bf5e7be8466679",
+              "operation_id": null
+            },
+            "direction_ids": [
+              "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            ],
+            "content_sha256": "5a50f2bdfaf7089e255fcaea3005b78bb8d51d704cbd8fa4a7dbec6d3251cf86",
+            "review": {
+              "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1": {
+                "label": "陶瓷散热基板比较",
+                "reason": "将材料用途限定到散热基板。",
+                "assumptions": [
+                  "用户愿意比较陶瓷基板"
+                ],
+                "limitations": [
+                  "未核验材料性能，不提供实算结论"
+                ],
+                "clarifications": [
+                  "温度范围和成本口径待定"
+                ],
+                "source_refs": []
+              }
+            }
+          }
+        }
+      },
+      "status": "needs_confirmation"
+    },
+    {
+      "input": "都包含",
+      "actual_display": "当前研究规约：\n研究目的：比较陶瓷基板\n研究对象：陶瓷基板\n应用场景：电子器件散热\n工作条件：留待研究设计阶段确定\n目标性能：热传导（比较）；氧化诱导期（考察）\n约束条件：尚未指定，研究设计阶段确定\n研究范围：仅比较候选基板材料，不验证器件\n材料功能：拟传导热量\n已采用提案来源（原始快照）：陶瓷散热基板比较\n当前要求以本轮八项规约为准；原提案被撤回的内容不再适用。以下原假设与限制用于追溯，须在研究设计重新核查。\n假设：用户愿意比较陶瓷基板\n限制：未核验材料性能，不提供实算结论\n待研究设计核查：温度范围和成本口径待定\n暂未应用：目标性能；操作缺少有效意图关联，原条目保持不变；请说明要修改或撤回哪一项。\n本轮变更：研究范围：add；原话：都包含\nLAPIS> 请核对以下八项规约及提案假设、限制，确认后进入研究设计；也可以直接修改。\n",
+      "interpretation": {
+        "summary": "",
+        "intents": [
+          {
+            "id": "S",
+            "kind": "answer",
+            "quote": "都包含",
+            "question_ref": "scope-Q",
+            "target_refs": []
+          }
+        ],
+        "context_change": "unspecified",
+        "pause_scope": "conversation",
+        "guidance_mode": "auto",
+        "actions": [
+          "inform"
+        ],
+        "updates": [
+          {
+            "field": "research_scope",
+            "status": "specified",
+            "value": "都包含",
+            "quote": "都包含",
+            "action": "add",
+            "intent_ref": "S",
+            "basis_refs": [
+              "research_scope"
+            ],
+            "scope_mode": "current_scope",
+            "change_timing": "current",
+            "change_relation": "unspecified",
+            "target_id": null,
+            "target_value": null,
+            "direction": null,
+            "strength": null,
+            "category": null,
+            "predicate": null,
+            "temperatures": []
+          },
+          {
+            "field": "target_performance",
+            "status": "none",
+            "value": null,
+            "quote": "都包含",
+            "action": "remove",
+            "intent_ref": null,
+            "basis_refs": [],
+            "scope_mode": "unspecified",
+            "change_timing": "current",
+            "change_relation": "unspecified",
+            "target_id": "target_performance-90c1ef16cd",
+            "target_value": null,
+            "direction": null,
+            "strength": null,
+            "category": null,
+            "predicate": null,
+            "temperatures": []
+          }
+        ],
+        "selected_option": null,
+        "selection_mode": "full",
+        "clarification_field": null,
+        "clarification_question": null,
+        "domain": null,
+        "domain_quote": null,
+        "issues": [],
+        "resolve_issue_ids": [],
+        "reaffirm_fields": []
+      },
+      "operations": [
+        {
+          "operation": {
+            "field": "research_scope",
+            "status": "specified",
+            "value": "仅比较候选基板材料，不验证器件",
+            "quote": "都包含",
+            "action": "add",
+            "intent_ref": "S",
+            "basis_refs": [
+              "research_object",
+              "application",
+              "research_scope"
+            ],
+            "scope_mode": "current_scope",
+            "change_timing": "current",
+            "change_relation": "refinement",
+            "target_id": null,
+            "target_value": null,
+            "direction": null,
+            "strength": null,
+            "category": null,
+            "predicate": null,
+            "temperatures": []
+          },
+          "decision": "accepted"
+        },
+        {
+          "operation": {
+            "field": "target_performance",
+            "status": "none",
+            "value": null,
+            "quote": "都包含",
+            "action": "remove",
+            "intent_ref": null,
+            "basis_refs": [],
+            "scope_mode": "unspecified",
+            "change_timing": "current",
+            "change_relation": "unspecified",
+            "target_id": "target_performance-90c1ef16cd",
+            "target_value": null,
+            "direction": null,
+            "strength": null,
+            "category": null,
+            "predicate": null,
+            "temperatures": []
+          },
+          "decision": "not_applied",
+          "reason": "操作缺少有效意图关联，原条目保持不变；请说明要修改或撤回哪一项"
+        }
+      ],
+      "request": {
+        "contract_version": 5,
+        "rule_version": "intake-rules-5.0",
+        "original_intent": "请推荐",
+        "draft_revision": 3,
+        "draft_id": "D3-b904d9c91403",
+        "fields": {
+          "purpose": {
+            "status": "specified",
+            "value": "比较陶瓷基板",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "research_object": {
+            "status": "specified",
+            "value": "陶瓷基板",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "application": {
+            "status": "specified",
+            "value": "电子器件散热",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "work_conditions": {
+            "status": "open",
+            "value": null,
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "target_performance": [
+            {
+              "status": "specified",
+              "value": "热传导",
+              "direction": "比较",
+              "source": "confirmed_suggestion",
+              "suggestion_origin": "model",
+              "evidence_status": "unverified",
+              "quote": null,
+              "turn": null,
+              "suggested_after_turn": 1,
+              "selection_quote": "陶瓷散热基板比较",
+              "confirmed_turn": 2,
+              "recommendation_ref": {
+                "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+                "version": 1,
+                "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+              },
+              "source_refs": [],
+              "id": "target_performance-474dfbb58a"
+            },
+            {
+              "status": "specified",
+              "value": "氧化诱导期",
+              "quote": "氧化诱导期",
+              "source": "user",
+              "turn": 4,
+              "id": "target_performance-90c1ef16cd",
+              "direction": "考察",
+              "basis_refs": [
+                "target_performance"
+              ]
+            }
+          ],
+          "constraints": [
+            {
+              "status": "unknown",
+              "value": null,
+              "source": "confirmed_suggestion",
+              "suggestion_origin": "model",
+              "evidence_status": "unverified",
+              "quote": null,
+              "turn": null,
+              "suggested_after_turn": 1,
+              "selection_quote": "陶瓷散热基板比较",
+              "confirmed_turn": 2,
+              "recommendation_ref": {
+                "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+                "version": 1,
+                "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+              },
+              "source_refs": [],
+              "id": "constraints-8dbfc51711",
+              "direction": null
+            }
+          ],
+          "research_scope": {
+            "status": "specified",
+            "value": "仅比较候选基板材料，不验证器件",
+            "quote": "都包含",
+            "source": "user",
+            "turn": 5,
+            "basis_refs": [
+              "research_object",
+              "application",
+              "research_scope"
+            ]
+          },
+          "material_function": {
+            "status": "specified",
+            "value": "拟传导热量",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          }
+        },
+        "task_pattern": null,
+        "domain": "materials_application",
+        "issues": [],
+        "reference_notes": [],
+        "sources": {},
+        "proposals": {
+          "4eda8164-01a9-4c4f-a3cd-f06672f982e1": {
+            "version": 1,
+            "draft_id": "D0",
+            "generation": {
+              "origin": "model",
+              "model": "review-test",
+              "prompt_sha256": "6c0b2d73d2704f977ed0c400962d9e312b9147da69278a3711bf5e7be8466679",
+              "operation_id": null
+            },
+            "direction_ids": [
+              "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            ],
+            "content_sha256": "5a50f2bdfaf7089e255fcaea3005b78bb8d51d704cbd8fa4a7dbec6d3251cf86",
+            "review": {
+              "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1": {
+                "label": "陶瓷散热基板比较",
+                "reason": "将材料用途限定到散热基板。",
+                "assumptions": [
+                  "用户愿意比较陶瓷基板"
+                ],
+                "limitations": [
+                  "未核验材料性能，不提供实算结论"
+                ],
+                "clarifications": [
+                  "温度范围和成本口径待定"
+                ],
+                "source_refs": []
+              }
+            }
+          }
+        }
+      },
+      "status": "needs_confirmation"
+    },
+    {
+      "input": "没有额外排除项",
+      "actual_display": "当前研究规约：\n研究目的：比较陶瓷基板\n研究对象：陶瓷基板\n应用场景：电子器件散热\n工作条件：留待研究设计阶段确定\n目标性能：热传导（比较）；氧化诱导期（考察）\n约束条件：尚未指定，研究设计阶段确定\n研究范围：仅比较候选基板材料，不验证器件\n材料功能：拟传导热量\n已采用提案来源（原始快照）：陶瓷散热基板比较\n当前要求以本轮八项规约为准；原提案被撤回的内容不再适用。以下原假设与限制用于追溯，须在研究设计重新核查。\n假设：用户愿意比较陶瓷基板\n限制：未核验材料性能，不提供实算结论\n待研究设计核查：温度范围和成本口径待定\n暂未应用：目标性能；操作缺少有效意图关联，原条目保持不变；请说明要修改或撤回哪一项。\n本轮变更：研究范围：add；原话：没有额外排除项\nLAPIS> 请核对以下八项规约及提案假设、限制，确认后进入研究设计；也可以直接修改。\n",
+      "interpretation": {
+        "summary": "",
+        "intents": [
+          {
+            "id": "S",
+            "kind": "answer",
+            "quote": "没有额外排除项",
+            "question_ref": "scope-Q",
+            "target_refs": []
+          }
+        ],
+        "context_change": "unspecified",
+        "pause_scope": "conversation",
+        "guidance_mode": "auto",
+        "actions": [
+          "inform"
+        ],
+        "updates": [
+          {
+            "field": "research_scope",
+            "status": "specified",
+            "value": "没有额外排除项",
+            "quote": "没有额外排除项",
+            "action": "add",
+            "intent_ref": "S",
+            "basis_refs": [
+              "research_scope"
+            ],
+            "scope_mode": "current_scope",
+            "change_timing": "current",
+            "change_relation": "unspecified",
+            "target_id": null,
+            "target_value": null,
+            "direction": null,
+            "strength": null,
+            "category": null,
+            "predicate": null,
+            "temperatures": []
+          },
+          {
+            "field": "target_performance",
+            "status": "none",
+            "value": null,
+            "quote": "没有额外排除项",
+            "action": "remove",
+            "intent_ref": null,
+            "basis_refs": [],
+            "scope_mode": "unspecified",
+            "change_timing": "current",
+            "change_relation": "unspecified",
+            "target_id": "target_performance-90c1ef16cd",
+            "target_value": null,
+            "direction": null,
+            "strength": null,
+            "category": null,
+            "predicate": null,
+            "temperatures": []
+          }
+        ],
+        "selected_option": null,
+        "selection_mode": "full",
+        "clarification_field": null,
+        "clarification_question": null,
+        "domain": null,
+        "domain_quote": null,
+        "issues": [],
+        "resolve_issue_ids": [],
+        "reaffirm_fields": []
+      },
+      "operations": [
+        {
+          "operation": {
+            "field": "research_scope",
+            "status": "specified",
+            "value": "仅比较候选基板材料，不验证器件",
+            "quote": "没有额外排除项",
+            "action": "add",
+            "intent_ref": "S",
+            "basis_refs": [
+              "research_object",
+              "application",
+              "research_scope"
+            ],
+            "scope_mode": "current_scope",
+            "change_timing": "current",
+            "change_relation": "refinement",
+            "target_id": null,
+            "target_value": null,
+            "direction": null,
+            "strength": null,
+            "category": null,
+            "predicate": null,
+            "temperatures": []
+          },
+          "decision": "accepted"
+        },
+        {
+          "operation": {
+            "field": "target_performance",
+            "status": "none",
+            "value": null,
+            "quote": "没有额外排除项",
+            "action": "remove",
+            "intent_ref": null,
+            "basis_refs": [],
+            "scope_mode": "unspecified",
+            "change_timing": "current",
+            "change_relation": "unspecified",
+            "target_id": "target_performance-90c1ef16cd",
+            "target_value": null,
+            "direction": null,
+            "strength": null,
+            "category": null,
+            "predicate": null,
+            "temperatures": []
+          },
+          "decision": "not_applied",
+          "reason": "操作缺少有效意图关联，原条目保持不变；请说明要修改或撤回哪一项"
+        }
+      ],
+      "request": {
+        "contract_version": 5,
+        "rule_version": "intake-rules-5.0",
+        "original_intent": "请推荐",
+        "draft_revision": 3,
+        "draft_id": "D3-b904d9c91403",
+        "fields": {
+          "purpose": {
+            "status": "specified",
+            "value": "比较陶瓷基板",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "research_object": {
+            "status": "specified",
+            "value": "陶瓷基板",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "application": {
+            "status": "specified",
+            "value": "电子器件散热",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "work_conditions": {
+            "status": "open",
+            "value": null,
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "target_performance": [
+            {
+              "status": "specified",
+              "value": "热传导",
+              "direction": "比较",
+              "source": "confirmed_suggestion",
+              "suggestion_origin": "model",
+              "evidence_status": "unverified",
+              "quote": null,
+              "turn": null,
+              "suggested_after_turn": 1,
+              "selection_quote": "陶瓷散热基板比较",
+              "confirmed_turn": 2,
+              "recommendation_ref": {
+                "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+                "version": 1,
+                "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+              },
+              "source_refs": [],
+              "id": "target_performance-474dfbb58a"
+            },
+            {
+              "status": "specified",
+              "value": "氧化诱导期",
+              "quote": "氧化诱导期",
+              "source": "user",
+              "turn": 4,
+              "id": "target_performance-90c1ef16cd",
+              "direction": "考察",
+              "basis_refs": [
+                "target_performance"
+              ]
+            }
+          ],
+          "constraints": [
+            {
+              "status": "unknown",
+              "value": null,
+              "source": "confirmed_suggestion",
+              "suggestion_origin": "model",
+              "evidence_status": "unverified",
+              "quote": null,
+              "turn": null,
+              "suggested_after_turn": 1,
+              "selection_quote": "陶瓷散热基板比较",
+              "confirmed_turn": 2,
+              "recommendation_ref": {
+                "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+                "version": 1,
+                "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+              },
+              "source_refs": [],
+              "id": "constraints-8dbfc51711",
+              "direction": null
+            }
+          ],
+          "research_scope": {
+            "status": "specified",
+            "value": "仅比较候选基板材料，不验证器件",
+            "quote": "都包含",
+            "source": "user",
+            "turn": 5,
+            "basis_refs": [
+              "research_object",
+              "application",
+              "research_scope"
+            ]
+          },
+          "material_function": {
+            "status": "specified",
+            "value": "拟传导热量",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          }
+        },
+        "task_pattern": null,
+        "domain": "materials_application",
+        "issues": [],
+        "reference_notes": [],
+        "sources": {},
+        "proposals": {
+          "4eda8164-01a9-4c4f-a3cd-f06672f982e1": {
+            "version": 1,
+            "draft_id": "D0",
+            "generation": {
+              "origin": "model",
+              "model": "review-test",
+              "prompt_sha256": "6c0b2d73d2704f977ed0c400962d9e312b9147da69278a3711bf5e7be8466679",
+              "operation_id": null
+            },
+            "direction_ids": [
+              "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            ],
+            "content_sha256": "5a50f2bdfaf7089e255fcaea3005b78bb8d51d704cbd8fa4a7dbec6d3251cf86",
+            "review": {
+              "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1": {
+                "label": "陶瓷散热基板比较",
+                "reason": "将材料用途限定到散热基板。",
+                "assumptions": [
+                  "用户愿意比较陶瓷基板"
+                ],
+                "limitations": [
+                  "未核验材料性能，不提供实算结论"
+                ],
+                "clarifications": [
+                  "温度范围和成本口径待定"
+                ],
+                "source_refs": []
+              }
+            }
+          }
+        }
+      },
+      "status": "needs_confirmation"
+    },
+    {
+      "input": "确认",
+      "actual_display": "LAPIS> 研究请求已保存，可进入研究设计；确认规约不授权计算。\n",
+      "interpretation": null,
+      "operations": null,
+      "request": {
+        "contract_version": 5,
+        "rule_version": "intake-rules-5.0",
+        "original_intent": "请推荐",
+        "draft_revision": 3,
+        "draft_id": "D3-b904d9c91403",
+        "fields": {
+          "purpose": {
+            "status": "specified",
+            "value": "比较陶瓷基板",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "research_object": {
+            "status": "specified",
+            "value": "陶瓷基板",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "application": {
+            "status": "specified",
+            "value": "电子器件散热",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "work_conditions": {
+            "status": "open",
+            "value": null,
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          },
+          "target_performance": [
+            {
+              "status": "specified",
+              "value": "热传导",
+              "direction": "比较",
+              "source": "confirmed_suggestion",
+              "suggestion_origin": "model",
+              "evidence_status": "unverified",
+              "quote": null,
+              "turn": null,
+              "suggested_after_turn": 1,
+              "selection_quote": "陶瓷散热基板比较",
+              "confirmed_turn": 2,
+              "recommendation_ref": {
+                "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+                "version": 1,
+                "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+              },
+              "source_refs": [],
+              "id": "target_performance-474dfbb58a"
+            },
+            {
+              "status": "specified",
+              "value": "氧化诱导期",
+              "quote": "氧化诱导期",
+              "source": "user",
+              "turn": 4,
+              "id": "target_performance-90c1ef16cd",
+              "direction": "考察",
+              "basis_refs": [
+                "target_performance"
+              ]
+            }
+          ],
+          "constraints": [
+            {
+              "status": "unknown",
+              "value": null,
+              "source": "confirmed_suggestion",
+              "suggestion_origin": "model",
+              "evidence_status": "unverified",
+              "quote": null,
+              "turn": null,
+              "suggested_after_turn": 1,
+              "selection_quote": "陶瓷散热基板比较",
+              "confirmed_turn": 2,
+              "recommendation_ref": {
+                "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+                "version": 1,
+                "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+              },
+              "source_refs": [],
+              "id": "constraints-8dbfc51711",
+              "direction": null
+            }
+          ],
+          "research_scope": {
+            "status": "specified",
+            "value": "仅比较候选基板材料，不验证器件",
+            "quote": "都包含",
+            "source": "user",
+            "turn": 5,
+            "basis_refs": [
+              "research_object",
+              "application",
+              "research_scope"
+            ]
+          },
+          "material_function": {
+            "status": "specified",
+            "value": "拟传导热量",
+            "source": "confirmed_suggestion",
+            "suggestion_origin": "model",
+            "evidence_status": "unverified",
+            "quote": null,
+            "turn": null,
+            "suggested_after_turn": 1,
+            "selection_quote": "陶瓷散热基板比较",
+            "confirmed_turn": 2,
+            "recommendation_ref": {
+              "id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1",
+              "version": 1,
+              "direction_id": "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            },
+            "source_refs": []
+          }
+        },
+        "task_pattern": null,
+        "domain": "materials_application",
+        "issues": [],
+        "reference_notes": [],
+        "sources": {},
+        "proposals": {
+          "4eda8164-01a9-4c4f-a3cd-f06672f982e1": {
+            "version": 1,
+            "draft_id": "D0",
+            "generation": {
+              "origin": "model",
+              "model": "review-test",
+              "prompt_sha256": "6c0b2d73d2704f977ed0c400962d9e312b9147da69278a3711bf5e7be8466679",
+              "operation_id": null
+            },
+            "direction_ids": [
+              "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1"
+            ],
+            "content_sha256": "5a50f2bdfaf7089e255fcaea3005b78bb8d51d704cbd8fa4a7dbec6d3251cf86",
+            "review": {
+              "4eda8164-01a9-4c4f-a3cd-f06672f982e1-option-1": {
+                "label": "陶瓷散热基板比较",
+                "reason": "将材料用途限定到散热基板。",
+                "assumptions": [
+                  "用户愿意比较陶瓷基板"
+                ],
+                "limitations": [
+                  "未核验材料性能，不提供实算结论"
+                ],
+                "clarifications": [
+                  "温度范围和成本口径待定"
+                ],
+                "source_refs": []
+              }
+            }
+          }
+        }
+      },
+      "status": "ready_for_design"
+    }
+  ],
+  "confirmed": true,
+  "indicator_preserved": true
+}

@@ -1,0 +1,22 @@
+{
+  "reviewer": "implementation-agent manual review; independent auditor review pending",
+  "verdict": "failed",
+  "reason": "程序通过但语义失败：过滤材料撤回目标后目的／范围未同步；包装材料排除产品寿命被范围规范化覆盖。",
+  "program_verdicts": [
+    {
+      "scenario": "final_filter_name_edit",
+      "task_id": "c0c64132-a090-4742-b5e5-14d079ec5e66",
+      "verdict": "passed",
+      "errors": [],
+      "active_request_version": 1
+    },
+    {
+      "scenario": "final_packaging_quote_scope_metric",
+      "task_id": "f5ad74ee-9e11-43e8-aefc-902f2a7d4898",
+      "verdict": "passed",
+      "errors": [],
+      "active_request_version": 1
+    }
+  ],
+  "not_scientific_evidence": true
+}

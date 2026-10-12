@@ -1,0 +1,299 @@
+{
+  "date": "2026-10-12",
+  "authorized_cumulative_cap": {
+    "attempts": 110,
+    "provider_tokens": 550000
+  },
+  "actual_attempts": 97,
+  "actual_provider_tokens": 515999,
+  "runs": [
+    {
+      "directory": "reports\\2026-10-12-boundary-live-01",
+      "attempts": 30,
+      "provider_tokens": 166684,
+      "missing_usage": 0,
+      "status_codes": [
+        200
+      ],
+      "roles": {
+        "product": 16,
+        "simulated_user": 14
+      },
+      "budget_stops": [
+        {
+          "role": "product",
+          "used_tokens": 166684,
+          "reserved_tokens": 37431,
+          "used_calls": 30
+        }
+      ],
+      "manifest": {
+        "run_id": "ec7312c0-702b-455c-ac47-245026d6faeb",
+        "mode": "simulated",
+        "set": "rework_holdout",
+        "commit": "bc97aabce317f02dbcc9cbc3272bb45fdca4de37",
+        "model_alias": "deepseek-flash",
+        "seed": "provider_unavailable",
+        "prompt_hash": "814ef7d817b2567b5c45b7565dacb403f5bd9d8539656bdf877b55a9b62db9cb",
+        "user_prompt_hash": "317e4a7c9848a0aaf3a8fb1ee70e44f98b97fd4f880de40ef8e01ee9e81f4a89",
+        "dirty": true,
+        "origin": "synthetic",
+        "max_calls": 40,
+        "max_tokens": 200000,
+        "code_hashes": {
+          "lapis.py": "da30b5fb883f50657e9f47839b3b6585a59429f42c748bc52117a5726b1b30de",
+          "lapis_contract.py": "a582798d37a99a33cfe46982e568eddae79bf832da08089d158489a01fe5f94b",
+          "lapis_contract_v4.py": "01a1f085557ad5750dc6ce12e5c598021bc7f69080e5b51f9707b124a7e57bb0",
+          "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
+          "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
+          "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
+          "lapis_intake.py": "9509ba1fd2cf4c85c6a946d80f7a34f256b0f0a341fb693714dc7719fe0f14a8",
+          "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
+          "lapis_semantics.py": "b4bbe7044063ccc56af650c667af2d1fbfb852deb7dfff7d09217dc3634bcc2e",
+          "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
+        }
+      },
+      "semantic_review": {
+        "reviewer": "implementation-agent manual review; independent auditor review pending",
+        "verdict": "failed",
+        "reason": "裸名称已执行；撤回缺依据曾拒绝，后修正；旧快照显示造成重复修改，未闭环。",
+        "program_verdicts": [
+          {
+            "scenario": "rework_name_and_edit",
+            "task_id": "ae8a189c-6c86-4c63-aa6e-d7ed38e7018c",
+            "verdict": "failed",
+            "errors": [],
+            "active_request_version": null
+          },
+          {
+            "scenario": "rework_quote_scope_delayed_metric",
+            "verdict": "error",
+            "error_type": "InstructorRetryException",
+            "error": "Connection error.",
+            "failed_input": "我想采用方向1：聚酯薄膜热氧化老化行为与包装适用性关联研究，先建立老化行为与包装适用性的关联。",
+            "turn": 2,
+            "task_id": "a5425e0d-534d-4903-b231-cb61bc3acbc2"
+          }
+        ],
+        "not_scientific_evidence": true
+      }
+    },
+    {
+      "directory": "reports\\2026-10-12-boundary-live-02",
+      "attempts": 23,
+      "provider_tokens": 116068,
+      "missing_usage": 0,
+      "status_codes": [
+        200
+      ],
+      "roles": {
+        "product": 13,
+        "simulated_user": 10
+      },
+      "budget_stops": [],
+      "manifest": {
+        "run_id": "46d1fc24-99ca-48ae-842e-3b4bf7d19535",
+        "mode": "simulated",
+        "set": "rework_final_holdout",
+        "commit": "201db5ee0c2242c6cbacf432bbc2d7b2522b8b64",
+        "model_alias": "deepseek-flash",
+        "seed": "provider_unavailable",
+        "prompt_hash": "814ef7d817b2567b5c45b7565dacb403f5bd9d8539656bdf877b55a9b62db9cb",
+        "user_prompt_hash": "317e4a7c9848a0aaf3a8fb1ee70e44f98b97fd4f880de40ef8e01ee9e81f4a89",
+        "dirty": true,
+        "origin": "synthetic",
+        "max_calls": 30,
+        "max_tokens": 183316,
+        "code_hashes": {
+          "lapis.py": "02ee3898add93b464707c82856fdde97fc84d0b4601e45bc2a6529411fb5d49d",
+          "lapis_contract.py": "a582798d37a99a33cfe46982e568eddae79bf832da08089d158489a01fe5f94b",
+          "lapis_contract_v4.py": "01a1f085557ad5750dc6ce12e5c598021bc7f69080e5b51f9707b124a7e57bb0",
+          "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
+          "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
+          "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
+          "lapis_intake.py": "d1e94c6d15b68ae83a7c491736b952f322a7addade507bc2e8038c7646024672",
+          "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
+          "lapis_semantics.py": "b4bbe7044063ccc56af650c667af2d1fbfb852deb7dfff7d09217dc3634bcc2e",
+          "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
+        }
+      },
+      "semantic_review": {
+        "reviewer": "implementation-agent manual review; independent auditor review pending",
+        "verdict": "failed",
+        "reason": "程序通过但语义失败：过滤材料撤回目标后目的／范围未同步；包装材料排除产品寿命被范围规范化覆盖。",
+        "program_verdicts": [
+          {
+            "scenario": "final_filter_name_edit",
+            "task_id": "c0c64132-a090-4742-b5e5-14d079ec5e66",
+            "verdict": "passed",
+            "errors": [],
+            "active_request_version": 1
+          },
+          {
+            "scenario": "final_packaging_quote_scope_metric",
+            "task_id": "f5ad74ee-9e11-43e8-aefc-902f2a7d4898",
+            "verdict": "passed",
+            "errors": [],
+            "active_request_version": 1
+          }
+        ],
+        "not_scientific_evidence": true
+      }
+    },
+    {
+      "directory": "reports\\2026-10-12-boundary-live-03",
+      "attempts": 24,
+      "provider_tokens": 123052,
+      "missing_usage": 0,
+      "status_codes": [
+        200
+      ],
+      "roles": {
+        "product": 14,
+        "simulated_user": 10
+      },
+      "budget_stops": [],
+      "manifest": {
+        "run_id": "698089cc-9a10-4aac-8110-83f6c8d0ade8",
+        "mode": "simulated",
+        "set": "rework_verified_holdout",
+        "commit": "5af45f836ac300a755d8b16276d65fc89d2ab458",
+        "model_alias": "deepseek-flash",
+        "seed": "provider_unavailable",
+        "prompt_hash": "814ef7d817b2567b5c45b7565dacb403f5bd9d8539656bdf877b55a9b62db9cb",
+        "user_prompt_hash": "317e4a7c9848a0aaf3a8fb1ee70e44f98b97fd4f880de40ef8e01ee9e81f4a89",
+        "dirty": true,
+        "origin": "synthetic",
+        "max_calls": 27,
+        "max_tokens": 167248,
+        "code_hashes": {
+          "lapis.py": "02ee3898add93b464707c82856fdde97fc84d0b4601e45bc2a6529411fb5d49d",
+          "lapis_contract.py": "a582798d37a99a33cfe46982e568eddae79bf832da08089d158489a01fe5f94b",
+          "lapis_contract_v4.py": "01a1f085557ad5750dc6ce12e5c598021bc7f69080e5b51f9707b124a7e57bb0",
+          "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
+          "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
+          "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
+          "lapis_intake.py": "03aca77072234aa78ae70ed93cdc8b725c3fa6923102c994f9f4717044e80c40",
+          "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
+          "lapis_semantics.py": "8f80fbc0632deea060924c4e11e1b3c0ca8ec1bad5d7dfd3781d43da1bb3ccb5",
+          "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
+        }
+      },
+      "semantic_review": {
+        "reviewer": "implementation-agent manual review; independent auditor review pending",
+        "verdict": "failed",
+        "reason": "程序通过但语义未全部合格：聚酰胺名称加了我选，未验证裸名称；再生PE明确范围排除项被inform规范化覆盖。",
+        "program_verdicts": [
+          {
+            "scenario": "verified_polyamide_name_edit",
+            "task_id": "db1ac164-c2fc-4b23-9b69-e0071d56924f",
+            "verdict": "passed",
+            "errors": [],
+            "active_request_version": 1
+          },
+          {
+            "scenario": "verified_recycled_pe_quote_metric",
+            "task_id": "c199814d-e957-47a8-9a7f-6cd93613969f",
+            "verdict": "passed",
+            "errors": [],
+            "active_request_version": 1
+          }
+        ],
+        "not_scientific_evidence": true
+      }
+    },
+    {
+      "directory": "reports\\2026-10-12-boundary-live-04",
+      "attempts": 20,
+      "provider_tokens": 110195,
+      "missing_usage": 0,
+      "status_codes": [
+        200
+      ],
+      "roles": {
+        "product": 13,
+        "simulated_user": 7
+      },
+      "budget_stops": [
+        {
+          "role": "product",
+          "used_tokens": 110195,
+          "reserved_tokens": 37471,
+          "used_calls": 20
+        }
+      ],
+      "manifest": {
+        "run_id": "70f99d6b-80d6-4b13-9dad-bc44561d2ae4",
+        "mode": "simulated",
+        "set": "rework_acceptance_holdout",
+        "commit": "49a9df06803112ddc8489131aad69a06ebe7726b",
+        "model_alias": "deepseek-flash",
+        "seed": "provider_unavailable",
+        "prompt_hash": "814ef7d817b2567b5c45b7565dacb403f5bd9d8539656bdf877b55a9b62db9cb",
+        "user_prompt_hash": "317e4a7c9848a0aaf3a8fb1ee70e44f98b97fd4f880de40ef8e01ee9e81f4a89",
+        "dirty": true,
+        "origin": "synthetic",
+        "max_calls": 33,
+        "max_tokens": 144196,
+        "code_hashes": {
+          "lapis.py": "02ee3898add93b464707c82856fdde97fc84d0b4601e45bc2a6529411fb5d49d",
+          "lapis_contract.py": "a582798d37a99a33cfe46982e568eddae79bf832da08089d158489a01fe5f94b",
+          "lapis_contract_v4.py": "01a1f085557ad5750dc6ce12e5c598021bc7f69080e5b51f9707b124a7e57bb0",
+          "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
+          "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
+          "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
+          "lapis_intake.py": "9fb35dc890df9590566567edb178a070e097b7dc5a70dd9505aecf1cc73bd474",
+          "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
+          "lapis_semantics.py": "46c00be174724ed9281129ec40c2b92cfb41c9e402d54a1486b529af9c44a44c",
+          "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
+        }
+      },
+      "semantic_review": {
+        "reviewer": "implementation-agent manual review; independent auditor review pending",
+        "verdict": "incomplete",
+        "reason": "PLA首轮非原文引用三次重试失败；PP五轮范围、引用、延迟指标正确，确认前保守预算预留阻断，未验证确认恢复。",
+        "program_verdicts": [
+          {
+            "scenario": "acceptance_pla_name_edit",
+            "verdict": "error",
+            "error_type": "InstructorRetryException",
+            "error": "<failed_attempts>\n\n<generation number=\"1\">\n<exception>\n    1 validation error for Extraction\n  Value error, 依据本轮原话重新解释；未见授权时保留当前内容并澄清，不能只改意图标签来通过校验：原话片段不属于本轮 [type=value_error, input_value={'summary': '用户希望..., 'reaffirm_fields': []}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\n</exception>\n<completion>\n    ChatCompletion(id='de060e85-aeae-4353",
+            "failed_input": "我想比较几种聚乳酸候选材料，用于桌面收纳盒，主要关注弯曲刚度和透明性，低成本只是偏好。牌号、壁厚、使用条件和测试方法都还不确定，能给我一个有边界的研究方向建议吗？",
+            "turn": 1,
+            "task_id": "6a95c9e2-a248-430a-84ec-b3c6e92834b2"
+          },
+          {
+            "scenario": "acceptance_pp_scope_metric",
+            "verdict": "error",
+            "error_type": "InstructorRetryException",
+            "error": "Connection error.",
+            "failed_input": "我核对了完整规约：研究目的、对象、场景、目标性能、低成本偏好、研究范围仅限聚丙烯材料本身而不验证整箱寿命，以及新增的氧化诱导期作为待评估指标、其适用性与测试方法留待研究设计核查，都与我的意图一致。确认这份规约，可以进入研究设计。",
+            "turn": 6,
+            "task_id": "40202f30-4e2d-4bb7-a433-a186e388dbfb"
+          }
+        ],
+        "not_scientific_evidence": true
+      }
+    }
+  ],
+  "old_oct10_budget_not_reset": true,
+  "full_fresh_live_acceptance_completed": false,
+  "software_tests": {
+    "count": 139,
+    "passed": 139,
+    "skipped": 0,
+    "log": "2026-10-12-boundary-full-final-12-tests.log"
+  },
+  "current_source_sha256": {
+    "lapis.py": "02ee3898add93b464707c82856fdde97fc84d0b4601e45bc2a6529411fb5d49d",
+    "lapis_contract.py": "a582798d37a99a33cfe46982e568eddae79bf832da08089d158489a01fe5f94b",
+    "lapis_contract_v4.py": "01a1f085557ad5750dc6ce12e5c598021bc7f69080e5b51f9707b124a7e57bb0",
+    "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
+    "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
+    "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
+    "lapis_intake.py": "018252ba930c97864482d99b2d935872f382ac2b0a2a58fb80d92d071aa5ae7a",
+    "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
+    "lapis_semantics.py": "46c00be174724ed9281129ec40c2b92cfb41c9e402d54a1486b529af9c44a44c",
+    "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
+  }
+}
