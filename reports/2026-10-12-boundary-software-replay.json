@@ -20,7 +20,7 @@
             "scope_mode": "unspecified",
             "change_timing": "current",
             "change_relation": "unspecified",
-            "target_id": "target_performance-18bf4f81d2",
+            "target_id": "target_performance-157ec2683f",
             "target_value": null,
             "direction": null,
             "strength": null,
@@ -50,7 +50,7 @@
             "scope_mode": "unspecified",
             "change_timing": "current",
             "change_relation": "unspecified",
-            "target_id": "target_performance-84396c2842",
+            "target_id": "target_performance-cd5bbd65ee",
             "target_value": null,
             "direction": null,
             "strength": null,
@@ -181,7 +181,7 @@
             "quote": "陶瓷散热基板比较",
             "question_ref": null,
             "target_refs": [
-              "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             ]
           }
         ],
@@ -208,7 +208,7 @@
         "rule_version": "intake-rules-5.0",
         "original_intent": "请推荐",
         "draft_revision": 1,
-        "draft_id": "D1-68b121976f8e",
+        "draft_id": "D1-46753ed4d68f",
         "fields": {
           "purpose": {
             "status": "specified",
@@ -222,9 +222,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -240,9 +240,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -258,9 +258,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -276,9 +276,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -296,12 +296,12 @@
               "selection_quote": "陶瓷散热基板比较",
               "confirmed_turn": 2,
               "recommendation_ref": {
-                "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+                "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
                 "version": 1,
-                "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+                "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
               },
               "source_refs": [],
-              "id": "target_performance-d674e4bb39"
+              "id": "target_performance-e9a2fbdc80"
             }
           ],
           "constraints": [
@@ -317,12 +317,12 @@
               "selection_quote": "陶瓷散热基板比较",
               "confirmed_turn": 2,
               "recommendation_ref": {
-                "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+                "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
                 "version": 1,
-                "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+                "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
               },
               "source_refs": [],
-              "id": "constraints-b29cd12e2d",
+              "id": "constraints-e1a28de1c8",
               "direction": null
             }
           ],
@@ -338,9 +338,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -356,9 +356,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           }
@@ -369,7 +369,7 @@
         "reference_notes": [],
         "sources": {},
         "proposals": {
-          "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b": {
+          "953fb274-c330-47d3-b983-4d3b857e2f39": {
             "version": 1,
             "draft_id": "D0",
             "generation": {
@@ -379,11 +379,11 @@
               "operation_id": null
             },
             "direction_ids": [
-              "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             ],
-            "content_sha256": "e7fd7d599a2ef66075eae76c172892b573535baf00b59129a24872088b1778b9",
+            "content_sha256": "1f85e1b5c9c98a48bfe0e94cb6d2cdc22b94ee79ca22013767809dc3726122f3",
             "review": {
-              "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1": {
+              "953fb274-c330-47d3-b983-4d3b857e2f39-option-1": {
                 "label": "陶瓷散热基板比较",
                 "reason": "将材料用途限定到散热基板。",
                 "assumptions": [
@@ -432,7 +432,7 @@
         "rule_version": "intake-rules-5.0",
         "original_intent": "请推荐",
         "draft_revision": 1,
-        "draft_id": "D1-68b121976f8e",
+        "draft_id": "D1-46753ed4d68f",
         "fields": {
           "purpose": {
             "status": "specified",
@@ -446,9 +446,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -464,9 +464,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -482,9 +482,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -500,9 +500,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -520,12 +520,12 @@
               "selection_quote": "陶瓷散热基板比较",
               "confirmed_turn": 2,
               "recommendation_ref": {
-                "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+                "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
                 "version": 1,
-                "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+                "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
               },
               "source_refs": [],
-              "id": "target_performance-d674e4bb39"
+              "id": "target_performance-e9a2fbdc80"
             }
           ],
           "constraints": [
@@ -541,12 +541,12 @@
               "selection_quote": "陶瓷散热基板比较",
               "confirmed_turn": 2,
               "recommendation_ref": {
-                "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+                "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
                 "version": 1,
-                "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+                "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
               },
               "source_refs": [],
-              "id": "constraints-b29cd12e2d",
+              "id": "constraints-e1a28de1c8",
               "direction": null
             }
           ],
@@ -562,9 +562,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -580,9 +580,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           }
@@ -593,7 +593,7 @@
         "reference_notes": [],
         "sources": {},
         "proposals": {
-          "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b": {
+          "953fb274-c330-47d3-b983-4d3b857e2f39": {
             "version": 1,
             "draft_id": "D0",
             "generation": {
@@ -603,11 +603,11 @@
               "operation_id": null
             },
             "direction_ids": [
-              "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             ],
-            "content_sha256": "e7fd7d599a2ef66075eae76c172892b573535baf00b59129a24872088b1778b9",
+            "content_sha256": "1f85e1b5c9c98a48bfe0e94cb6d2cdc22b94ee79ca22013767809dc3726122f3",
             "review": {
-              "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1": {
+              "953fb274-c330-47d3-b983-4d3b857e2f39-option-1": {
                 "label": "陶瓷散热基板比较",
                 "reason": "将材料用途限定到散热基板。",
                 "assumptions": [
@@ -711,7 +711,7 @@
         "rule_version": "intake-rules-5.0",
         "original_intent": "请推荐",
         "draft_revision": 2,
-        "draft_id": "D2-c761f8225d93",
+        "draft_id": "D2-0ad7987da1eb",
         "fields": {
           "purpose": {
             "status": "specified",
@@ -725,9 +725,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -743,9 +743,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -761,9 +761,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -779,9 +779,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -799,12 +799,12 @@
               "selection_quote": "陶瓷散热基板比较",
               "confirmed_turn": 2,
               "recommendation_ref": {
-                "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+                "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
                 "version": 1,
-                "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+                "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
               },
               "source_refs": [],
-              "id": "target_performance-d674e4bb39"
+              "id": "target_performance-e9a2fbdc80"
             },
             {
               "status": "specified",
@@ -812,7 +812,7 @@
               "quote": "氧化诱导期",
               "source": "user",
               "turn": 4,
-              "id": "target_performance-5417434bf9",
+              "id": "target_performance-64b4e5bfd0",
               "direction": "考察",
               "basis_refs": [
                 "target_performance"
@@ -832,12 +832,12 @@
               "selection_quote": "陶瓷散热基板比较",
               "confirmed_turn": 2,
               "recommendation_ref": {
-                "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+                "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
                 "version": 1,
-                "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+                "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
               },
               "source_refs": [],
-              "id": "constraints-b29cd12e2d",
+              "id": "constraints-e1a28de1c8",
               "direction": null
             }
           ],
@@ -853,9 +853,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -871,9 +871,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           }
@@ -884,7 +884,7 @@
         "reference_notes": [],
         "sources": {},
         "proposals": {
-          "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b": {
+          "953fb274-c330-47d3-b983-4d3b857e2f39": {
             "version": 1,
             "draft_id": "D0",
             "generation": {
@@ -894,11 +894,11 @@
               "operation_id": null
             },
             "direction_ids": [
-              "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             ],
-            "content_sha256": "e7fd7d599a2ef66075eae76c172892b573535baf00b59129a24872088b1778b9",
+            "content_sha256": "1f85e1b5c9c98a48bfe0e94cb6d2cdc22b94ee79ca22013767809dc3726122f3",
             "review": {
-              "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1": {
+              "953fb274-c330-47d3-b983-4d3b857e2f39-option-1": {
                 "label": "陶瓷散热基板比较",
                 "reason": "将材料用途限定到散热基板。",
                 "assumptions": [
@@ -971,7 +971,7 @@
             "scope_mode": "unspecified",
             "change_timing": "current",
             "change_relation": "unspecified",
-            "target_id": "target_performance-5417434bf9",
+            "target_id": "target_performance-64b4e5bfd0",
             "target_value": null,
             "direction": null,
             "strength": null,
@@ -1029,7 +1029,7 @@
             "scope_mode": "unspecified",
             "change_timing": "current",
             "change_relation": "unspecified",
-            "target_id": "target_performance-5417434bf9",
+            "target_id": "target_performance-64b4e5bfd0",
             "target_value": null,
             "direction": null,
             "strength": null,
@@ -1046,7 +1046,7 @@
         "rule_version": "intake-rules-5.0",
         "original_intent": "请推荐",
         "draft_revision": 3,
-        "draft_id": "D3-c99db3e8ba79",
+        "draft_id": "D3-7e709d834ee8",
         "fields": {
           "purpose": {
             "status": "specified",
@@ -1060,9 +1060,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -1078,9 +1078,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -1096,9 +1096,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -1114,9 +1114,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -1134,12 +1134,12 @@
               "selection_quote": "陶瓷散热基板比较",
               "confirmed_turn": 2,
               "recommendation_ref": {
-                "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+                "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
                 "version": 1,
-                "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+                "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
               },
               "source_refs": [],
-              "id": "target_performance-d674e4bb39"
+              "id": "target_performance-e9a2fbdc80"
             },
             {
               "status": "specified",
@@ -1147,7 +1147,7 @@
               "quote": "氧化诱导期",
               "source": "user",
               "turn": 4,
-              "id": "target_performance-5417434bf9",
+              "id": "target_performance-64b4e5bfd0",
               "direction": "考察",
               "basis_refs": [
                 "target_performance"
@@ -1167,12 +1167,12 @@
               "selection_quote": "陶瓷散热基板比较",
               "confirmed_turn": 2,
               "recommendation_ref": {
-                "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+                "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
                 "version": 1,
-                "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+                "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
               },
               "source_refs": [],
-              "id": "constraints-b29cd12e2d",
+              "id": "constraints-e1a28de1c8",
               "direction": null
             }
           ],
@@ -1200,9 +1200,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           }
@@ -1213,7 +1213,7 @@
         "reference_notes": [],
         "sources": {},
         "proposals": {
-          "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b": {
+          "953fb274-c330-47d3-b983-4d3b857e2f39": {
             "version": 1,
             "draft_id": "D0",
             "generation": {
@@ -1223,11 +1223,11 @@
               "operation_id": null
             },
             "direction_ids": [
-              "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             ],
-            "content_sha256": "e7fd7d599a2ef66075eae76c172892b573535baf00b59129a24872088b1778b9",
+            "content_sha256": "1f85e1b5c9c98a48bfe0e94cb6d2cdc22b94ee79ca22013767809dc3726122f3",
             "review": {
-              "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1": {
+              "953fb274-c330-47d3-b983-4d3b857e2f39-option-1": {
                 "label": "陶瓷散热基板比较",
                 "reason": "将材料用途限定到散热基板。",
                 "assumptions": [
@@ -1300,7 +1300,7 @@
             "scope_mode": "unspecified",
             "change_timing": "current",
             "change_relation": "unspecified",
-            "target_id": "target_performance-5417434bf9",
+            "target_id": "target_performance-64b4e5bfd0",
             "target_value": null,
             "direction": null,
             "strength": null,
@@ -1358,7 +1358,7 @@
             "scope_mode": "unspecified",
             "change_timing": "current",
             "change_relation": "unspecified",
-            "target_id": "target_performance-5417434bf9",
+            "target_id": "target_performance-64b4e5bfd0",
             "target_value": null,
             "direction": null,
             "strength": null,
@@ -1375,7 +1375,7 @@
         "rule_version": "intake-rules-5.0",
         "original_intent": "请推荐",
         "draft_revision": 3,
-        "draft_id": "D3-c99db3e8ba79",
+        "draft_id": "D3-7e709d834ee8",
         "fields": {
           "purpose": {
             "status": "specified",
@@ -1389,9 +1389,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -1407,9 +1407,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -1425,9 +1425,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -1443,9 +1443,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -1463,12 +1463,12 @@
               "selection_quote": "陶瓷散热基板比较",
               "confirmed_turn": 2,
               "recommendation_ref": {
-                "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+                "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
                 "version": 1,
-                "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+                "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
               },
               "source_refs": [],
-              "id": "target_performance-d674e4bb39"
+              "id": "target_performance-e9a2fbdc80"
             },
             {
               "status": "specified",
@@ -1476,7 +1476,7 @@
               "quote": "氧化诱导期",
               "source": "user",
               "turn": 4,
-              "id": "target_performance-5417434bf9",
+              "id": "target_performance-64b4e5bfd0",
               "direction": "考察",
               "basis_refs": [
                 "target_performance"
@@ -1496,12 +1496,12 @@
               "selection_quote": "陶瓷散热基板比较",
               "confirmed_turn": 2,
               "recommendation_ref": {
-                "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+                "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
                 "version": 1,
-                "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+                "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
               },
               "source_refs": [],
-              "id": "constraints-b29cd12e2d",
+              "id": "constraints-e1a28de1c8",
               "direction": null
             }
           ],
@@ -1529,9 +1529,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           }
@@ -1542,7 +1542,7 @@
         "reference_notes": [],
         "sources": {},
         "proposals": {
-          "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b": {
+          "953fb274-c330-47d3-b983-4d3b857e2f39": {
             "version": 1,
             "draft_id": "D0",
             "generation": {
@@ -1552,11 +1552,11 @@
               "operation_id": null
             },
             "direction_ids": [
-              "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             ],
-            "content_sha256": "e7fd7d599a2ef66075eae76c172892b573535baf00b59129a24872088b1778b9",
+            "content_sha256": "1f85e1b5c9c98a48bfe0e94cb6d2cdc22b94ee79ca22013767809dc3726122f3",
             "review": {
-              "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1": {
+              "953fb274-c330-47d3-b983-4d3b857e2f39-option-1": {
                 "label": "陶瓷散热基板比较",
                 "reason": "将材料用途限定到散热基板。",
                 "assumptions": [
@@ -1586,7 +1586,7 @@
         "rule_version": "intake-rules-5.0",
         "original_intent": "请推荐",
         "draft_revision": 3,
-        "draft_id": "D3-c99db3e8ba79",
+        "draft_id": "D3-7e709d834ee8",
         "fields": {
           "purpose": {
             "status": "specified",
@@ -1600,9 +1600,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -1618,9 +1618,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -1636,9 +1636,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -1654,9 +1654,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           },
@@ -1674,12 +1674,12 @@
               "selection_quote": "陶瓷散热基板比较",
               "confirmed_turn": 2,
               "recommendation_ref": {
-                "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+                "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
                 "version": 1,
-                "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+                "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
               },
               "source_refs": [],
-              "id": "target_performance-d674e4bb39"
+              "id": "target_performance-e9a2fbdc80"
             },
             {
               "status": "specified",
@@ -1687,7 +1687,7 @@
               "quote": "氧化诱导期",
               "source": "user",
               "turn": 4,
-              "id": "target_performance-5417434bf9",
+              "id": "target_performance-64b4e5bfd0",
               "direction": "考察",
               "basis_refs": [
                 "target_performance"
@@ -1707,12 +1707,12 @@
               "selection_quote": "陶瓷散热基板比较",
               "confirmed_turn": 2,
               "recommendation_ref": {
-                "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+                "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
                 "version": 1,
-                "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+                "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
               },
               "source_refs": [],
-              "id": "constraints-b29cd12e2d",
+              "id": "constraints-e1a28de1c8",
               "direction": null
             }
           ],
@@ -1740,9 +1740,9 @@
             "selection_quote": "陶瓷散热基板比较",
             "confirmed_turn": 2,
             "recommendation_ref": {
-              "id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b",
+              "id": "953fb274-c330-47d3-b983-4d3b857e2f39",
               "version": 1,
-              "direction_id": "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "direction_id": "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             },
             "source_refs": []
           }
@@ -1753,7 +1753,7 @@
         "reference_notes": [],
         "sources": {},
         "proposals": {
-          "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b": {
+          "953fb274-c330-47d3-b983-4d3b857e2f39": {
             "version": 1,
             "draft_id": "D0",
             "generation": {
@@ -1763,11 +1763,11 @@
               "operation_id": null
             },
             "direction_ids": [
-              "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1"
+              "953fb274-c330-47d3-b983-4d3b857e2f39-option-1"
             ],
-            "content_sha256": "e7fd7d599a2ef66075eae76c172892b573535baf00b59129a24872088b1778b9",
+            "content_sha256": "1f85e1b5c9c98a48bfe0e94cb6d2cdc22b94ee79ca22013767809dc3726122f3",
             "review": {
-              "9fb07337-d6ac-4cf4-abf4-ba605cb42d8b-option-1": {
+              "953fb274-c330-47d3-b983-4d3b857e2f39-option-1": {
                 "label": "陶瓷散热基板比较",
                 "reason": "将材料用途限定到散热基板。",
                 "assumptions": [

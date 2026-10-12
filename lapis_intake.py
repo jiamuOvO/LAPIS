@@ -53,8 +53,8 @@ class Update(StrictModel):
     value: str | None = None
     quote: str = Field(min_length=1)
     action: Literal["add", "update", "replace", "remove"] = "add"
-    intent_ref: str | None = None
-    basis_refs: list[str] = Field(default_factory=list)
+    intent_ref: str | None = Field(default=None,description="本轮intents中授权此操作的唯一id；修改、撤回必须填写，不是当前条目id")
+    basis_refs: list[str] = Field(default_factory=list,description="只引用当前上下文已有字段名或条目id，不引用本轮intent id。remove或条目update必须含目标条目id；改写purpose/research_scope等标量必须包含该字段名，例如purpose用['purpose']、research_scope用['research_scope']。新增内容可以为空。")
     scope_mode: Literal["unspecified", "current_scope", "no_extra_exclusions", "expand"] = "unspecified"
     change_timing: Literal["current", "future"] = "current"
     change_relation: Literal["unspecified", "restatement", "refinement", "switch", "uncertain"] = "unspecified"
@@ -73,7 +73,7 @@ class Update(StrictModel):
         overwrites_scalar=isinstance(existing,dict) and existing.get('status')=='specified' and existing.get('value') and (self.value!=existing['value'] or self.status!='specified')
         if context.get('current_model_output') and (self.action in {'remove','replace'} or (self.action=='update' and (self.target_id or self.target_value)) or overwrites_scalar):
             if not (self.intent_ref or '').strip() or not self.basis_refs:
-                raise ValueError('撤回/替换/已有条目更新须填写intent_ref和当前目标basis_refs；不得省略操作依据')
+                raise ValueError('撤回/替换/已有条目更新须填写intent_ref和当前目标basis_refs；不得省略操作依据。字段='+self.field+'；basis_refs须含'+str(self.target_id or self.field)+'，不填本轮intent ID')
         partial_update = self.action == "update" and (self.target_id or self.target_value)
         if self.status == "specified" and self.action != "remove" and not partial_update:
             if not (self.value or "").strip():

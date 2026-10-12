@@ -1,0 +1,187 @@
+{
+  "run_id": "19d8deb1-a8ed-4ec6-908d-e1ed5d6fd24c",
+  "verdicts": [
+    {
+      "scenario": "acceptance_pla_name_edit",
+      "verdict": "error",
+      "error_type": "InstructorRetryException",
+      "error": "<failed_attempts>\n\n<generation number=\"1\">\n<exception>\n    3 validation errors for Extraction\nupdates.0\n  Value error, 撤回/替换/已有条目更新须填写intent_ref和当前目标basis_refs；不得省略操作依据 [type=value_error, input_value={'field': 'target_perform...get_value': '透明性'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\nupdates.2\n  Value error, 撤回/替换/已有条目更新须填写intent_ref和当前目",
+      "failed_input": "我想调整一下本轮目标：撤回透明性，不再作为本轮目标；新增耐热性，保留弯曲刚度和低成本偏好，用途仍是桌面收纳盒。研究目的与范围也请同步更新，牌号、壁厚、使用条件和测试方法仍保持未知。",
+      "turn": 3,
+      "task_id": "07fd34d2-e393-4245-b145-65e3cce58a3b"
+    }
+  ],
+  "calls": [
+    {
+      "role": "simulated_user",
+      "seconds": 2.264929300003132,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 702,
+        "completion_tokens": 103,
+        "total_tokens": 805,
+        "prompt_tokens_details": {
+          "cached_tokens": 512
+        },
+        "prompt_cache_hit_tokens": 512,
+        "prompt_cache_miss_tokens": 190
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 4.852066699997522,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 4721,
+        "completion_tokens": 1086,
+        "total_tokens": 5807,
+        "prompt_tokens_details": {
+          "cached_tokens": 4480
+        },
+        "prompt_cache_hit_tokens": 4480,
+        "prompt_cache_miss_tokens": 241
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 3.6774021000019275,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 5925,
+        "completion_tokens": 759,
+        "total_tokens": 6684,
+        "prompt_tokens_details": {
+          "cached_tokens": 5760
+        },
+        "prompt_cache_hit_tokens": 5760,
+        "prompt_cache_miss_tokens": 165
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 8.786888499998895,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 2794,
+        "completion_tokens": 1780,
+        "total_tokens": 4574,
+        "prompt_tokens_details": {
+          "cached_tokens": 2048
+        },
+        "prompt_cache_hit_tokens": 2048,
+        "prompt_cache_miss_tokens": 746
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "simulated_user",
+      "seconds": 1.7218264000002819,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 1386,
+        "completion_tokens": 86,
+        "total_tokens": 1472,
+        "prompt_tokens_details": {
+          "cached_tokens": 640
+        },
+        "prompt_cache_hit_tokens": 640,
+        "prompt_cache_miss_tokens": 746
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "simulated_user",
+      "seconds": 1.2504064999993716,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 1572,
+        "completion_tokens": 44,
+        "total_tokens": 1616,
+        "prompt_tokens_details": {
+          "cached_tokens": 1408
+        },
+        "prompt_cache_hit_tokens": 1408,
+        "prompt_cache_miss_tokens": 164
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 2.2817436999976053,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 7956,
+        "completion_tokens": 277,
+        "total_tokens": 8233,
+        "prompt_tokens_details": {
+          "cached_tokens": 4096
+        },
+        "prompt_cache_hit_tokens": 4096,
+        "prompt_cache_miss_tokens": 3860
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "simulated_user",
+      "seconds": 1.6601829999999609,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 1763,
+        "completion_tokens": 129,
+        "total_tokens": 1892,
+        "prompt_tokens_details": {
+          "cached_tokens": 1280
+        },
+        "prompt_cache_hit_tokens": 1280,
+        "prompt_cache_miss_tokens": 483
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 4.939341799999966,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 7776,
+        "completion_tokens": 1110,
+        "total_tokens": 8886,
+        "prompt_tokens_details": {
+          "cached_tokens": 4096
+        },
+        "prompt_cache_hit_tokens": 4096,
+        "prompt_cache_miss_tokens": 3680
+      },
+      "server_model": "deepseek-flash"
+    },
+    {
+      "role": "product",
+      "seconds": 4.725366500002565,
+      "status": 200,
+      "usage": {
+        "prompt_tokens": 9153,
+        "completion_tokens": 1162,
+        "total_tokens": 10315,
+        "prompt_tokens_details": {
+          "cached_tokens": 8832
+        },
+        "prompt_cache_hit_tokens": 8832,
+        "prompt_cache_miss_tokens": 321
+      },
+      "server_model": "deepseek-flash"
+    }
+  ],
+  "total_tokens": 50284,
+  "budget_stops": [
+    {
+      "role": "product",
+      "used_tokens": 50284,
+      "reserved_tokens": 46445,
+      "used_calls": 10
+    }
+  ],
+  "semantic_review": "requires_human_review",
+  "not_scientific_evidence": true
+}

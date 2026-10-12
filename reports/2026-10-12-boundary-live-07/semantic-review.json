@@ -1,0 +1,26 @@
+{
+  "reviewer": "implementation-agent manual semantic review; independent auditor pending",
+  "verdict": "partial",
+  "scenarios": {
+    "acceptance_pla_name_edit": {
+      "verdict": "failed",
+      "reason": "Bare name adopted correctly; edit rejected three attempts because context basis included intent ID and scalar field basis missing. No confirmed request; records unchanged."
+    },
+    "acceptance_pp_scope_metric": {
+      "verdict": "passed_limited",
+      "checks": {
+        "quote_does_not_change_fields": true,
+        "scope_exclusion_survives": true,
+        "goal_id_preserved": true,
+        "cost_preference_preserved": true,
+        "metric_added_only_after_scope_turn": true,
+        "proposal_snapshots_unchanged": true,
+        "no_stale_scope_no_new_metric": true,
+        "confirmed": true,
+        "resume_file_exists": true
+      },
+      "reason": "Observed actual staged actions, current fields, snapshot sources, explicit approval and fresh subprocess /show. No scientific validity claims."
+    }
+  },
+  "not_scientific_evidence": true
+}

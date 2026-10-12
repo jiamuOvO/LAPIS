@@ -1,11 +1,11 @@
 {
   "date": "2026-10-12",
   "authorized_cumulative_cap": {
-    "attempts": 140,
-    "provider_tokens": 750000
+    "attempts": 175,
+    "provider_tokens": 950000
   },
-  "actual_attempts": 137,
-  "actual_provider_tokens": 720061,
+  "actual_attempts": 173,
+  "actual_provider_tokens": 915315,
   "runs": [
     {
       "directory": "reports\\2026-10-12-boundary-live-01",
@@ -16,8 +16,8 @@
         200
       ],
       "roles": {
-        "simulated_user": 14,
-        "product": 16
+        "product": 16,
+        "simulated_user": 14
       },
       "budget_stops": [
         {
@@ -87,8 +87,8 @@
         200
       ],
       "roles": {
-        "simulated_user": 10,
-        "product": 13
+        "product": 13,
+        "simulated_user": 10
       },
       "budget_stops": [],
       "manifest": {
@@ -149,8 +149,8 @@
         200
       ],
       "roles": {
-        "simulated_user": 10,
-        "product": 14
+        "product": 14,
+        "simulated_user": 10
       },
       "budget_stops": [],
       "manifest": {
@@ -211,8 +211,8 @@
         200
       ],
       "roles": {
-        "simulated_user": 7,
-        "product": 13
+        "product": 13,
+        "simulated_user": 7
       },
       "budget_stops": [
         {
@@ -284,8 +284,8 @@
         200
       ],
       "roles": {
-        "simulated_user": 14,
-        "product": 18
+        "product": 18,
+        "simulated_user": 14
       },
       "budget_stops": [],
       "manifest": {
@@ -346,8 +346,8 @@
         200
       ],
       "roles": {
-        "simulated_user": 3,
-        "product": 5
+        "product": 5,
+        "simulated_user": 3
       },
       "budget_stops": [
         {
@@ -400,15 +400,146 @@
         ],
         "not_scientific_evidence": true
       }
+    },
+    {
+      "directory": "reports\\2026-10-12-boundary-live-07",
+      "attempts": 26,
+      "provider_tokens": 144970,
+      "missing_usage": 0,
+      "status_codes": [
+        200
+      ],
+      "roles": {
+        "product": 16,
+        "simulated_user": 10
+      },
+      "budget_stops": [],
+      "manifest": {
+        "run_id": "21f23069-6687-44b5-af5d-2a0ce6b59a50",
+        "mode": "simulated",
+        "set": "rework_acceptance_holdout",
+        "commit": "436e7617afe1d89f6a2a5c48cacefd950dd1efec",
+        "model_alias": "deepseek-flash",
+        "seed": "provider_unavailable",
+        "prompt_hash": "a8d502b46d6b87f4a0d79d5bfd341850ca5be95fc88118fdf66873ee7c4247e1",
+        "user_prompt_hash": "317e4a7c9848a0aaf3a8fb1ee70e44f98b97fd4f880de40ef8e01ee9e81f4a89",
+        "dirty": true,
+        "origin": "synthetic",
+        "max_calls": 38,
+        "max_tokens": 229939,
+        "code_hashes": {
+          "lapis.py": "02ee3898add93b464707c82856fdde97fc84d0b4601e45bc2a6529411fb5d49d",
+          "lapis_contract.py": "a582798d37a99a33cfe46982e568eddae79bf832da08089d158489a01fe5f94b",
+          "lapis_contract_v4.py": "01a1f085557ad5750dc6ce12e5c598021bc7f69080e5b51f9707b124a7e57bb0",
+          "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
+          "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
+          "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
+          "lapis_intake.py": "b5ca646e0f469144031a3ca6ab0039d65516e51f0cf928b557d3c477f93df0f7",
+          "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
+          "lapis_semantics.py": "46c00be174724ed9281129ec40c2b92cfb41c9e402d54a1486b529af9c44a44c",
+          "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
+        }
+      },
+      "semantic_review": {
+        "reviewer": "implementation-agent manual semantic review; independent auditor pending",
+        "verdict": "partial",
+        "scenarios": {
+          "acceptance_pla_name_edit": {
+            "verdict": "failed",
+            "reason": "Bare name adopted correctly; edit rejected three attempts because context basis included intent ID and scalar field basis missing. No confirmed request; records unchanged."
+          },
+          "acceptance_pp_scope_metric": {
+            "verdict": "passed_limited",
+            "checks": {
+              "quote_does_not_change_fields": true,
+              "scope_exclusion_survives": true,
+              "goal_id_preserved": true,
+              "cost_preference_preserved": true,
+              "metric_added_only_after_scope_turn": true,
+              "proposal_snapshots_unchanged": true,
+              "no_stale_scope_no_new_metric": true,
+              "confirmed": true,
+              "resume_file_exists": true
+            },
+            "reason": "Observed actual staged actions, current fields, snapshot sources, explicit approval and fresh subprocess /show. No scientific validity claims."
+          }
+        },
+        "not_scientific_evidence": true
+      }
+    },
+    {
+      "directory": "reports\\2026-10-12-boundary-live-08",
+      "attempts": 10,
+      "provider_tokens": 50284,
+      "missing_usage": 0,
+      "status_codes": [
+        200
+      ],
+      "roles": {
+        "product": 6,
+        "simulated_user": 4
+      },
+      "budget_stops": [
+        {
+          "role": "product",
+          "used_tokens": 50284,
+          "reserved_tokens": 46445,
+          "used_calls": 10
+        }
+      ],
+      "manifest": {
+        "run_id": "19d8deb1-a8ed-4ec6-908d-e1ed5d6fd24c",
+        "mode": "simulated",
+        "set": "rework_acceptance_holdout",
+        "commit": "4ef64c081a53cb6bfaaebdd85ad12d269d78e7c8",
+        "model_alias": "deepseek-flash",
+        "seed": "provider_unavailable",
+        "prompt_hash": "a8d502b46d6b87f4a0d79d5bfd341850ca5be95fc88118fdf66873ee7c4247e1",
+        "user_prompt_hash": "317e4a7c9848a0aaf3a8fb1ee70e44f98b97fd4f880de40ef8e01ee9e81f4a89",
+        "dirty": true,
+        "origin": "synthetic",
+        "max_calls": 12,
+        "max_tokens": 84969,
+        "code_hashes": {
+          "lapis.py": "02ee3898add93b464707c82856fdde97fc84d0b4601e45bc2a6529411fb5d49d",
+          "lapis_contract.py": "a582798d37a99a33cfe46982e568eddae79bf832da08089d158489a01fe5f94b",
+          "lapis_contract_v4.py": "01a1f085557ad5750dc6ce12e5c598021bc7f69080e5b51f9707b124a7e57bb0",
+          "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
+          "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
+          "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
+          "lapis_intake.py": "b5ca646e0f469144031a3ca6ab0039d65516e51f0cf928b557d3c477f93df0f7",
+          "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
+          "lapis_semantics.py": "6d0cce918231f6df85284bd30e8996541db16f867c0b3013c3ae3dd323267f66",
+          "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
+        }
+      },
+      "semantic_review": {
+        "reviewer": "implementation-agent manual review; independent audit pending",
+        "verdict": "incomplete",
+        "reason": "Bare name adopted, then native extraction omitted context basis. Second attempt repaired list basis but still omitted purpose/research_scope field refs; final format retry stopped by conservative token preflight, not an actual network fault. Failed turn did not modify current fields; no confirmation or restart.",
+        "not_scientific_evidence": true,
+        "program_verdicts": [
+          {
+            "scenario": "acceptance_pla_name_edit",
+            "verdict": "error",
+            "error_type": "InstructorRetryException",
+            "error": "<failed_attempts>\n\n<generation number=\"1\">\n<exception>\n    3 validation errors for Extraction\nupdates.0\n  Value error, 撤回/替换/已有条目更新须填写intent_ref和当前目标basis_refs；不得省略操作依据 [type=value_error, input_value={'field': 'target_perform...get_value': '透明性'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\nupdates.2\n  Value error, 撤回/替换/已有条目更新须填写intent_ref和当前目",
+            "failed_input": "我想调整一下本轮目标：撤回透明性，不再作为本轮目标；新增耐热性，保留弯曲刚度和低成本偏好，用途仍是桌面收纳盒。研究目的与范围也请同步更新，牌号、壁厚、使用条件和测试方法仍保持未知。",
+            "turn": 3,
+            "task_id": "07fd34d2-e393-4245-b145-65e3cce58a3b"
+          }
+        ]
+      }
     }
   ],
   "old_oct10_budget_not_reset": true,
   "full_fresh_live_acceptance_completed": false,
   "software_tests": {
-    "count": 140,
-    "passed": 140,
+    "count": 141,
+    "passed": 141,
     "skipped": 0,
-    "log": "2026-10-12-boundary-full-final-15-tests.log"
+    "log": "2026-10-12-boundary-full-final-17-tests.log",
+    "final_message_boundary_log": "2026-10-12-boundary-final-reference-message-tests.log"
   },
   "current_source_sha256": {
     "lapis.py": "02ee3898add93b464707c82856fdde97fc84d0b4601e45bc2a6529411fb5d49d",
@@ -417,9 +548,16 @@
     "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
     "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
     "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
-    "lapis_intake.py": "b5ca646e0f469144031a3ca6ab0039d65516e51f0cf928b557d3c477f93df0f7",
+    "lapis_intake.py": "5d210ad9dd20d8159163f1a390cf4d4f7f07e1294d722a8e821beebfedf745d6",
     "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
-    "lapis_semantics.py": "46c00be174724ed9281129ec40c2b92cfb41c9e402d54a1486b529af9c44a44c",
+    "lapis_semantics.py": "6d0cce918231f6df85284bd30e8996541db16f867c0b3013c3ae3dd323267f66",
     "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
+  },
+  "final_extraction_schema_sha256": "b322f70cf0385533fcd4034c05b7b8713dd663f3d12fcde591f3b5210e29b666",
+  "final_related_source_sha256": {
+    "scripts\\verify_intake_dialogues.py": "65466ad5890b560763ebe8d905d78f61f882690d9d783c6ed1a752af5877abcf",
+    "scripts\\verify_boundary_rework.py": "95c6bb423201f7e7a218c895ba4a2a1d8ebc695dc2117261af1ba95f5c2bb145",
+    "test_lapis_boundaries.py": "d128b3ee772601557d7d5d9b7f15fb1ffead00335ad29e7f1af1b3593c709f7a",
+    "tests\\fixtures\\intake_dialogues\\rework_acceptance_holdout.json": "2b6749da0b5c15718fec43b152f5e4842d5ffc071e3961ce157caedf0e54d8a4"
   }
 }
