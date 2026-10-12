@@ -41,6 +41,13 @@ def request_reserve(content):
  else:size=len(content)
  return size+body.get('max_tokens',2600)
 
+def removal_targets_entry(operation,entry):
+ """Match an already accepted edit; authorization still needs independent review."""
+ if operation['action']=='replace':return True
+ if operation['action']!='remove':return False
+ if operation.get('target_id'):return operation['target_id']==entry['id']
+ return (operation.get('target_value') or operation.get('value'))==entry.get('value')
+
 def main():
  p=argparse.ArgumentParser();p.add_argument('--mode',choices=['fixed','simulated'],required=True);p.add_argument('--scenarios',default='long_additive');p.add_argument('--set',choices=['development','holdout','supplementary','rework_holdout','rework_final_holdout','rework_verified_holdout','rework_acceptance_holdout','rework_name_holdout'],default='development');p.add_argument('--max-calls',type=int,default=60);p.add_argument('--max-tokens',type=int,default=400000);p.add_argument('--output',type=Path,required=True);p.add_argument('--resume-from',type=Path);a=p.parse_args()
  if os.getenv('LAPIS_TEST_PG')!='1' or os.getenv('LAPIS_DB_NAME')!='lapis_test':p.error('Requires isolated lapis_test')
@@ -139,7 +146,7 @@ def main():
     new_ids={g.get('id') for g in goals}
     edits=[d['operation'] for d in last.get('operation_decisions',[]) if d.get('decision')=='accepted' and d['operation']['field']=='target_performance' and d['operation']['action'] in {'remove','replace'}]
     for gid in old_ids.keys()-new_ids:
-     if not any(e['action']=='replace' or e.get('target_id')==gid or e.get('target_value')==old_ids[gid].get('value') for e in edits):fresh_errors.append('目标条目消失但没有接受的撤回/替换操作')
+     if not any(removal_targets_entry(e,old_ids[gid]) for e in edits):fresh_errors.append('目标条目消失但没有接受的撤回/替换操作')
     # Accepted by the product is not proof of user authorization. Preserve a separate review queue.
     loss_review=[{'entry':old_ids[gid],'user_text':text,'user_decisions':user_decisions,'product_operations':edits,'requires_independent_review':True} for gid in old_ids.keys()-new_ids]
     if loss_review:

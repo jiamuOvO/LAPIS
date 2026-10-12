@@ -9,6 +9,14 @@ from test_lapis_review import advice,select
 
 
 class BoundaryTest(unittest.TestCase):
+    def test_acceptance_matches_legal_named_removal_without_hiding_other_losses(self):
+        from scripts.verify_intake_dialogues import removal_targets_entry
+        goal={'id':'G','value':'透明性'}
+        self.assertTrue(removal_targets_entry({'action':'remove','value':'透明性','target_id':None,'target_value':None},goal))
+        self.assertFalse(removal_targets_entry({'action':'remove','value':'耐热性'},goal))
+        self.assertFalse(removal_targets_entry({'action':'remove','target_id':'other','value':'透明性'},goal))
+        self.assertFalse(removal_targets_entry({'action':'add','value':'透明性'},goal))
+
     def test_current_unique_bare_name_requires_adoption_or_clarification(self):
         state,r=self.seed();name='任意材料方向甲'
         state['recommendation_set']={'draft_id':state['draft_id'],'options':[{'id':'opt-A','label':name,'fields':{}}]}
