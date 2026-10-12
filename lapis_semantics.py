@@ -105,7 +105,7 @@ def check_operations(state,text,extraction):
             reason='这项来自提案，尚未见到你对该用途、条件或范围的明确选择'
         if item.quote not in text:reason='原话片段不属于本轮'
         elif item.intent_ref and not intent:reason='意图引用不存在'
-        elif any(ref not in refs for ref in item.basis_refs):reason='上下文依据不存在'
+        elif any(ref not in refs for ref in item.basis_refs):reason='上下文依据不存在：'+repr([ref for ref in item.basis_refs if ref not in refs])+'；basis_refs只引用当前字段或条目，不引用本轮intent ID；修改本字段需包含'+item.field
         elif intent and intent.quote not in text:reason='意图依据不属于本轮'
         elif intent and any(ref not in targets for ref in intent.target_refs):reason='意图目标不存在，请明确要修改的当前条目'
         elif intent and intent.kind=='quote':reason='引用不是新增用户要求'
@@ -155,7 +155,7 @@ def check_operations(state,text,extraction):
             if destructive and not reason:
                 if not intent:reason='修改缺少有效意图关联，原字段保持不变'
                 elif intent.kind!='edit' and not (intent.kind=='answer' and item.change_relation in {'restatement','refinement'}):reason='替换既有字段须有明确修改意图'
-                elif item.field not in intent.target_refs or item.field not in item.basis_refs:reason='修改意图或依据未指向当前字段'
+                elif item.field not in intent.target_refs or item.field not in item.basis_refs:reason='修改意图或依据未指向当前字段：target_refs和basis_refs均须包含'+item.field
         if reason:
             decisions.append({'operation':item.model_dump(),'decision':'not_applied','reason':reason})
         else:

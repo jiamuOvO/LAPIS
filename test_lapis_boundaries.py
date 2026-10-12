@@ -9,6 +9,13 @@ from test_lapis_review import advice,select
 
 
 class BoundaryTest(unittest.TestCase):
+    def test_current_intent_is_not_a_context_basis_and_error_names_it(self):
+        state,r=self.seed();text='调整范围为只研究材料'
+        e=Extraction(intents=[Intent(id='I',kind='edit',quote=text,target_refs=['research_scope'])],updates=[Update(field='research_scope',status='specified',value='只研究材料',quote=text,action='update',intent_ref='I',basis_refs=['I'],change_relation='refinement')])
+        with self.assertRaises(ValidationError) as caught:
+            Extraction.model_validate(e.model_dump(),context={'current_model_output':True,'fields':state['fields'],'state':state,'input':text})
+        self.assertIn("['I']",str(caught.exception));self.assertIn('basis_refs',str(caught.exception))
+
     def test_added_goal_conflicting_scope_requires_review(self):
         state,r=self.seed();state['fields']['research_scope']['value']='只研究材料表现，不新增其他指标'
         text='新增耐热性，原目标保留'
