@@ -12,7 +12,7 @@ from uuid import uuid4
 from lapis_contract import component_predicate, FIELDS, LIST_FIELDS, content_hash
 
 RUN_ID = str(uuid4())
-OPERATION_RULE_VERSION = 'intake-operations-5.1'
+OPERATION_RULE_VERSION = 'intake-operations-5.2'
 
 @lru_cache(maxsize=1)
 def runtime_fingerprint():
@@ -89,7 +89,8 @@ def check_operations(state,text,extraction):
     targets.update(refs)
     accepted=[];decisions=[]
     for item in extraction.updates:
-        if item.field == 'research_scope' and item.scope_mode in {'current_scope','no_extra_exclusions'}:
+        intent=intents.get(item.intent_ref)
+        if item.field == 'research_scope' and item.scope_mode in {'current_scope','no_extra_exclusions'} and not (intent and intent.kind=='edit'):
             base=state['fields']['research_scope'].get('value')
             if not base:
                 obj=state['fields']['research_object'].get('value');app=state['fields']['application'].get('value')

@@ -301,6 +301,7 @@ def _edit_issue(state, field, message, text):
 
 
 def _merge(state, text, extraction, context=None):
+    old_goals={e['value'] for e in state['fields']['target_performance'] if e.get('status')=='specified' and e.get('value')}
     updates = [u for u in extraction.updates if u.quote in text]
     grouped = {}
     for update in updates:
@@ -386,6 +387,12 @@ def _merge(state, text, extraction, context=None):
         after = state["reference_notes"] if field == "reference_note" else state["fields"][field]
         if before != after:
             state["history"].append({"field": field, "before": before, "after": deepcopy(after), "turn": turn})
+    retired=old_goals-{e['value'] for e in state['fields']['target_performance'] if e.get('status')=='specified' and e.get('value')}
+    for field in ('purpose','research_scope'):
+        entry=state['fields'][field]
+        affected=[name for name in sorted(retired) if name in (entry.get('value') or '')]
+        if affected and field not in grouped:
+            _edit_issue(state,field,'目标“'+'、'.join(affected)+'”已撤回，但当前'+LABELS[field]+'仍引用它；请改写该字段或说明保留理由。',text)
     for field in extraction.reaffirm_fields:
         if (context or {}).get("draft_id") != state["draft_id"]:
             continue

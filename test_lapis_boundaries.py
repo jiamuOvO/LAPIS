@@ -135,5 +135,24 @@ class BoundaryTest(unittest.TestCase):
         self.assertIn('原始快照',out['view']['text']);self.assertIn('原提案被撤回的内容不再适用',out['view']['text'])
         self.assertNotIn(goal['value'],out['request']['fields']['target_performance'][0]['value'])
 
+    def test_explicit_scope_edit_keeps_exclusions_even_with_current_scope_mode(self):
+        state,r=self.seed();text='仅研究材料表现，不验证器件寿命'
+        e=Extraction(actions=['edit'],intents=[Intent(id='E',kind='edit',quote=text,target_refs=['research_scope'])],updates=[Update(field='research_scope',status='specified',value=text,quote=text,action='update',intent_ref='E',basis_refs=['research_scope'],target_id='research_scope',scope_mode='current_scope',change_relation='refinement')])
+        out=self.apply(state,r,text,e);self.assertEqual(out['request']['fields']['research_scope']['value'],text)
+
+    def test_retired_goal_in_current_purpose_or_scope_blocks_approval_until_edit(self):
+        state,r=self.seed();goal=state['fields']['target_performance'][0]
+        state['fields']['purpose']['value']='比较氧化诱导期和离子传输'
+        state['fields']['research_scope']['value']='本轮包括氧化诱导期'
+        text='撤回氧化诱导期'
+        e=Extraction(actions=['edit'],intents=[Intent(id='E',kind='edit',quote=text,target_refs=[goal['id']])],updates=[Update(field='target_performance',status='none',quote=text,action='remove',intent_ref='E',target_id=goal['id'],basis_refs=[goal['id']])])
+        out=self.apply(state,r,text,e)
+        self.assertTrue(all(any(i['field']==f and '已撤回' in i['message'] for i in out['blocking_issues']) for f in ('purpose','research_scope')))
+        approved=handle_turn(None,'controlled',state,'确认',out['input_context']);self.assertFalse(approved['ready_for_design'])
+        text='目的只比较离子传输，范围只包含离子传输'
+        e=Extraction(actions=['edit'],intents=[Intent(id='E',kind='edit',quote=text,target_refs=['purpose','research_scope'])],updates=[Update(field=f,status='specified',value='只比较离子传输',quote=text,action='update',intent_ref='E',basis_refs=[f],target_id=f,change_relation='refinement') for f in ('purpose','research_scope')])
+        out=self.apply(state,approved,text,e);self.assertFalse(out['blocking_issues'])
+        self.assertTrue(handle_turn(None,'controlled',state,'确认',out['input_context'])['ready_for_design'])
+
 
 if __name__=='__main__':unittest.main()

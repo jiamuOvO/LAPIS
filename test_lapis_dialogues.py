@@ -39,6 +39,9 @@ class CompleteDialogueTest(unittest.TestCase):
                     goal=state['fields']['target_performance'][0]
                     e=Extraction(intents=[Intent(id='E',kind='edit',quote='撤回稳定性',target_refs=[goal['id']])],updates=[Update(field='target_performance',intent_ref='E',status='none',quote='撤回稳定性',action='remove',target_id=goal['id'],basis_refs=[goal['id']])])
                     r=self.say(state,'撤回稳定性',e,r['input_context']);self.assertEqual([g['value'] for g in state['fields']['target_performance']],['导热'])
+                    text='目的与范围仅考察导热，原稳定性不再研究'
+                    e=Extraction(actions=['edit'],intents=[Intent(id='E',kind='edit',quote=text,target_refs=['purpose','research_scope'])],updates=[Update(field=f,intent_ref='E',status='specified',value='考察'+obj+'在材料应用中的导热表现',quote=text,basis_refs=[f],target_id=f,action='update',change_relation='refinement') for f in ('purpose','research_scope')])
+                    r=self.say(state,text,e,r['input_context'])
                 elif scene['id']=='unknown_delegate':
                     r=self.say(state,'不能使用有毒溶剂',Extraction(updates=[Update(field='constraints',status='specified',value='不能使用有毒溶剂',strength='hard',quote='不能使用有毒溶剂')]),r['input_context'])
                     hard=deepcopy(state['fields']['constraints']);state['current_question']={'id':'C','fields':['constraints']}

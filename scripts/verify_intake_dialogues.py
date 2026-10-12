@@ -35,7 +35,7 @@ def request_reserve(content):
  return size+body.get('max_tokens',2600)
 
 def main():
- p=argparse.ArgumentParser();p.add_argument('--mode',choices=['fixed','simulated'],required=True);p.add_argument('--scenarios',default='long_additive');p.add_argument('--set',choices=['development','holdout','supplementary','rework_holdout','rework_final_holdout'],default='development');p.add_argument('--max-calls',type=int,default=60);p.add_argument('--max-tokens',type=int,default=400000);p.add_argument('--output',type=Path,required=True);p.add_argument('--resume-from',type=Path);a=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--mode',choices=['fixed','simulated'],required=True);p.add_argument('--scenarios',default='long_additive');p.add_argument('--set',choices=['development','holdout','supplementary','rework_holdout','rework_final_holdout','rework_verified_holdout'],default='development');p.add_argument('--max-calls',type=int,default=60);p.add_argument('--max-tokens',type=int,default=400000);p.add_argument('--output',type=Path,required=True);p.add_argument('--resume-from',type=Path);a=p.parse_args()
  if os.getenv('LAPIS_TEST_PG')!='1' or os.getenv('LAPIS_DB_NAME')!='lapis_test':p.error('Requires isolated lapis_test')
  initialize_schema();run=str(uuid4());calls=[];current_role='product';tokens=0;budget_stops=[]
  def before(request):
