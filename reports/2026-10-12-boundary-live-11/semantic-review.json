@@ -1,0 +1,43 @@
+{
+  "reviewer": "implementation-agent manual semantic review; independent audit pending",
+  "verdict": "partial_harness_false_positive",
+  "not_scientific_evidence": true,
+  "scenarios": {
+    "acceptance_pla_name_edit": {
+      "verdict": "incomplete_harness_false_positive",
+      "reason": "Legitimate named remove used value, intent i1 target_refs and exact basis were valid, original input explicitly withdrew that goal. Harness missed value fallback; recorded failure retained; stopped at turn3, no confirmation."
+    },
+    "acceptance_pp_scope_metric": {
+      "verdict": "passed_limited",
+      "checks": {
+        "quote_fields_unchanged": true,
+        "scope_exclusion": true,
+        "original_goal_id_kept": true,
+        "cost_kept": true,
+        "snapshot_kept": true,
+        "metric_delayed": true,
+        "scope_without_old_no_add": true,
+        "confirmed": true,
+        "restart": true
+      }
+    }
+  },
+  "program_verdicts": [
+    {
+      "scenario": "acceptance_pla_name_edit",
+      "task_id": "51458643-349c-4c4e-9aa0-26c9b470bcdd",
+      "verdict": "failed",
+      "errors": [
+        "目标条目消失但没有接受的撤回/替换操作"
+      ],
+      "active_request_version": null
+    },
+    {
+      "scenario": "acceptance_pp_scope_metric",
+      "task_id": "39e88487-754a-44c2-81f5-bea525b31f5b",
+      "verdict": "passed",
+      "errors": [],
+      "active_request_version": 1
+    }
+  ]
+}

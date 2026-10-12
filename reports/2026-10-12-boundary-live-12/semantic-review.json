@@ -1,0 +1,28 @@
+{
+  "reviewer": "implementation-agent manual semantic review; independent human audit pending",
+  "verdict": "passed_limited",
+  "checks": {
+    "bare_name_from_actual_menu": true,
+    "native_adopt_and_select": true,
+    "selected_actual_second_option": true,
+    "transparency_withdrawn": true,
+    "heat_resistance_added": true,
+    "bending_id_kept": true,
+    "cost_preference_kept": true,
+    "application_kept": true,
+    "unknown_conditions_kept": true,
+    "no_retired_focus_in_current_summary": true,
+    "scope_mentions_both_current_goals": true,
+    "proposal_snapshots_unchanged": true,
+    "user_explicitly_confirmed": true,
+    "persisted_confirmation": true,
+    "active_request_version": true,
+    "ready_only_for_design": true,
+    "fresh_process_resume": true
+  },
+  "not_scientific_evidence": true,
+  "scope": "Intake boundary finite acceptance only; no actual material calculations",
+  "task_id": "35446c0b-3f6f-4261-b217-aaed53e60bcb",
+  "contract_version": 5,
+  "active_request_version": 1
+}

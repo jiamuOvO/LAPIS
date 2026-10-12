@@ -1,0 +1,77 @@
+{
+  "scope": "F1/F2 first-module finite boundary regressions and two synthetic full DeepSeek dialogues",
+  "verdict": "passed_limited",
+  "product_source_sha256": {
+    "lapis.py": "55bfb119a9327c51aaf2157288218a30ed96b9d70e9f0e5c2848ae659e4d444f",
+    "lapis_contract.py": "a582798d37a99a33cfe46982e568eddae79bf832da08089d158489a01fe5f94b",
+    "lapis_contract_v4.py": "01a1f085557ad5750dc6ce12e5c598021bc7f69080e5b51f9707b124a7e57bb0",
+    "lapis_core.py": "0b5abefd72be83aa2764f9cdb8fdf0d39cf74ec8ea86d1a24ee5abfdf058d5d0",
+    "lapis_graph.py": "61fdc6b2d8539ec8381eb4d8ebdf2036f5d99f893cc9bc9ca96722e17c3f2e32",
+    "lapis_guidance.py": "a35671aa1e23fd149bb4c69e25de289e51f4dfca86d8cbd0a20c3dbfdf41e255",
+    "lapis_intake.py": "2c5a7637d09ca19a2c3313a72705d06fce7cbf7f36dfd9a7406bc74e989442e6",
+    "lapis_proposals.py": "72c43f340f493ef56b1a03162a8605699c07ad77eed28fd7639168225769bbad",
+    "lapis_semantics.py": "6d0cce918231f6df85284bd30e8996541db16f867c0b3013c3ae3dd323267f66",
+    "lapis_store.py": "bd5cf85f3b306cbe0235d8f126a9bfbea2d81a721275dc43da759edef996bb9f"
+  },
+  "same_product_source_in_both_final_dialogues": true,
+  "research_request_contract_version": 5,
+  "scientific_validation": false,
+  "independent_human_audit": "pending",
+  "final_dialogues": [
+    {
+      "scenario": "acceptance_pp_scope_metric",
+      "directory": "reports\\2026-10-12-boundary-live-11",
+      "turns": 6,
+      "source_commit": "88f665acd555500ec1082600465c8099ce05fa9a",
+      "semantic_review": {
+        "verdict": "passed_limited",
+        "checks": {
+          "quote_fields_unchanged": true,
+          "scope_exclusion": true,
+          "original_goal_id_kept": true,
+          "cost_kept": true,
+          "snapshot_kept": true,
+          "metric_delayed": true,
+          "scope_without_old_no_add": true,
+          "confirmed": true,
+          "restart": true
+        }
+      }
+    },
+    {
+      "scenario": "acceptance_pla_name_edit",
+      "directory": "reports\\2026-10-12-boundary-live-12",
+      "turns": 4,
+      "source_commit": "12f775755c4331f3674ccb349211b5345c8b857c",
+      "semantic_review": {
+        "reviewer": "implementation-agent manual semantic review; independent human audit pending",
+        "verdict": "passed_limited",
+        "checks": {
+          "bare_name_from_actual_menu": true,
+          "native_adopt_and_select": true,
+          "selected_actual_second_option": true,
+          "transparency_withdrawn": true,
+          "heat_resistance_added": true,
+          "bending_id_kept": true,
+          "cost_preference_kept": true,
+          "application_kept": true,
+          "unknown_conditions_kept": true,
+          "no_retired_focus_in_current_summary": true,
+          "scope_mentions_both_current_goals": true,
+          "proposal_snapshots_unchanged": true,
+          "user_explicitly_confirmed": true,
+          "persisted_confirmation": true,
+          "active_request_version": true,
+          "ready_only_for_design": true,
+          "fresh_process_resume": true
+        },
+        "not_scientific_evidence": true,
+        "scope": "Intake boundary finite acceptance only; no actual material calculations",
+        "task_id": "35446c0b-3f6f-4261-b217-aaed53e60bcb",
+        "contract_version": 5,
+        "active_request_version": 1
+      }
+    }
+  ],
+  "harness_change": "Between the final PP and PLA runs only the verifier learned the already-supported named-remove value fallback; product source stayed identical; failure logs were retained."
+}
