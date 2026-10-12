@@ -224,7 +224,7 @@ def extract(client, model, state, text):
     return client.create(model=model, response_model=Extraction,
                          messages=[{"role": "system", "content": SYSTEM_PROMPT},
                                    {"role": "user", "content": json.dumps(context, ensure_ascii=False)}],
-                         validation_context={'current_model_output':True,'fields':state['fields']},
+                         context={'current_model_output':True,'fields':state['fields']},
                          max_retries=2, max_tokens=2600, temperature=0, **options)
 
 

@@ -68,6 +68,22 @@ class BoundaryTest(unittest.TestCase):
         before=deepcopy(state['fields']);out=self.apply(state,r,'撤回氧化诱导期',historical)
         self.assertEqual(state['fields'],before);self.assertEqual(out['operation_decisions'][0]['decision'],'not_applied')
 
+    def test_native_instructor_forwards_context_and_repairs_bad_binding_offline(self):
+        import json,httpx,instructor
+        from openai import OpenAI
+        from lapis_intake import extract
+        state,r=self.seed();goal=state['fields']['target_performance'][0];text='撤回氧化诱导期';bodies=[]
+        def respond(request):
+            bodies.append(json.loads(request.content))
+            update={'field':'target_performance','status':'none','quote':text,'action':'remove','target_id':goal['id'],'intent_ref':'E'}
+            if len(bodies)>1:update['basis_refs']=[goal['id']]
+            result={'intents':[{'id':'E','kind':'edit','quote':text,'target_refs':[goal['id']]}],'updates':[update]}
+            return httpx.Response(200,json={'id':'offline','object':'chat.completion','created':0,'model':'offline','choices':[{'index':0,'message':{'role':'assistant','content':json.dumps(result,ensure_ascii=False)},'finish_reason':'stop'}]})
+        client=instructor.from_openai(OpenAI(api_key='offline-only',base_url='https://offline.invalid',max_retries=0,http_client=httpx.Client(transport=httpx.MockTransport(respond))),mode=instructor.Mode.JSON)
+        result=extract(client,'offline',state,text)
+        self.assertEqual(len(bodies),2);self.assertEqual(result.updates[0].basis_refs,[goal['id']])
+        self.assertTrue(all('context' not in b and 'validation_context' not in b for b in bodies))
+
     def test_explicit_named_removal_and_whole_list_replace_work(self):
         state,r=self.seed();text='撤回氧化诱导期，其余保留'
         e=Extraction(actions=['edit'],intents=[Intent(id='E',kind='edit',quote=text,target_refs=['氧化诱导期'])],updates=[Update(field='target_performance',status='none',quote='撤回氧化诱导期',action='remove',target_value='氧化诱导期',intent_ref='E',basis_refs=['target_performance'])])
