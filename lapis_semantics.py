@@ -12,7 +12,7 @@ from uuid import uuid4
 from lapis_contract import component_predicate, FIELDS, LIST_FIELDS, content_hash
 
 RUN_ID = str(uuid4())
-OPERATION_RULE_VERSION = 'intake-operations-5.2'
+OPERATION_RULE_VERSION = 'intake-operations-5.3'
 
 @lru_cache(maxsize=1)
 def runtime_fingerprint():
@@ -90,7 +90,7 @@ def check_operations(state,text,extraction):
     accepted=[];decisions=[]
     for item in extraction.updates:
         intent=intents.get(item.intent_ref)
-        if item.field == 'research_scope' and item.scope_mode in {'current_scope','no_extra_exclusions'} and not (intent and intent.kind=='edit'):
+        if item.field == 'research_scope' and item.scope_mode in {'current_scope','no_extra_exclusions'} and intent and intent.kind=='answer' and item.value==item.quote:
             base=state['fields']['research_scope'].get('value')
             if not base:
                 obj=state['fields']['research_object'].get('value');app=state['fields']['application'].get('value')
@@ -151,7 +151,7 @@ def check_operations(state,text,extraction):
             existing=state['fields'][item.field]
             if item.target_id and item.target_id!=item.field:reason='修改目标ID不对应当前字段'
             if item.target_value and item.target_value!=existing.get('value'):reason='修改目标名称不对应当前字段'
-            destructive=existing.get('status')=='specified' and bool(existing.get('value')) and (item.status!=existing.get('status') or item.value!=existing.get('value'))
+            destructive=existing.get('status')=='specified' and bool(existing.get('value')) and (item.status!=existing.get('status') or item.value!=existing.get('value') or (existing.get('temperatures') and item.temperatures and [v.model_dump() for v in item.temperatures]!=existing['temperatures']))
             if destructive and not reason:
                 if not intent:reason='修改缺少有效意图关联，原字段保持不变'
                 elif intent.kind!='edit' and not (intent.kind=='answer' and item.change_relation in {'restatement','refinement'}):reason='替换既有字段须有明确修改意图'

@@ -114,6 +114,14 @@ class BoundaryTest(unittest.TestCase):
             self.assertIsNone(contextual_reply(state,text))
         rec['options'].append(deepcopy(rec['options'][0]));self.assertIsNone(contextual_reply(state,rec['options'][0]['label']))
 
+    def test_wrong_model_guess_on_duplicate_bare_label_does_not_adopt(self):
+        from test_lapis_proposals import proposal
+        state=new_state();body=proposal();second=deepcopy(body['options'][0]);second['fields']['application']['value']='另一用途';body['options'].append(second)
+        r=advice(state,body);before=deepcopy(state['fields']);name=state['recommendation_set']['options'][0]['label']
+        out=self.apply(state,r,name,Extraction(actions=['select'],selected_option=1))
+        self.assertEqual(state['fields'],before);self.assertFalse(state['proposals'])
+        self.assertIn('多个方向',out['next_question'])
+
     def test_stale_menu_and_partial_choice_do_not_adopt_context(self):
         state=new_state();r=advice(state);name=state['recommendation_set']['options'][0]['label']
         with patch('lapis_intake.extract',return_value=Extraction(actions=['select'],selected_option=1)):
@@ -139,6 +147,42 @@ class BoundaryTest(unittest.TestCase):
         state,r=self.seed();text='仅研究材料表现，不验证器件寿命'
         e=Extraction(actions=['edit'],intents=[Intent(id='E',kind='edit',quote=text,target_refs=['research_scope'])],updates=[Update(field='research_scope',status='specified',value=text,quote=text,action='update',intent_ref='E',basis_refs=['research_scope'],target_id='research_scope',scope_mode='current_scope',change_relation='refinement')])
         out=self.apply(state,r,text,e);self.assertEqual(out['request']['fields']['research_scope']['value'],text)
+
+    def test_inform_scope_is_not_silently_normalized_into_old_user_value(self):
+        state,r=self.seed();before=deepcopy(state['fields']);text='只研究材料表现，不验证器件寿命'
+        e=Extraction(intents=[Intent(id='I',kind='inform',quote=text,target_refs=['research_scope'])],updates=[Update(field='research_scope',status='specified',value=text,quote=text,action='update',intent_ref='I',basis_refs=['research_scope'],target_id='research_scope',scope_mode='current_scope',change_relation='refinement')])
+        out=self.apply(state,r,text,e);self.assertEqual(state['fields'],before);self.assertEqual(out['operation_decisions'][0]['decision'],'not_applied')
+        self.assertEqual(out['operation_decisions'][0]['operation']['value'],text)
+        with self.assertRaises(ValidationError):Extraction.model_validate(e.model_dump(),context={'current_model_output':True,'fields':state['fields'],'state':state,'input':text})
+
+    def test_native_instructor_repairs_wrong_intent_kind_with_shared_guard(self):
+        import json,httpx,instructor
+        from openai import OpenAI
+        from lapis_intake import extract
+        state,r=self.seed();text='仅研究材料，不验证器件寿命';bodies=[]
+        def respond(request):
+            bodies.append(json.loads(request.content))
+            result={'intents':[{'id':'I','kind':'inform' if len(bodies)==1 else 'edit','quote':text,'target_refs':['research_scope']}],'updates':[{'field':'research_scope','status':'specified','value':text,'quote':text,'action':'update','intent_ref':'I','basis_refs':['research_scope'],'target_id':'research_scope','scope_mode':'current_scope','change_relation':'refinement'}]}
+            return httpx.Response(200,json={'id':'offline','object':'chat.completion','created':0,'model':'offline','choices':[{'index':0,'message':{'role':'assistant','content':json.dumps(result,ensure_ascii=False)},'finish_reason':'stop'}]})
+        client=instructor.from_openai(OpenAI(api_key='offline-only',base_url='https://offline.invalid',max_retries=0,http_client=httpx.Client(transport=httpx.MockTransport(respond))),mode=instructor.Mode.JSON)
+        before=deepcopy(state);result=extract(client,'offline',state,text)
+        self.assertEqual(len(bodies),2);self.assertEqual(state,before);self.assertEqual(result.intents[0].kind,'edit')
+
+    def test_simulated_bare_name_format_preserves_free_choice(self):
+        from scripts.verify_intake_dialogues import UserReply
+        context={'visible_bare_names':['方向甲','方向乙']}
+        with self.assertRaises(ValidationError):UserReply.model_validate({'text':'我选方向甲'},context=context)
+        for name in context['visible_bare_names']:self.assertEqual(UserReply.model_validate({'text':name},context=context).text,name)
+        self.assertEqual(UserReply.model_validate({'text':'我想引用方向甲'}).text,'我想引用方向甲')
+
+    def test_scalar_temperature_metadata_is_not_cleared_or_replaced_without_edit(self):
+        from lapis_intake import Temperature
+        state,r=self.seed();state['fields']['work_conditions']={'status':'specified','value':'298 K','temperatures':[{'value':'298','unit':'K'}],'source':'user','quote':'298 K','turn':1}
+        text='仍为298 K'
+        e=Extraction(intents=[Intent(id='I',kind='inform',quote=text,target_refs=['work_conditions'])],updates=[Update(field='work_conditions',status='specified',value='298 K',quote=text,intent_ref='I',basis_refs=['work_conditions'])])
+        out=self.apply(state,r,text,e);self.assertEqual(state['fields']['work_conditions']['temperatures'],[{'value':'298','unit':'K'}])
+        before=deepcopy(state['fields']);e.updates[0].temperatures=[Temperature(value='1000',unit='K')]
+        out=self.apply(state,out,text,e);self.assertEqual(state['fields'],before);self.assertEqual(out['operation_decisions'][0]['decision'],'not_applied')
 
     def test_retired_goal_in_current_purpose_or_scope_blocks_approval_until_edit(self):
         state,r=self.seed();goal=state['fields']['target_performance'][0]

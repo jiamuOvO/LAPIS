@@ -94,7 +94,7 @@ class Issue(StrictModel):
 
 
 class Intent(StrictModel):
-    id: str = Field(min_length=1)
+    id: str = Field(min_length=1, pattern=r'\S')
     kind: Literal["answer", "inform", "edit", "adopt", "reject", "quote", "delegate", "progress", "confirm", "pause"]
     quote: str = Field(min_length=1)
     question_ref: str | None = None
@@ -121,9 +121,16 @@ class Extraction(StrictModel):
     reaffirm_fields: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def unique_intents(self):
+    def unique_intents(self, info: ValidationInfo):
         if len({i.id for i in self.intents}) != len(self.intents):
             raise ValueError("意图ID必须唯一，不能覆盖同名意图")
+        context=info.context or {}
+        if context.get('current_model_output') and context.get('state'):
+            # Use the same final-operation guard, without mutating the live turn.
+            checking=deepcopy(context['state']);checking['_input_text']=context['input']
+            _ground_actions(checking,self)
+            rejected=[d['reason'] for d in checking['_operation_decisions'] if d['decision']=='not_applied']
+            if rejected:raise ValueError('依据本轮原话重新解释；未见授权时保留当前内容并澄清，不能只改意图标签来通过校验：'+'；'.join(rejected[:3]))
         return self
 
 
@@ -224,7 +231,7 @@ def extract(client, model, state, text):
     return client.create(model=model, response_model=Extraction,
                          messages=[{"role": "system", "content": SYSTEM_PROMPT},
                                    {"role": "user", "content": json.dumps(context, ensure_ascii=False)}],
-                         context={'current_model_output':True,'fields':state['fields']},
+                         context={'current_model_output':True,'fields':state['fields'],'state':state,'input':text},
                          max_retries=2, max_tokens=2600, temperature=0, **options)
 
 
@@ -330,6 +337,8 @@ def _merge(state, text, extraction, context=None):
         before = deepcopy(current)
         if field in SCALAR_FIELDS:
             entry = _record(items[-1], turn, state=state)
+            if entry.get('status')=='specified' and entry.get('value')==current.get('value') and not items[-1].temperatures and current.get('temperatures'):
+                entry['temperatures']=deepcopy(current['temperatures'])
             if not _same(current, entry):
                 state["fields"][field] = entry
         else:
@@ -503,6 +512,8 @@ def _ground_actions(state, extraction):
 def _select(state, extraction, text, context):
     rec = state.get("recommendation_set")
     expected = context.get("recommendation_ref")
+    if rec and sum(o['label'].strip()==text.strip() for o in rec['options'])>1:
+        return '该名称对应多个方向，请用序号或明确用途、目标的区别选择。'
     if rec and extraction.selected_option and 1 <= extraction.selected_option <= len(rec["options"]):
         option = rec["options"][extraction.selected_option - 1]
         # Reaffirming the live direction keeps later refinements; stale new choices still fail below.
@@ -743,6 +754,9 @@ def _handle_turn(client, model, state, text, input_context=None, operation_id=No
             guide = False
         generated = generate_recommendations(client, model, state, text, operation_id) if guide and state["domain"] not in {"drug_discovery", "non_research"} else None
         result = _result(state, changed, guide, text, notice, generated)
+        if action_notice and 'select' in extraction.actions and not guide:
+            state['asked_field']=None
+            result['next_question']=action_notice
         result["interpretation"] = state.get("_raw_interpretation", extraction.model_dump())
         result["operation_decisions"] = state.get("_operation_decisions", [])
         result["important_changes"] = [LABELS.get(d["operation"]["field"],d["operation"]["field"]) + "：" + d["operation"]["action"] + "；原话：" + d["operation"]["quote"] for d in result["operation_decisions"] if d["decision"] == "accepted" and (d["operation"]["action"] in {"remove","replace"} or d["operation"]["field"] == "research_scope")]

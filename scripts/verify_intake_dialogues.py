@@ -1,5 +1,5 @@
 """Fixed and independently simulated users; isolated PG and bounded actual HTTP calls."""
-import argparse,io,json,os,sys,time,subprocess,hashlib
+import argparse,io,json,os,sys,time,subprocess,hashlib,re
 from pathlib import Path
 from uuid import uuid4
 from copy import deepcopy
@@ -7,7 +7,7 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import httpx,instructor
 from openai import OpenAI
-from pydantic import BaseModel,ConfigDict,Field
+from pydantic import BaseModel,ConfigDict,Field,ValidationInfo,model_validator
 from lapis_intake import SYSTEM_PROMPT,PROPOSAL_PROMPT,LABELS
 from lapis_graph import run_intake_turn, build_intake_graph
 from lapis_store import create_task,get_task,initialize_schema,db_config
@@ -24,6 +24,13 @@ class UserReply(BaseModel):
  decisions:list[str]=Field(default_factory=list)
  stop: str = Field(default='continue', pattern='^(continue|pause|confirm)$')
 
+ @model_validator(mode='after')
+ def declared_bare_name(self,info:ValidationInfo):
+  names=(info.context or {}).get('visible_bare_names')
+  if names and self.text not in names:
+   raise ValueError('本轮背景要求只回复实际可见方向的完整名称，不加选择词、序号或解释；自主选择其中一个方向')
+  return self
+
 USER_PROMPT="""你是材料研究软件的独立模拟用户，不是测试修复者。你只能看到自己的背景和产品实际显示对话。按背景自然交流，一轮最多两三句话。始终保留背景中明确的基本用途与要求；产品反问不能让你把已知用途改成未知，具体器件细分未知也不等于基本用途未知。不能一次填八项，不能为了产品过关改变既定意图。初学者可以从所见推荐产生新决定，写入decisions；不确定保持不确定。引用提案不代表要求。纠正误解和暂停是合理行为。未知不填造科学参数，不能把材料功能当已证实。不要输出产品内部字段或测试答案。确认前应看完整规约；只有发言明确请求暂停、暂不继续时stop=pause；正在提问、纠正、请求修改并等待答复时必须continue，不能仅因等待标pause。背景有“随后/后来”时按多轮顺序行动，不在首句假装已有未发生的发言。把背景当成自己的想法，不向产品提到私有背景、测试、步骤或模拟规则；不得说产品提到过实际对话里没有的内容。需要提案就自然请求推荐，不能索取不存在的“所见提案”。确认前自行核对背景要求的实际行动是否已在可见对话中发生；未来打算不算已完成的新增、引用或用途改变。未发生就本轮自然执行该行动，不能提前确认结束。认可核对后自然明确确认；stop=confirm必须对应发言中批准整份规约，不只确认某条约束。输出text/decisions/stop。"""
 
 def request_reserve(content):
@@ -35,7 +42,7 @@ def request_reserve(content):
  return size+body.get('max_tokens',2600)
 
 def main():
- p=argparse.ArgumentParser();p.add_argument('--mode',choices=['fixed','simulated'],required=True);p.add_argument('--scenarios',default='long_additive');p.add_argument('--set',choices=['development','holdout','supplementary','rework_holdout','rework_final_holdout','rework_verified_holdout'],default='development');p.add_argument('--max-calls',type=int,default=60);p.add_argument('--max-tokens',type=int,default=400000);p.add_argument('--output',type=Path,required=True);p.add_argument('--resume-from',type=Path);a=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--mode',choices=['fixed','simulated'],required=True);p.add_argument('--scenarios',default='long_additive');p.add_argument('--set',choices=['development','holdout','supplementary','rework_holdout','rework_final_holdout','rework_verified_holdout','rework_acceptance_holdout'],default='development');p.add_argument('--max-calls',type=int,default=60);p.add_argument('--max-tokens',type=int,default=400000);p.add_argument('--output',type=Path,required=True);p.add_argument('--resume-from',type=Path);a=p.parse_args()
  if os.getenv('LAPIS_TEST_PG')!='1' or os.getenv('LAPIS_DB_NAME')!='lapis_test':p.error('Requires isolated lapis_test')
  initialize_schema();run=str(uuid4());calls=[];current_role='product';tokens=0;budget_stops=[]
  def before(request):
@@ -108,7 +115,10 @@ def main():
     else:
      current_role='simulated_user'
      opts={'extra_body':{'thinking':{'type':'disabled'}}} if os.getenv('LAPIS_BASE_URL','https://api.deepseek.com').startswith('https://api.deepseek.com') else {}
-     user=client.create(model=model,response_model=UserReply,messages=[{'role':'system','content':USER_PROMPT},{'role':'user','content':json.dumps({'background':scene['background'],'visible_dialogue':transcript},ensure_ascii=False)}],max_retries=1,max_tokens=550,temperature=0,**opts)
+     lines=re.findall(r'(?m)^\d+\. (.+)$',transcript[-1]['text']) if scene.get('bare_name_turn')==n+1+len(saved) and transcript else []
+     # ponytail: only unambiguous visible lines; never force a choice from a partial menu.
+     bare_names=[line.split('：',1)[0] for line in lines] if lines and all(line.count('：')==1 for line in lines) else []
+     user=client.create(model=model,response_model=UserReply,messages=[{'role':'system','content':USER_PROMPT},{'role':'user','content':json.dumps({'background':scene['background'],'visible_dialogue':transcript},ensure_ascii=False)}],context={'visible_bare_names':bare_names},max_retries=2 if bare_names else 1,max_tokens=550,temperature=0,**opts)
      text=user.text;user_decisions=user.decisions;decisions.extend(user_decisions);paused=user.stop=='pause'
     current_role='product';start=time.perf_counter();old=deepcopy(previous)
     with patch('lapis_intake.generate_recommendations',side_effect=recommended):out=run_intake_turn(task,text,'dialogue-acceptance',client,model,prompt,retry['operation_id'] if retry and n==0 else str(uuid4()),input_context=context)
