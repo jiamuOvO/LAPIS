@@ -148,6 +148,50 @@ def get_task(task_id: str) -> dict:
             return row
 
 
+def get_current_request(task_id: str) -> tuple[int, dict]:
+    with connect() as db:
+        with db.cursor(row_factory=dict_row) as cursor:
+            cursor.execute("SELECT status,active_request_version,intake_state FROM research_tasks WHERE id=%s", (task_id,))
+            task = cursor.fetchone()
+            if not task or task["status"] != "request_confirmed" or task["active_request_version"] is None:
+                raise ValueError("当前任务没有已确认的有效研究请求")
+            version = task["active_request_version"]
+            cursor.execute("SELECT payload FROM request_versions WHERE task_id=%s AND version=%s",
+                           (task_id, version))
+            row = cursor.fetchone()
+            payload = _json(row["payload"])
+            validate_current_request(payload)
+            state = _json(task["intake_state"])
+            if state.get("stage") != "ready_for_design" or state.get("draft_id") != payload.get("draft_id"):
+                raise ValueError("当前受理草稿已变化，请重新确认后再生成研究设计")
+            return version, payload
+
+
+def get_design_operation(task_id: str, operation_id: str) -> dict | None:
+    with connect() as db:
+        with db.cursor(row_factory=dict_row) as cursor:
+            cursor.execute(
+                "SELECT version,payload FROM design_versions WHERE task_id=%s "
+                "AND payload->'generation'->>'operation_id'=%s",
+                (task_id, operation_id),
+            )
+            row = cursor.fetchone()
+            if row:
+                row["payload"] = _json(row["payload"])
+            return row
+
+
+def get_design(task_id: str, version: int) -> dict:
+    with connect() as db:
+        with db.cursor(row_factory=dict_row) as cursor:
+            cursor.execute("SELECT payload,status,request_version FROM design_versions WHERE task_id=%s AND version=%s",
+                           (task_id, version))
+            row = cursor.fetchone()
+            if row is None:
+                raise ValueError("研究设计版本不存在")
+            return {"task_id": task_id, "version": version, **row, "payload": _json(row["payload"])}
+
+
 def get_intake_operation(operation_id: str) -> dict | None:
     with connect() as db:
         with db.cursor(row_factory=dict_row) as cursor:
@@ -250,6 +294,18 @@ def propose_design(task_id: str, payload: dict, actor: str) -> int:
                 raise ValueError("任务不存在")
             current = payload.get("request_version")
             _require_current_request(cursor, task_id, current)
+            operation_id = (payload.get("generation") or {}).get("operation_id")
+            if operation_id:
+                cursor.execute(
+                    "SELECT version,request_version FROM design_versions WHERE task_id=%s "
+                    "AND payload->'generation'->>'operation_id'=%s",
+                    (task_id, operation_id),
+                )
+                previous = cursor.fetchone()
+                if previous:
+                    if previous["request_version"] != current:
+                        raise ValueError("相同操作标识已用于旧版研究请求")
+                    return previous["version"]
             cursor.execute("SELECT COALESCE(MAX(version),0)+1 AS version FROM design_versions WHERE task_id=%s", (task_id,))
             version = cursor.fetchone()["version"]
             cursor.execute(
@@ -278,7 +334,10 @@ def approve_design(task_id: str, version: int, reviewer: str) -> None:
             if row is None or row["status"] != "proposed" or row["request_version"] != current:
                 raise ValueError("设计不存在、已审批，或引用了过期请求")
             _require_current_request(cursor, task_id, row["request_version"])
-            ExecutionPlan.model_validate(_json(row["payload"]))
+            payload = _json(row["payload"])
+            if payload.get("schema") == "lapis.design-draft.v1":
+                raise ValueError("模型草案不能直接审批；请先补全为执行计划并另存新版本")
+            ExecutionPlan.model_validate(payload)
             cursor.execute(
                 "UPDATE design_versions SET status='approved', reviewer=%s, reviewed_at=NOW() WHERE task_id=%s AND version=%s",
                 (reviewer, task_id, version),

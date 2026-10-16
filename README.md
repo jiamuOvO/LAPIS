@@ -45,6 +45,8 @@ $py='F:\LAPIS\.conda-lapis\python.exe'
 & $py 'F:\LAPIS\lapis.py' turn <任务ID> '确认' --draft-id <上轮草稿ID> --operation-id <原操作标识>
 & $py 'F:\LAPIS\lapis.py' show <任务ID>
 & $py 'F:\LAPIS\lapis.py' propose-design <任务ID> '研究设计.json'
+& $py 'F:\LAPIS\lapis.py' draft-design <任务ID>
+& $py 'F:\LAPIS\lapis.py' show-design <任务ID> <设计版本>
 & $py 'F:\LAPIS\lapis.py' approve-design <任务ID> <设计版本> --reviewer '研究人员姓名'
 & $py 'F:\LAPIS\lapis.py' freeze <任务ID> <设计版本>
 ```
@@ -52,6 +54,8 @@ $py='F:\LAPIS\.conda-lapis\python.exe'
 `turn` 使用现有 Instructor 进行结构化受理；设置 `LAPIS_API_KEY` 或 `DEEPSEEK_API_KEY`，可另设 `LAPIS_BASE_URL`、`LAPIS_MODEL`。LangGraph 仅编排受理中的**追问、人工确认、跨进程暂停和继续**，使用同一 PostgreSQL 实例保存 checkpoint。研究请求、审批、作业和审计以 LAPIS 表为准。单轮技术命令 `turn` 在调用 LLM 前打印 `operation_id`；`chat` 仅在失败定位时显示它；若响应丢失或进程失败，重试**同一输入**时传回原 ID。图节点重放会查操作记录，不重复写入已提交的轮次；同一 ID 用于不同输入或不同确认／推荐上下文会被拒绝，同一任务的并发输入也会被拒绝。若出现“已恢复上一轮受理”，先用上一轮 ID 查询/重试，再提交新输入。计算提交、质量判断和结论均由确定性代码及人工审核控制，不由图节点直接决定。
 
 受理草案分别呈现研究目的、研究对象、应用场景、工作条件、目标性能、约束条件、研究范围和材料功能，并保留来源与用户原话。未知条件保持未知；系统建议经用户确认后保留原建议出处。`ready_for_design` 只表示整份 v5 研究请求经用户确认，可进入研究设计；数据库任务状态仍为 `request_confirmed`。旧版 v1/v2/v3/v4 请求可读取；转换成草稿时指定字段标为待重新核对，进入新版设计前须重新核对并确认。修改当前请求立即清除 `active_request_version`，历史 `request_version` 仍可读取，不能用于新设计。设计草案可不完整，审批时必须符合 [执行计划契约](lapis_core.py)：候选、实验、条件与单位、方法和模型版本、参数、质量规则、预期原始文件与资源上限。冻结是幂等的，不启动真实计算。结构校验不能代替对模型适用性和质量阈值的科研审核。
+
+`draft-design` 将当前确认请求发送给已配置的模型，生成一个存入 `design_versions` 的 `lapis.design-draft.v1` 草案，记录请求摘要哈希、提示词哈希、模型和操作 ID。候选、实验、假设和缺口均标记为未核验建议；草案不得直接审批。用 `show-design` 查看 JSON 后，研究人员须补足并审核方法、模型、条件、单位、参数、质量规则、预期原始文件和资源上限，再通过 `propose-design` 保存符合执行计划契约的新版本。重试已保存草案时传回此前打印的 `--operation-id`，不会重复保存版本。模型建议不构成计算授权。
 
 当前 `approve-design --reviewer` 只记录调用者填写的字符串，**没有身份认证**。这个记录可用于软件流程测试，不能单独作为真实高成本计算的可信授权。接入真实适配器前必须建立可验证的研究人员身份、审批权限和审批记录，并在提交点再次核验。
 

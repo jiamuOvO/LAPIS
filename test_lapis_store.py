@@ -1,8 +1,10 @@
 import os
 import unittest
+from unittest.mock import patch
 
-from lapis import run_simulation
+from lapis import run_design_draft, run_simulation
 from lapis_store import (approve_design, create_task, freeze_execution, get_task,
+                         get_current_request, get_design, get_design_operation,
                          initialize_schema, propose_design, save_turn, verify_artifacts)
 
 
@@ -41,6 +43,39 @@ def confirmed_v4_request():
 @unittest.skipUnless(os.getenv("LAPIS_TEST_PG") == "1" and
                      os.getenv("LAPIS_DB_NAME") == "lapis_test", "requires isolated lapis_test PostgreSQL")
 class StoreGateTest(unittest.TestCase):
+    def test_generated_draft_is_persisted_replayed_and_cannot_be_approved(self):
+        initialize_schema()
+        task = create_task("test")
+        request = confirmed_v4_request()
+        state = {"contract_version": 5, "draft_id": request["draft_id"], "fields": request["fields"],
+                 "turns": ["研究意图", "确认"], "stage": "ready_for_design"}
+        result = {"ready": True, "ready_for_design": True, "confirmation_event": True,
+                  "intake_status": "ready_for_design", "request": request,
+                  "calculation_status": "pending_research_design"}
+        save_turn(task, 0, state, result, "test", "fake")
+        version, current = get_current_request(task)
+        self.assertEqual(version, 1)
+        self.assertEqual(current["draft_id"], request["draft_id"])
+
+        payload = {"schema": "lapis.design-draft.v1", "request_version": 1,
+                   "evidence_status": "unverified",
+                   "generation": {"operation_id": "design-operation-1"}}
+        design_version = propose_design(task, payload, "test")
+        self.assertEqual(propose_design(task, payload, "test"), design_version)
+        self.assertEqual(get_design_operation(task, "design-operation-1")["version"], design_version)
+        self.assertEqual(get_design(task, design_version)["payload"], payload)
+        with self.assertRaisesRegex(ValueError, "不能直接审批"):
+            approve_design(task, design_version, "test-reviewer")
+
+        with patch("lapis.get_current_request", return_value=(1, current)), \
+             patch("lapis.get_design_operation", return_value={
+                 "version": design_version, "payload": payload,
+             }), \
+             patch("lapis.OpenAI") as openai:
+            replay = run_design_draft(task, "test", "design-operation-1")
+        self.assertTrue(replay["reused"])
+        openai.assert_not_called()
+
     def test_persistence_and_execution_gate(self):
         initialize_schema()
         task = create_task("test")

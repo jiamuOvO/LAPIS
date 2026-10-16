@@ -19,11 +19,13 @@ from openai import OpenAI
 
 from lapis_core import digest
 from lapis_contract import CONTRACT_VERSION
+from lapis_design import generate_design, saved_design_payload
 from lapis_intake import LABELS, PROPOSAL_PROMPT, SYSTEM_PROMPT, preview_intake
 from lapis_graph import run_intake_turn
 from lapis_store import (ROOT, approve_design, artifact_root, create_simulation_attempt, create_task,
-                         db_config, freeze_execution, get_task, get_intake_operation, initialize_schema,
-                         propose_design, register_artifact, transition_attempt,
+                         db_config, freeze_execution, get_current_request, get_design, get_design_operation,
+                         get_task, get_intake_operation, initialize_schema, propose_design,
+                         register_artifact, transition_attempt,
                          verify_artifacts)
 
 
@@ -75,6 +77,26 @@ def run_simulation(execution_id: str, actor: str, fail: bool) -> str:
         transition_attempt(attempt_id, "failed", actor, str(error))
         raise
     return attempt_id
+
+
+def run_design_draft(task_id: str, actor: str, operation_id: str) -> dict:
+    request_version, request = get_current_request(task_id)
+    previous = get_design_operation(task_id, operation_id)
+    if previous:
+        if previous["payload"].get("request_version") != request_version:
+            raise ValueError("相同操作标识已用于旧版研究请求")
+        return {"version": previous["version"], "payload": previous["payload"], "reused": True}
+    key = os.getenv("LAPIS_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
+    if not key:
+        raise ValueError("请先设置 LAPIS_API_KEY 或 DEEPSEEK_API_KEY")
+    model = os.getenv("LAPIS_MODEL", "deepseek-flash")
+    client = instructor.from_openai(OpenAI(
+        api_key=key, base_url=os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com"), timeout=40, max_retries=0,
+    ), mode=instructor.Mode.JSON)
+    draft = generate_design(client, model, request)
+    payload = saved_design_payload(draft, request_version, model, operation_id, request)
+    version = propose_design(task_id, payload, actor)
+    return {"version": version, "payload": payload, "reused": False}
 
 
 def field_text(field, value):
@@ -349,6 +371,13 @@ def main():
     design.add_argument("task_id")
     design.add_argument("file", type=Path)
     design.add_argument("--actor", default="researcher")
+    suggest = sub.add_parser("draft-design", help="根据已确认请求生成未核验的研究设计草案")
+    suggest.add_argument("task_id")
+    suggest.add_argument("--actor", default="researcher")
+    suggest.add_argument("--operation-id", help="重试时复用同一标识，避免重复保存已完成的草案")
+    show_design = sub.add_parser("show-design", help="查看已保存的研究设计版本")
+    show_design.add_argument("task_id")
+    show_design.add_argument("version", type=int)
     approve = sub.add_parser("approve-design")
     approve.add_argument("task_id")
     approve.add_argument("version", type=int)
@@ -411,6 +440,13 @@ def main():
         elif args.command == "propose-design":
             payload = json.loads(args.file.read_text(encoding="utf-8"))
             print(propose_design(args.task_id, payload, args.actor))
+        elif args.command == "draft-design":
+            operation_id = args.operation_id or str(uuid4())
+            print(f"operation_id={operation_id}", flush=True)
+            result = run_design_draft(args.task_id, args.actor, operation_id)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        elif args.command == "show-design":
+            print(json.dumps(get_design(args.task_id, args.version), ensure_ascii=False, indent=2))
         elif args.command == "approve-design":
             approve_design(args.task_id, args.version, args.reviewer)
             print("研究设计已审核")
