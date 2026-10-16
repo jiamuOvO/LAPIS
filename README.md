@@ -19,6 +19,8 @@ Set-Location 'F:\LAPIS'
 
 采用 EDB 提供的 [PostgreSQL 17.11 Windows 二进制 ZIP](https://get.enterprisedb.com/postgresql/postgresql-17.11-3-windows-x64-binaries.zip)，解压后使 `pg_ctl.exe` 位于忽略的 `.postgres-server/pgsql/bin/`；数据目录为 `%LOCALAPPDATA%\LAPIS\postgres-data`，仅监听 `127.0.0.1:5433`。当前是用户级实例，没有安装 Windows 服务；重启后运行启动脚本。官方 [Windows 下载说明](https://www.postgresql.org/download/windows/) 提供 ZIP 路线。
 
+启动脚本等待 PostgreSQL 真正接受连接才报告就绪；重复运行不会重启已运行的实例。启动日志写入 `%LOCALAPPDATA%\LAPIS\postgres-server.log`，位于数据目录外，避免恢复时占用数据目录内的日志文件。若报文件缺失或不可访问，按错误中的具体文件检查位置与权限，不要重新初始化已有数据库。
+
 首次部署（不要对已有数据目录再次运行 `bootstrap_pg.py`）：
 
 ```powershell
