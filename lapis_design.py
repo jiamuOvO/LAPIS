@@ -87,6 +87,11 @@ quality_checks_to_define 写需要制定的检查类型，不要伪造数值阈�
 输出严格符合给定 JSON 结构。"""
 
 
+def design_input_sha256(request: dict, model: str, provider_sha256: str) -> str:
+    return digest({"request_sha256": digest(request), "prompt_sha256": digest(DESIGN_PROMPT),
+                   "model": model, "provider_sha256": provider_sha256})
+
+
 def generate_design(client, model: str, request: dict) -> DesignDraft:
     payload = {
         "research_request": request,
@@ -108,7 +113,9 @@ def generate_design(client, model: str, request: dict) -> DesignDraft:
 
 
 def saved_design_payload(draft: DesignDraft, request_version: int, model: str,
-                         operation_id: str, request: dict) -> dict:
+                         operation_id: str, request: dict,
+                         provider_sha256: str | None = None) -> dict:
+    provider_sha256 = provider_sha256 or digest("https://api.deepseek.com")
     return {
         "schema": "lapis.design-draft.v1",
         "request_version": request_version,
@@ -125,6 +132,8 @@ def saved_design_payload(draft: DesignDraft, request_version: int, model: str,
             "model": model,
             "prompt_sha256": digest(DESIGN_PROMPT),
             "request_sha256": digest(request),
+            "provider_sha256": provider_sha256,
+            "input_sha256": design_input_sha256(request, model, provider_sha256),
             "operation_id": operation_id,
         },
     }

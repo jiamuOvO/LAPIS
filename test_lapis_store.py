@@ -1,12 +1,17 @@
 import os
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from queue import Queue
+from threading import Barrier
 from unittest.mock import patch
 from pydantic import ValidationError
 
 from lapis import run_design_draft, run_simulation
+from lapis_design import DesignDraft, saved_design_payload
 from lapis_store import (approve_design, create_task, freeze_execution, get_task,
                          connect, get_current_request, get_design, get_design_operation,
-                         initialize_schema, propose_design, save_turn, verify_artifacts)
+                         initialize_schema, propose_design, propose_generated_design,
+                         save_turn, verify_artifacts)
 
 
 def confirmed_v2_request():
@@ -41,6 +46,20 @@ def confirmed_v4_request():
     return payload
 
 
+def design_draft(rationale):
+    return DesignDraft.model_validate({
+        "paradigm": "comparison", "rationale": rationale,
+        "candidates": [{"id": "control", "description": "请求中的对照候选",
+                        "composition": {}, "basis_fields": ["research_object"]}],
+        "experiments": [{"id": "compare", "question": "对照间是否存在差异？",
+                         "candidate_ids": ["control"], "observable": "目标性能", "unit": None,
+                         "conditions": {}, "method_suggestion": None, "model_suggestion": None,
+                         "quality_checks_to_define": ["定义质量检查"],
+                         "basis_fields": ["target_performance"]}],
+        "hypotheses": [], "open_questions": [], "limitations": ["草案未经科研核验。"],
+    })
+
+
 @unittest.skipUnless(os.getenv("LAPIS_TEST_PG") == "1" and
                      os.getenv("LAPIS_DB_NAME") == "lapis_test", "requires isolated lapis_test PostgreSQL")
 class StoreGateTest(unittest.TestCase):
@@ -58,11 +77,14 @@ class StoreGateTest(unittest.TestCase):
         self.assertEqual(version, 1)
         self.assertEqual(current["draft_id"], request["draft_id"])
 
-        payload = {"schema": "lapis.design-draft.v1", "request_version": 1,
-                   "evidence_status": "unverified",
-                   "generation": {"operation_id": "design-operation-1"}}
-        design_version = propose_design(task, payload, "test")
-        self.assertEqual(propose_design(task, payload, "test"), design_version)
+        payload = saved_design_payload(design_draft("测试生成草案"), 1, "deepseek-flash",
+                                       "design-operation-1", current)
+        design_version, persisted, reused = propose_generated_design(task, payload, "test")
+        self.assertFalse(reused)
+        self.assertEqual(persisted, payload)
+        replay_version, replay_payload, reused = propose_generated_design(task, payload, "test")
+        self.assertTrue(reused)
+        self.assertEqual((replay_version, replay_payload), (design_version, payload))
         self.assertEqual(get_design_operation(task, "design-operation-1")["version"], design_version)
         self.assertEqual(get_design(task, design_version)["payload"], payload)
         with self.assertRaisesRegex(ValueError, "不能直接审批"):
@@ -72,10 +94,59 @@ class StoreGateTest(unittest.TestCase):
              patch("lapis.get_design_operation", return_value={
                  "version": design_version, "payload": payload,
              }), \
-             patch("lapis.OpenAI") as openai:
+             patch("lapis.OpenAI") as openai, \
+             patch("lapis.generate_design") as generate:
             replay = run_design_draft(task, "test", "design-operation-1")
         self.assertTrue(replay["reused"])
+        self.assertEqual(replay["payload"], payload)
         openai.assert_not_called()
+        generate.assert_not_called()
+
+    def test_concurrent_generation_uses_canonical_saved_result_and_conflicts_on_new_input(self):
+        initialize_schema()
+        task = create_task("test")
+        request = confirmed_v4_request()
+        state = {"contract_version": 5, "draft_id": request["draft_id"], "fields": request["fields"],
+                 "turns": ["研究意图", "确认"], "stage": "ready_for_design"}
+        result = {"ready": True, "ready_for_design": True, "confirmation_event": True,
+                  "intake_status": "ready_for_design", "request": request,
+                  "calculation_status": "pending_research_design"}
+        save_turn(task, 0, state, result, "test", "fake")
+
+        barrier = Barrier(2)
+        drafts = Queue()
+        drafts.put(design_draft("并发提案 A"))
+        drafts.put(design_draft("并发提案 B"))
+
+        def generate_after_both_lookup(*_):
+            barrier.wait(timeout=10)
+            return drafts.get_nowait()
+
+        with patch.dict(os.environ, {"LAPIS_API_KEY": "test", "LAPIS_MODEL": "test-model"}), \
+             patch("lapis.OpenAI"), patch("lapis.instructor.from_openai", return_value=object()), \
+             patch("lapis.generate_design", side_effect=generate_after_both_lookup) as generate:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                futures = [pool.submit(run_design_draft, task, "test", "same-operation") for _ in range(2)]
+                results = [future.result(timeout=20) for future in futures]
+            self.assertEqual(generate.call_count, 2)
+
+            self.assertEqual(results[0]["version"], results[1]["version"])
+            self.assertEqual(results[0]["payload"], results[1]["payload"])
+            self.assertCountEqual([item["reused"] for item in results], [False, True])
+            stored = get_design(task, results[0]["version"])["payload"]
+            self.assertEqual(stored, results[0]["payload"])
+
+            replay = run_design_draft(task, "test", "same-operation")
+            self.assertTrue(replay["reused"])
+            self.assertEqual(replay["payload"], stored)
+            self.assertEqual(generate.call_count, 2)
+
+            with patch.dict(os.environ, {"LAPIS_MODEL": "different-model"}), \
+                 self.assertRaisesRegex(ValueError, "不同研究请求、模型或提示词"):
+                run_design_draft(task, "test", "same-operation")
+            with patch("lapis.get_current_request", return_value=(1, {**request, "original_intent": "不同输入"})), \
+                 self.assertRaisesRegex(ValueError, "不同研究请求、模型或提示词"):
+                run_design_draft(task, "test", "same-operation")
 
     def test_invalid_execution_quantities_cannot_be_approved_or_frozen(self):
         initialize_schema()

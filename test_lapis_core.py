@@ -70,6 +70,26 @@ class CoreGateTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             ExecutionPlan.model_validate(self.executable_plan(
                 conditions={"custom condition": {"value": 1, "unit": "bar"}}))
+        with self.assertRaises(ValidationError):
+            ExecutionPlan.model_validate(self.executable_plan(
+                observable="temperature", observable_unit="bananas",
+                observable_dimension="temperature",
+                observable_unit_review="研究人员已核对自定义温标"))
+        with self.assertRaises(ValidationError):
+            ExecutionPlan.model_validate(self.executable_plan(
+                observable="温度", observable_unit="bananas"))
+        with self.assertRaises(ValidationError):
+            ExecutionPlan.model_validate(self.executable_plan(
+                observable="measurement", observable_unit="bananas",
+                observable_dimension="temperature",
+                observable_unit_review="研究人员已核对自定义温标"))
+        with self.assertRaises(ValidationError):
+            ExecutionPlan.model_validate(self.executable_plan(
+                observable="measurement", observable_unit="bananas",
+                observable_dimension="Temperature",
+                observable_unit_review="研究人员已核对自定义温标"))
+        ExecutionPlan.model_validate(self.executable_plan(
+            observable="temperature", observable_unit="°C"))
 
     def test_custom_units_are_allowed_only_with_explicit_dimension_and_review(self):
         conditions = {"pressure": {"value": 1, "unit": "bar"}}

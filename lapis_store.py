@@ -17,6 +17,7 @@ from lapis_core import (ExecutionPlan, check_attempt_transition, digest,
                         ensure_finite_numbers, intake_is_confirmed, validate_research_request_v2,
                         verify_artifact)
 from lapis_intake import new_state
+from lapis_design import design_input_sha256
 from lapis_contract import CONTRACT_VERSION, validate_current_request
 
 
@@ -284,8 +285,7 @@ def _require_current_request(cursor, task_id: str, version: int) -> dict:
     return payload
 
 
-def propose_design(task_id: str, payload: dict, actor: str) -> int:
-    """Incomplete designs may be stored for review; approval validates the full contract."""
+def _store_design(task_id: str, payload: dict, actor: str, *, generated: bool) -> tuple[int, dict, bool]:
     if not isinstance(payload, dict):
         raise ValueError("研究设计必须是 JSON 对象")
     ensure_finite_numbers(payload)
@@ -295,11 +295,22 @@ def propose_design(task_id: str, payload: dict, actor: str) -> int:
             if cursor.fetchone() is None:
                 raise ValueError("任务不存在")
             current = payload.get("request_version")
-            _require_current_request(cursor, task_id, current)
+            request = _require_current_request(cursor, task_id, current)
             operation_id = (payload.get("generation") or {}).get("operation_id")
+            if generated:
+                generation = payload.get("generation") or {}
+                if payload.get("schema") != "lapis.design-draft.v1" or not operation_id:
+                    raise ValueError("模型草案缺少受支持的结构或操作标识")
+                if (not generation.get("model") or not re.fullmatch(r"[0-9a-f]{64}",
+                                                                      generation.get("provider_sha256", ""))):
+                    raise ValueError("模型草案缺少有效的模型或提供方指纹")
+                expected_input = design_input_sha256(
+                    request, generation.get("model", ""), generation.get("provider_sha256", ""))
+                if generation.get("request_sha256") != digest(request) or generation.get("input_sha256") != expected_input:
+                    raise ValueError("相同操作标识不能用于不同研究请求、模型或提示词")
             if operation_id:
                 cursor.execute(
-                    "SELECT version,request_version FROM design_versions WHERE task_id=%s "
+                    "SELECT version,request_version,payload FROM design_versions WHERE task_id=%s "
                     "AND payload->'generation'->>'operation_id'=%s",
                     (task_id, operation_id),
                 )
@@ -307,7 +318,10 @@ def propose_design(task_id: str, payload: dict, actor: str) -> int:
                 if previous:
                     if previous["request_version"] != current:
                         raise ValueError("相同操作标识已用于旧版研究请求")
-                    return previous["version"]
+                    saved = _json(previous["payload"])
+                    if generated and saved.get("generation", {}).get("input_sha256") != expected_input:
+                        raise ValueError("相同操作标识已用于不同输入")
+                    return previous["version"], saved, True
             cursor.execute("SELECT COALESCE(MAX(version),0)+1 AS version FROM design_versions WHERE task_id=%s", (task_id,))
             version = cursor.fetchone()["version"]
             cursor.execute(
@@ -316,7 +330,17 @@ def propose_design(task_id: str, payload: dict, actor: str) -> int:
             )
             _event(cursor, task_id, actor, "design_proposed", {"design_version": version})
         db.commit()
-    return version
+    return version, payload, False
+
+
+def propose_design(task_id: str, payload: dict, actor: str) -> int:
+    """Store a manual or incomplete draft; approval validates the full execution contract."""
+    return _store_design(task_id, payload, actor, generated=False)[0]
+
+
+def propose_generated_design(task_id: str, payload: dict, actor: str) -> tuple[int, dict, bool]:
+    """Atomically deduplicate a generated draft and return the persisted canonical result."""
+    return _store_design(task_id, payload, actor, generated=True)
 
 
 def approve_design(task_id: str, version: int, reviewer: str) -> None:

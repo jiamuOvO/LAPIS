@@ -66,6 +66,10 @@ def _unit_dimension(unit: str) -> str | None:
     return UNIT_DIMENSIONS.get(key)
 
 
+def _canonical_dimension(value: str) -> str:
+    return _named_dimension(value) or value.strip().casefold()
+
+
 def _named_dimension(name: str) -> str | None:
     value = unicodedata.normalize("NFKC", name).casefold().replace("_", " ").replace("-", " ").strip()
     groups = {
@@ -121,6 +125,8 @@ class Quantity(BaseModel):
     def valid_value_and_unit(self):
         if not math.isfinite(self.value):
             raise ValueError("数值必须是有限值")
+        if self.dimension:
+            self.dimension = _canonical_dimension(self.dimension)
         unit_dimension = _unit_dimension(self.unit)
         if unit_dimension:
             if self.dimension and self.dimension != unit_dimension:
@@ -180,6 +186,12 @@ class ExecutionPlan(BaseModel):
             observable_unit_dimension = _unit_dimension(experiment.observable_unit)
             observable_name_dimension = _named_dimension(experiment.observable)
             declared = experiment.observable_dimension
+            if declared:
+                declared = _canonical_dimension(declared)
+                experiment.observable_dimension = declared
+            if (declared == "temperature" or observable_name_dimension == "temperature") \
+                    and observable_unit_dimension != "temperature":
+                raise ValueError("温度观察量只能使用支持换算的 K、°C 或 °F 单位")
             if observable_unit_dimension:
                 if declared and declared != observable_unit_dimension:
                     raise ValueError("观察量声明的量纲与单位不一致")

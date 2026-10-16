@@ -19,13 +19,13 @@ from openai import OpenAI
 
 from lapis_core import digest
 from lapis_contract import CONTRACT_VERSION
-from lapis_design import generate_design, saved_design_payload
+from lapis_design import design_input_sha256, generate_design, saved_design_payload
 from lapis_intake import LABELS, PROPOSAL_PROMPT, SYSTEM_PROMPT, preview_intake
 from lapis_graph import run_intake_turn
 from lapis_store import (ROOT, approve_design, artifact_root, create_simulation_attempt, create_task,
                          db_config, freeze_execution, get_current_request, get_design, get_design_operation,
                          get_task, get_intake_operation, initialize_schema, propose_design,
-                         register_artifact, transition_attempt,
+                         propose_generated_design, register_artifact, transition_attempt,
                          verify_artifacts)
 
 
@@ -81,22 +81,26 @@ def run_simulation(execution_id: str, actor: str, fail: bool) -> str:
 
 def run_design_draft(task_id: str, actor: str, operation_id: str) -> dict:
     request_version, request = get_current_request(task_id)
+    model = os.getenv("LAPIS_MODEL", "deepseek-flash")
+    base_url = os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com")
+    provider_sha256 = digest(base_url)
+    input_sha256 = design_input_sha256(request, model, provider_sha256)
     previous = get_design_operation(task_id, operation_id)
     if previous:
-        if previous["payload"].get("request_version") != request_version:
-            raise ValueError("相同操作标识已用于旧版研究请求")
+        generation = previous["payload"].get("generation", {})
+        if previous["payload"].get("request_version") != request_version or generation.get("input_sha256") != input_sha256:
+            raise ValueError("相同操作标识不能用于不同研究请求、模型或提示词")
         return {"version": previous["version"], "payload": previous["payload"], "reused": True}
     key = os.getenv("LAPIS_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
     if not key:
         raise ValueError("请先设置 LAPIS_API_KEY 或 DEEPSEEK_API_KEY")
-    model = os.getenv("LAPIS_MODEL", "deepseek-flash")
     client = instructor.from_openai(OpenAI(
-        api_key=key, base_url=os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com"), timeout=40, max_retries=0,
+        api_key=key, base_url=base_url, timeout=40, max_retries=0,
     ), mode=instructor.Mode.JSON)
     draft = generate_design(client, model, request)
-    payload = saved_design_payload(draft, request_version, model, operation_id, request)
-    version = propose_design(task_id, payload, actor)
-    return {"version": version, "payload": payload, "reused": False}
+    payload = saved_design_payload(draft, request_version, model, operation_id, request, provider_sha256)
+    version, saved, reused = propose_generated_design(task_id, payload, actor)
+    return {"version": version, "payload": saved, "reused": reused}
 
 
 def field_text(field, value):
