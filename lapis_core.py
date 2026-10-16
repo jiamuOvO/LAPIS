@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from pathlib import Path
+import re
 from typing import Literal
+import unicodedata
 
 from pydantic import BaseModel, Field, model_validator
 from lapis_contract import validate_research_request_v3, validate_research_request_v4, validate_research_request_v5
@@ -17,9 +20,125 @@ class Candidate(BaseModel):
     composition: dict[str, str] = Field(min_length=1)
 
 
+UNIT_DIMENSIONS = {
+    "k": "temperature", "kelvin": "temperature", "°c": "temperature", "degc": "temperature",
+    "celsius": "temperature", "°f": "temperature", "degf": "temperature", "fahrenheit": "temperature",
+    "pa": "pressure", "kpa": "pressure", "mpa": "pressure", "gpa": "pressure",
+    "bar": "pressure", "atm": "pressure",
+    "s": "time", "sec": "time", "ms": "time", "us": "time", "µs": "time",
+    "ns": "time", "ps": "time", "fs": "time",
+    "m": "length", "cm": "length", "mm": "length", "um": "length", "µm": "length",
+    "nm": "length", "å": "length", "angstrom": "length",
+    "m^2": "area", "m2": "area", "cm^2": "area", "cm2": "area",
+    "nm^2": "area", "nm2": "area", "å^2": "area", "å2": "area",
+    "m^3": "volume", "m3": "volume", "cm^3": "volume", "cm3": "volume",
+    "nm^3": "volume", "nm3": "volume", "å^3": "volume", "å3": "volume",
+    "m/s": "velocity", "nm/ns": "velocity", "m^2/s": "diffusion", "m2/s": "diffusion",
+    "cm^2/s": "diffusion", "cm2/s": "diffusion", "nm^2/ns": "diffusion",
+    "nm2/ns": "diffusion", "å^2/ps": "diffusion", "å2/ps": "diffusion",
+    "mol/l": "concentration", "mol/liter": "concentration", "mmol/l": "concentration",
+    "mol/m^3": "concentration",
+    "kg/m^3": "density", "g/cm^3": "density", "g/ml": "density",
+    "j": "energy", "kj/mol": "molar_energy", "kcal/mol": "molar_energy", "ev": "energy",
+    "kg": "mass", "g": "mass", "mg": "mass",
+    "1": "dimensionless", "%": "fraction", "wt%": "mass_fraction", "mass%": "mass_fraction",
+    "mol%": "mole_fraction", "mole%": "mole_fraction",
+    "v": "voltage", "mv": "voltage", "a": "current", "ma": "current",
+    "s/m": "conductivity", "ms/cm": "conductivity", "c": "charge", "e": "charge",
+    "hz": "frequency", "khz": "frequency", "mhz": "frequency",
+}
+
+
+def _unit_key(unit: str) -> str:
+    value = unicodedata.normalize("NFKC", unit).strip().casefold()
+    return value.replace("²", "^2").replace("³", "^3").replace(" ", "")
+
+
+def _unit_dimension(unit: str) -> str | None:
+    exact = unicodedata.normalize("NFKC", unit).strip().replace(" ", "")
+    if exact in {"M", "mM"}:
+        return "concentration"
+    if exact in {"A", "mA"}:
+        return "current"
+    key = _unit_key(unit)
+    # NFKC normalizes μ to Greek mu; accept both common micro prefixes.
+    key = key.replace("μ", "µ")
+    return UNIT_DIMENSIONS.get(key)
+
+
+def _named_dimension(name: str) -> str | None:
+    value = unicodedata.normalize("NFKC", name).casefold().replace("_", " ").replace("-", " ").strip()
+    groups = {
+        "temperature": ("temperature", "temp", "温度", "摄氏", "开尔文"),
+        "pressure": ("pressure", "压力"),
+        "time": ("time step", "timestep", "duration", "time", "时长", "时间"),
+        "length": ("length", "distance", "displacement", "位移", "长度", "尺寸"),
+        "area": ("area", "面积"), "volume": ("volume", "体积"),
+        "velocity": ("velocity", "速度"),
+        "diffusion": ("diffusion coefficient", "diffusivity", "diffusion", "扩散系数", "自扩散"),
+        "concentration": ("concentration", "molarity", "浓度"),
+        "density": ("mass density", "density", "密度"),
+        "molar_energy": ("molar energy", "摩尔能"), "energy": ("energy", "能量"),
+        "mass_fraction": ("mass fraction", "质量分数", "wt%"),
+        "mole_fraction": ("mole fraction", "摩尔分数", "mol%"),
+        "mass": ("mass", "质量"),
+        "voltage": ("voltage", "电压"), "current": ("current", "电流"),
+        "conductivity": ("conductivity", "电导率", "电导"),
+        "charge": ("charge", "电荷"), "frequency": ("frequency", "频率"),
+    }
+    matches = []
+    for dimension, aliases in groups.items():
+        for alias in aliases:
+            if re.search(r"[a-z0-9]", alias):
+                found = re.search(r"(?<![a-z0-9])" + re.escape(alias) + r"(?![a-z0-9])", value)
+            else:
+                found = alias in value
+            if found:
+                matches.append((len(alias), dimension, alias))
+    if value == "t":
+        return "temperature"
+    if not matches:
+        return None
+    specificity = max(length for length, _, _ in matches)
+    best = [(dimension, alias) for length, dimension, alias in matches if length == specificity]
+    dimensions = {dimension for dimension, _ in best}
+    if len(dimensions) != 1:
+        return None
+    dimension, alias = best[0]
+    if any(other_dimension != dimension and other_alias not in alias and alias not in other_alias
+           for _, other_dimension, other_alias in matches):
+        return None
+    return dimension
+
+
 class Quantity(BaseModel):
     value: float
     unit: str = Field(min_length=1)
+    dimension: str | None = None
+    unit_review: str | None = Field(default=None, min_length=8)
+
+    @model_validator(mode="after")
+    def valid_value_and_unit(self):
+        if not math.isfinite(self.value):
+            raise ValueError("数值必须是有限值")
+        unit_dimension = _unit_dimension(self.unit)
+        if unit_dimension:
+            if self.dimension and self.dimension != unit_dimension:
+                raise ValueError(f"单位 {self.unit} 属于 {unit_dimension} 量纲，与声明的 {self.dimension} 不符")
+        elif not self.dimension or not (self.unit_review or "").strip():
+            raise ValueError("未知单位须填写量纲和明确的 unit_review 审核说明")
+        if unit_dimension == "temperature" or self.dimension == "temperature":
+            kelvin = self.value
+            key = _unit_key(self.unit)
+            if key in {"°c", "degc", "celsius"}:
+                kelvin += 273.15
+            elif key in {"°f", "degf", "fahrenheit"}:
+                kelvin = (kelvin - 32) * 5 / 9 + 273.15
+            elif unit_dimension != "temperature":
+                raise ValueError("温度只能使用支持换算的 K、°C 或 °F 单位")
+            if kelvin <= 0:
+                raise ValueError("绝对温度必须高于 0 K")
+        return self
 
 
 class Experiment(BaseModel):
@@ -27,6 +146,8 @@ class Experiment(BaseModel):
     candidate_id: str = Field(min_length=1)
     observable: str = Field(min_length=1)
     observable_unit: str = Field(min_length=1)
+    observable_dimension: str | None = None
+    observable_unit_review: str | None = Field(default=None, min_length=8)
     conditions: dict[str, Quantity] = Field(min_length=1)
     method: str = Field(min_length=1)
     method_version: str = Field(min_length=1)
@@ -55,6 +176,32 @@ class ExecutionPlan(BaseModel):
             raise ValueError("候选或实验 ID 重复")
         if any(experiment.candidate_id not in ids for experiment in self.experiments):
             raise ValueError("实验引用了不存在的候选")
+        for experiment in self.experiments:
+            observable_unit_dimension = _unit_dimension(experiment.observable_unit)
+            observable_name_dimension = _named_dimension(experiment.observable)
+            declared = experiment.observable_dimension
+            if observable_unit_dimension:
+                if declared and declared != observable_unit_dimension:
+                    raise ValueError("观察量声明的量纲与单位不一致")
+                if observable_name_dimension and observable_name_dimension != observable_unit_dimension:
+                    raise ValueError("观察量名称与单位量纲不一致")
+                if not observable_name_dimension and not declared:
+                    raise ValueError("无法识别观察量名称；请显式填写 observable_dimension")
+            elif not declared or not (experiment.observable_unit_review or "").strip():
+                raise ValueError("未知观察量单位须填写量纲和明确的 observable_unit_review 审核说明")
+            elif observable_name_dimension and declared != observable_name_dimension:
+                raise ValueError("观察量名称与人工声明量纲不一致")
+            for name, quantity in experiment.conditions.items():
+                expected = _named_dimension(name)
+                known = _unit_dimension(quantity.unit)
+                declared = quantity.dimension
+                actual = declared or known
+                if expected and actual != expected:
+                    raise ValueError(f"条件 {name} 的单位量纲应为 {expected}")
+                if not expected and not declared:
+                    raise ValueError(f"无法识别条件 {name} 的量纲；请显式填写 dimension")
+                if known and declared and known != declared:
+                    raise ValueError(f"条件 {name} 的单位与声明量纲不一致")
         def check(value):
             if isinstance(value, str) and (not value.strip() or any(
                 marker in value.casefold() for marker in ("待定", "待确认", "tbd", "todo", "unknown", "test-only")
@@ -71,7 +218,21 @@ class ExecutionPlan(BaseModel):
 
 
 def canonical_json(value: object) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    try:
+        return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    except ValueError as error:
+        raise ValueError("JSON 数值必须是有限值") from error
+
+
+def ensure_finite_numbers(value: object, path: str = "研究设计") -> None:
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError(f"{path}中的数值必须是有限值")
+    if isinstance(value, dict):
+        for key, item in value.items():
+            ensure_finite_numbers(item, f"{path}.{key}")
+    elif isinstance(value, (list, tuple)):
+        for index, item in enumerate(value):
+            ensure_finite_numbers(item, f"{path}[{index}]")
 
 
 def digest(value: object) -> str:

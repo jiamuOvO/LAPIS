@@ -14,7 +14,8 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from lapis_core import (ExecutionPlan, check_attempt_transition, digest,
-                        intake_is_confirmed, validate_research_request_v2, verify_artifact)
+                        ensure_finite_numbers, intake_is_confirmed, validate_research_request_v2,
+                        verify_artifact)
 from lapis_intake import new_state
 from lapis_contract import CONTRACT_VERSION, validate_current_request
 
@@ -287,6 +288,7 @@ def propose_design(task_id: str, payload: dict, actor: str) -> int:
     """Incomplete designs may be stored for review; approval validates the full contract."""
     if not isinstance(payload, dict):
         raise ValueError("研究设计必须是 JSON 对象")
+    ensure_finite_numbers(payload)
     with connect() as db:
         with db.cursor(row_factory=dict_row) as cursor:
             cursor.execute("SELECT id FROM research_tasks WHERE id=%s FOR UPDATE", (task_id,))
@@ -356,13 +358,20 @@ def freeze_execution(task_id: str, version: int, actor: str) -> str:
             cursor.execute("SELECT MAX(version) AS version FROM request_versions WHERE task_id=%s", (task_id,))
             current = cursor.fetchone()["version"]
             cursor.execute(
-                "SELECT request_version,payload_sha256,status,reviewer FROM design_versions WHERE task_id=%s AND version=%s",
+                "SELECT request_version,payload,payload_sha256,status,reviewer "
+                "FROM design_versions WHERE task_id=%s AND version=%s FOR UPDATE",
                 (task_id, version),
             )
             design = cursor.fetchone()
             if design is None or design["status"] != "approved" or design["request_version"] != current:
                 raise ValueError("仅能冻结引用当前请求且经审核的研究设计")
             _require_current_request(cursor, task_id, design["request_version"])
+            payload = _json(design["payload"])
+            if digest(payload) != design["payload_sha256"]:
+                raise ValueError("研究设计内容与保存时校验和不符，拒绝冻结")
+            if payload.get("schema") == "lapis.design-draft.v1":
+                raise ValueError("模型草案不能冻结；请先补全为执行计划并另存新版本")
+            ExecutionPlan.model_validate(payload)
             cursor.execute("SELECT id FROM execution_requests WHERE task_id=%s AND design_version=%s",
                            (task_id, version))
             existing = cursor.fetchone()

@@ -1,10 +1,11 @@
 import os
 import unittest
 from unittest.mock import patch
+from pydantic import ValidationError
 
 from lapis import run_design_draft, run_simulation
 from lapis_store import (approve_design, create_task, freeze_execution, get_task,
-                         get_current_request, get_design, get_design_operation,
+                         connect, get_current_request, get_design, get_design_operation,
                          initialize_schema, propose_design, save_turn, verify_artifacts)
 
 
@@ -75,6 +76,83 @@ class StoreGateTest(unittest.TestCase):
             replay = run_design_draft(task, "test", "design-operation-1")
         self.assertTrue(replay["reused"])
         openai.assert_not_called()
+
+    def test_invalid_execution_quantities_cannot_be_approved_or_frozen(self):
+        initialize_schema()
+        task = create_task("test")
+        request = confirmed_v4_request()
+        state = {"contract_version": 5, "draft_id": request["draft_id"], "fields": request["fields"],
+                 "turns": ["研究意图", "确认"], "stage": "ready_for_design"}
+        result = {"ready": True, "ready_for_design": True, "confirmation_event": True,
+                  "intake_status": "ready_for_design", "request": request,
+                  "calculation_status": "pending_research_design"}
+        save_turn(task, 0, state, result, "test", "fake")
+
+        def plan(value, unit):
+            return {
+                "request_version": 1, "purpose": "验证执行量纲门槛",
+                "candidates": [{"id": "A", "description": "候选 A", "composition": {"A": "1"}}],
+                "experiments": [{
+                    "id": "e", "candidate_id": "A", "observable": "扩散系数", "observable_unit": "m2/s",
+                    "conditions": {"temperature": {"value": value, "unit": unit}},
+                    "method": "test-method", "method_version": "1", "model": "test-model",
+                    "model_version": "1", "parameters": {"steps": "100"},
+                    "quality_rules": ["检查稳定性"], "expected_raw_files": ["raw.log"],
+                    "max_walltime_minutes": 1,
+                }],
+            }
+
+        for design in (plan(298, "bananas"), plan(-298, "K")):
+            version = propose_design(task, design, "test")
+            with self.assertRaises(ValidationError):
+                approve_design(task, version, "test-reviewer")
+            with self.assertRaisesRegex(ValueError, "经审核"):
+                freeze_execution(task, version, "test")
+
+        with self.assertRaisesRegex(ValueError, "有限值"):
+            propose_design(task, {"request_version": 1, "parameter": float("inf")}, "test")
+
+    def test_freeze_revalidates_legacy_approved_design_before_returning_existing_id(self):
+        initialize_schema()
+        task = create_task("test")
+        request = confirmed_v4_request()
+        state = {"contract_version": 5, "draft_id": request["draft_id"], "fields": request["fields"],
+                 "turns": ["研究意图", "确认"], "stage": "ready_for_design"}
+        result = {"ready": True, "ready_for_design": True, "confirmation_event": True,
+                  "intake_status": "ready_for_design", "request": request,
+                  "calculation_status": "pending_research_design"}
+        save_turn(task, 0, state, result, "test", "fake")
+        invalid = {
+            "request_version": 1, "purpose": "验证历史审批设计冻结门槛",
+            "candidates": [{"id": "A", "description": "候选 A", "composition": {"A": "1"}}],
+            "experiments": [{
+                "id": "e", "candidate_id": "A", "observable": "扩散系数", "observable_unit": "m2/s",
+                "conditions": {"temperature": {"value": -298, "unit": "K"}},
+                "method": "test-method", "method_version": "1", "model": "test-model",
+                "model_version": "1", "parameters": {"steps": "100"},
+                "quality_rules": ["检查稳定性"], "expected_raw_files": ["raw.log"],
+                "max_walltime_minutes": 1,
+            }],
+        }
+        version = propose_design(task, invalid, "test")
+        with connect() as db:
+            db.execute("UPDATE design_versions SET status='approved',reviewer='legacy-reviewer' "
+                       "WHERE task_id=%s AND version=%s", (task, version))
+            payload_sha256 = db.execute(
+                "SELECT payload_sha256 FROM design_versions WHERE task_id=%s AND version=%s",
+                (task, version),
+            ).fetchone()[0]
+            existing_id = f"legacy-execution-{task}"
+            db.execute(
+                "INSERT INTO execution_requests (id,task_id,design_version,payload_sha256,approved_by,status) "
+                "VALUES (%s,%s,%s,%s,%s,'frozen')",
+                (existing_id, task, version, payload_sha256, "legacy-reviewer"),
+            )
+        with self.assertRaises(ValidationError):
+            freeze_execution(task, version, "test")
+        with connect() as db:
+            count = db.execute("SELECT count(*) FROM execution_requests WHERE task_id=%s", (task,)).fetchone()[0]
+        self.assertEqual(count, 1)
 
     def test_persistence_and_execution_gate(self):
         initialize_schema()

@@ -9,6 +9,23 @@ from lapis_core import (ExecutionPlan, check_attempt_transition, digest,
 
 
 class CoreGateTest(unittest.TestCase):
+    @staticmethod
+    def executable_plan(temperature=298, temperature_unit="K", observable="扩散系数",
+                        observable_unit="m2/s", conditions=None, **experiment_fields):
+        experiment = {
+            "id": "e", "candidate_id": "A", "observable": observable,
+            "observable_unit": observable_unit,
+            "conditions": conditions or {"temperature": {"value": temperature, "unit": temperature_unit}},
+            "method": "molecular dynamics", "method_version": "1",
+            "model": "reviewed model", "model_version": "1", "parameters": {"sampling": "1 ns"},
+            "quality_rules": ["检查采样稳定性"], "expected_raw_files": ["raw.log"],
+            "max_walltime_minutes": 1,
+            **experiment_fields,
+        }
+        return {"request_version": 1, "purpose": "比较候选", "candidates": [
+            {"id": "A", "description": "候选 A", "composition": {"A": "1"}}],
+            "experiments": [experiment]}
+
     def test_intake_ready_is_not_computation_approval(self):
         state = {"turns": ["筛选电解液"], "stage": None}
         result = {"ready": True, "calculation_status": "pending_research_design"}
@@ -31,6 +48,54 @@ class CoreGateTest(unittest.TestCase):
                                  "parameters": {"time": "1 ns"}, "quality_rules": ["检查"],
                                  "expected_raw_files": ["raw.log"], "max_walltime_minutes": 1}],
             })
+
+    def test_execution_units_reject_nonfinite_values_and_invalid_absolute_temperature(self):
+        for value in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(value=value), self.assertRaises(ValidationError):
+                ExecutionPlan.model_validate(self.executable_plan(temperature=value))
+        with self.assertRaises(ValidationError):
+            ExecutionPlan.model_validate(self.executable_plan(temperature=-298))
+        with self.assertRaises(ValidationError):
+            ExecutionPlan.model_validate(self.executable_plan(temperature=-273.16, temperature_unit="°C"))
+        with self.assertRaises(ValidationError):
+            ExecutionPlan.model_validate(self.executable_plan(temperature=298, temperature_unit="bananas"))
+        ExecutionPlan.model_validate(self.executable_plan(temperature=0, temperature_unit="°C"))
+        ExecutionPlan.model_validate(self.executable_plan(temperature=32, temperature_unit="°F"))
+
+    def test_known_observable_and_condition_units_must_match_dimensions(self):
+        with self.assertRaises(ValidationError):
+            ExecutionPlan.model_validate(self.executable_plan(temperature=298, temperature_unit="bar"))
+        with self.assertRaises(ValidationError):
+            ExecutionPlan.model_validate(self.executable_plan(observable_unit="s"))
+        with self.assertRaises(ValidationError):
+            ExecutionPlan.model_validate(self.executable_plan(
+                conditions={"custom condition": {"value": 1, "unit": "bar"}}))
+
+    def test_custom_units_are_allowed_only_with_explicit_dimension_and_review(self):
+        conditions = {"pressure": {"value": 1, "unit": "bar"}}
+        plan = self.executable_plan(
+            observable="custom response", observable_unit="a.u.",
+            observable_dimension="dimensionless",
+            observable_unit_review="研究人员已核对该响应量的定义和单位",
+            conditions={"pressure": {"value": 1, "unit": "bananas", "dimension": "pressure",
+                                     "unit_review": "研究人员已核对该自定义压力单位"}},
+        )
+        ExecutionPlan.model_validate(plan)
+        with self.assertRaises(ValidationError):
+            ExecutionPlan.model_validate(self.executable_plan(
+                observable="custom response", observable_unit="a.u.",
+                conditions=conditions))
+
+    def test_common_compound_quantities_and_unrecognized_names_remain_usable(self):
+        ExecutionPlan.model_validate(self.executable_plan(
+            observable="molar energy", observable_unit="kJ/mol",
+            conditions={"mass fraction": {"value": 1.0, "unit": "wt%"}},
+        ))
+        ExecutionPlan.model_validate(self.executable_plan(
+            observable="relative permittivity", observable_unit="1",
+            observable_dimension="dimensionless",
+            conditions={"salt concentration": {"value": 1.0, "unit": "M"}},
+        ))
 
     def test_artifact_is_hashed_and_confined(self):
         with tempfile.TemporaryDirectory() as base:
