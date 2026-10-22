@@ -10,11 +10,13 @@ import re
 from typing import Literal
 import unicodedata
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from lapis_contract import validate_research_request_v3, validate_research_request_v4, validate_research_request_v5
 
 
 class Candidate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: str = Field(min_length=1)
     description: str = Field(min_length=1)
     composition: dict[str, str] = Field(min_length=1)
@@ -116,6 +118,8 @@ def _named_dimension(name: str) -> str | None:
 
 
 class Quantity(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     value: float
     unit: str = Field(min_length=1)
     dimension: str | None = None
@@ -148,6 +152,8 @@ class Quantity(BaseModel):
 
 
 class Experiment(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: str = Field(min_length=1)
     candidate_id: str = Field(min_length=1)
     observable: str = Field(min_length=1)
@@ -168,14 +174,51 @@ class Experiment(BaseModel):
 
 
 class ExecutionBudget(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     estimated_resources: dict[str, str] = Field(min_length=1)
     total_runs: int = Field(gt=0)
     max_walltime_minutes: int = Field(gt=0)
     scope: str = Field(min_length=8)
 
 
+class PlanProvenance(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    request_version: int = Field(gt=0)
+    request_sha256: str = Field(min_length=64, max_length=64)
+    source_design_version: int = Field(gt=0)
+    source_design_sha256: str = Field(min_length=64, max_length=64)
+    operation_id: str = Field(min_length=1)
+
+
+class GapDisposition(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    gap_id: str = Field(min_length=1)
+    status: Literal["unresolved", "resolved", "not_applicable"]
+    reason: str = ""
+    basis_fields: list[str] = Field(default_factory=list)
+    plan_pointer: str = ""
+
+
+class PlanRevision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    parent_version: int = Field(gt=0)
+    parent_sha256: str = Field(min_length=64, max_length=64)
+    operation_id: str = Field(min_length=1)
+    actor: str = Field(min_length=1)
+    reason: str = Field(min_length=1)
+    changed_paths: list[str]
+    input_sha256: str = Field(min_length=64, max_length=64)
+    origin: Literal["researcher_adopted"]
+
+
 class ExecutionPlan(BaseModel):
     """A reviewed proposal. This does not dispatch a job by itself."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     request_version: int = Field(gt=0)
     purpose: str = Field(min_length=1)
@@ -192,7 +235,9 @@ class ExecutionPlan(BaseModel):
     comparison_pairs: list[list[str]] = Field(default_factory=list)
     screening_criteria: list[str] = Field(default_factory=list)
     hypothesis_tests: dict[str, list[str]] = Field(default_factory=dict)
-    gap_dispositions: list[dict] = Field(default_factory=list)
+    gap_dispositions: list[GapDisposition] = Field(default_factory=list)
+    provenance: PlanProvenance | None = None
+    revision: PlanRevision | None = None
 
     @model_validator(mode="after")
     def references_exist(self):

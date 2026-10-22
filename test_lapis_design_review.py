@@ -216,6 +216,89 @@ class DesignReviewTest(unittest.TestCase):
         self.assertEqual(event["payload_sha256"], digest(stored))
         self.assertFalse(event["identity_authenticated"])
 
+    def test_comparison_requires_both_candidates_in_a_shared_source_experiment(self):
+        task = create_confirmed_task()
+        source = self.save_source(task, paradigm="comparison", gaps=False)
+        plan = ready_plan(task, source)
+        plan["experiments"] = [item for item in plan["experiments"] if item["candidate_id"] != "B"]
+        with self.assertRaisesRegex(ValueError, "双方的执行覆盖"):
+            propose_execution_plan(task, plan, "offline-fixture")
+
+        task = create_confirmed_task()
+        source_payload = source_design(paradigm="screening", gaps=False)
+        source_payload["experiments"][0]["candidate_ids"] = ["A"]
+        source = propose_design(task, source_payload, "offline-fixture")
+        plan = ready_plan(task, source, paradigm="screening")
+        plan["screening_criteria"] = ["fixture selection criterion"]
+        extra = deepcopy(plan["experiments"][0])
+        extra.update(id="e1__B", candidate_id="B")
+        plan["experiments"].append(extra)
+        plan["budget"]["total_runs"] = 3
+        plan["budget"]["max_walltime_minutes"] = 6
+        with self.assertRaisesRegex(ValueError, "不属于其引用的来源实验"):
+            propose_execution_plan(task, plan, "offline-fixture")
+
+    def test_mechanism_hypothesis_mapping_is_bidirectional(self):
+        task = create_confirmed_task()
+        source = self.save_source(task, paradigm="mechanism_verification", gaps=False)
+        plan = ready_plan(task, source, paradigm="mechanism_verification")
+        plan["experiments"][0]["hypothesis_ids"] = []
+        with self.assertRaisesRegex(ValueError, "双向映射不一致"):
+            propose_execution_plan(task, plan, "offline-fixture")
+        plan["experiments"][0]["hypothesis_ids"] = ["h1"]
+        version, _, _ = propose_execution_plan(task, plan, "offline-fixture")
+        self.assertTrue(check_design(task, version)["approval_ready"])
+
+    def test_gap_disposition_must_point_to_a_matching_execution_input(self):
+        task = create_confirmed_task()
+        source = self.save_source(task, gaps=True)
+        plan = ready_plan(task, source)
+        plan["gap_dispositions"][0]["plan_pointer"] = "/gap_dispositions/0/reason"
+        with self.assertRaisesRegex(ValueError, "对应的执行输入字段"):
+            propose_execution_plan(task, plan, "offline-fixture")
+        plan = ready_plan(task, source)
+        plan["gap_dispositions"][0]["plan_pointer"] = "/experiments/0/parameters"
+        with self.assertRaisesRegex(ValueError, "与缺口类型不匹配"):
+            propose_execution_plan(task, plan, "offline-fixture")
+
+    def test_execution_plan_v2_rejects_unknown_fields_at_every_level(self):
+        task = create_confirmed_task()
+        source = self.save_source(task, gaps=False)
+        valid = ready_plan(task, source)
+        mutations = [
+            lambda plan: plan.update(execution_allowed=True),
+            lambda plan: plan["experiments"][0].update(unsupported_approval=True),
+            lambda plan: plan["candidates"][0].update(unsupported_approval=True),
+            lambda plan: plan["experiments"][0]["conditions"]["temperature"].update(extra="x"),
+            lambda plan: plan["budget"].update(extra="x"),
+            lambda plan: plan["provenance"].update(extra="x"),
+            lambda plan: plan["gap_dispositions"].append({"gap_id": "x", "status": "unresolved",
+                                                         "unsupported_approval": True}),
+        ]
+        for mutate in mutations:
+            with self.subTest(mutate=mutate):
+                bad = deepcopy(valid)
+                mutate(bad)
+                with self.assertRaises(ValidationError):
+                    propose_execution_plan(task, bad, "offline-fixture")
+
+    def test_execution_plan_review_render_shows_all_approved_inputs(self):
+        task = create_confirmed_task()
+        source = self.save_source(task, gaps=False)
+        plan = ready_plan(task, source)
+        plan["experiments"][0].update(
+            method_version="method-v-special", model="review-model-special", model_version="model-v-special",
+            parameters={"integrator": "controlled-test", "steps": "27"},
+            expected_raw_files=["trajectory-special.xtc"], max_walltime_minutes=13,
+        )
+        plan["budget"]["max_walltime_minutes"] = 14
+        version, _, _ = propose_execution_plan(task, plan, "offline-fixture")
+        output = render_design(get_design(task, version))
+        for visible in ("method-v-special", "review-model-special", "model-v-special", "controlled-test",
+                        "trajectory-special.xtc", "13 分钟", "候选比较对", "机制假设—检验实验映射"):
+            with self.subTest(visible=visible):
+                self.assertIn(visible, output)
+
     def test_screening_and_mechanism_verification_contracts(self):
         for paradigm in ("screening", "mechanism_verification"):
             with self.subTest(paradigm=paradigm):

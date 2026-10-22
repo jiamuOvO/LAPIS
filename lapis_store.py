@@ -286,6 +286,61 @@ def _has_gap_evidence(value) -> bool:
     return False
 
 
+def _gap_category(gap: dict) -> str | None:
+    text = f"{gap.get('field', '')} {gap.get('question', '')}".casefold()
+    categories = {
+        "model": ("model", "力场", "模型"),
+        "method": ("method", "方法"),
+        "quality": ("quality", "收敛", "质量判据", "质量检查"),
+        "unit": ("unit", "单位", "量纲"),
+        "condition": ("condition", "条件", "温度", "压力"),
+        "parameter": ("parameter", "参数", "采样", "步数"),
+        "raw_files": ("raw file", "原始文件", "轨迹", "输出文件"),
+        "composition": ("composition", "配方", "组成", "浓度"),
+        "budget": ("budget", "资源", "时限", "运行规模"),
+    }
+    for category, terms in categories.items():
+        if any(term in text for term in terms):
+            return category
+    return None
+
+
+def _validate_gap_pointer(payload: dict, gap: dict, disposition: dict) -> None:
+    category = _gap_category(gap)
+    if category is None:
+        raise ValueError(f"缺口 {gap.get('id')} 类型无法绑定到执行字段；须由研究人员说明不适用或明确缺口类型")
+    allowed_fields = {
+        "model": {"model", "model_version"}, "method": {"method", "method_version"},
+        "quality": {"quality_rules"}, "unit": {"observable_unit", "observable_dimension", "observable_unit_review"},
+        "condition": {"conditions"}, "parameter": {"parameters"},
+        "raw_files": {"expected_raw_files"}, "composition": {"composition"},
+        "budget": {"estimated_resources", "total_runs", "max_walltime_minutes", "scope"},
+    }
+    pointer = disposition.get("plan_pointer", "")
+    match = re.fullmatch(r"/(experiments|candidates)/(\d+)/([^/]+)|/budget/([^/]+)", pointer)
+    if not match:
+        raise ValueError(f"缺口 {gap.get('id')} 必须指向对应的执行输入字段，不能指向处置或来源元数据")
+    collection, index_text, field, budget_field = match.groups()
+    field = budget_field or field
+    if field not in allowed_fields[category]:
+        raise ValueError(f"缺口 {gap.get('id')} 的依据路径与缺口类型不匹配")
+    rows = payload.get(collection, []) if collection else [payload.get("budget", {})]
+    index = int(index_text) if index_text is not None else 0
+    if index >= len(rows) or not _has_gap_evidence(rows[index].get(field)):
+        raise ValueError(f"阻断缺口 {gap.get('id')} 的依据字段不存在或为空")
+    # A decision about a shared model, method, quality rule, sampling setup, or
+    # condition applies to every execution row generated from the source design.
+    scoped_fields = {
+        "model": ("model", "model_version"), "method": ("method", "method_version"),
+        "quality": ("quality_rules",), "unit": ("observable_unit",),
+        "condition": ("conditions",), "parameter": ("parameters",),
+        "raw_files": ("expected_raw_files",),
+    }.get(category, ())
+    for experiment in payload.get("experiments", []):
+        if any(not _has_gap_evidence(experiment.get(name)) for name in scoped_fields):
+            raise ValueError(f"缺口 {gap.get('id')} 尚未覆盖所有适用执行实验")
+
+
 def _check_bound_execution_plan(cursor, task_id: str, version: int, payload: dict, request_version: int):
     if payload.get("schema") != "lapis.execution-plan.v2":
         raise ValueError("执行计划缺少 v2 来源契约；须从已保存设计导出并补全")
@@ -315,9 +370,7 @@ def _check_bound_execution_plan(cursor, task_id: str, version: int, payload: dic
         disposition = dispositions.get(gap.get("id")) or {}
         status = disposition.get("status")
         if status == "resolved":
-            value = _pointer_value(payload, disposition.get("plan_pointer", ""))
-            if not _has_gap_evidence(value):
-                raise ValueError(f"阻断缺口 {gap.get('id')} 的依据字段不存在或为空")
+            _validate_gap_pointer(payload, gap, disposition)
             if len((disposition.get("reason") or "").strip()) < 12 or not disposition.get("basis_fields"):
                 raise ValueError(f"已解决缺口 {gap.get('id')} 须填写处置理由和请求依据字段")
         elif status == "not_applicable":
@@ -338,6 +391,11 @@ def _check_bound_execution_plan(cursor, task_id: str, version: int, payload: dic
     source_experiments = {item["id"] for item in source.get("experiments", [])}
     if any(item.get("source_experiment_id") not in source_experiments for item in plan_data["experiments"]):
         raise ValueError("每项执行实验都必须引用来源设计中的实验 ID")
+    source_by_id = {item["id"]: item for item in source.get("experiments", [])}
+    for item in plan_data["experiments"]:
+        eligible = set(source_by_id[item["source_experiment_id"]].get("candidate_ids", []))
+        if item["candidate_id"] not in eligible:
+            raise ValueError("执行实验候选不属于其引用的来源实验")
     hypothesis_ids = {item.get("id") for item in source.get("hypotheses", []) if item.get("id")}
     for experiment in plan_data["experiments"]:
         if not set(experiment.get("hypothesis_ids", [])) <= hypothesis_ids:
@@ -346,6 +404,14 @@ def _check_bound_execution_plan(cursor, task_id: str, version: int, payload: dic
         if not plan.comparison_pairs or any(len(pair) != 2 or pair[0] == pair[1] or not set(pair) <= plan_candidates
                                             for pair in plan.comparison_pairs):
             raise ValueError("比较范式须明确至少一组有效候选比较关系")
+        for left, right in plan.comparison_pairs:
+            shared_sources = {source_id for source_id, row in source_by_id.items()
+                              if {left, right} <= set(row.get("candidate_ids", []))}
+            covered = any({left, right} <= {experiment["candidate_id"] for experiment in plan_data["experiments"]
+                           if experiment["source_experiment_id"] == source_id}
+                          for source_id in shared_sources)
+            if not covered:
+                raise ValueError(f"比较关系 {left}/{right} 缺少同一来源实验下双方的执行覆盖")
     if plan.paradigm == "screening" and not plan.screening_criteria:
         raise ValueError("筛选范式须明确评价/筛选依据")
     if plan.paradigm == "mechanism_verification":
@@ -357,6 +423,11 @@ def _check_bound_execution_plan(cursor, task_id: str, version: int, payload: dic
         experiment_ids = {item["id"] for item in plan_data["experiments"]}
         if any(not set(ids) <= experiment_ids for ids in plan.hypothesis_tests.values()):
             raise ValueError("机制假设检验引用了不存在的执行实验")
+        for hypothesis_id, mapped_ids in plan.hypothesis_tests.items():
+            tagged_ids = {item["id"] for item in plan_data["experiments"]
+                          if hypothesis_id in item.get("hypothesis_ids", [])}
+            if set(mapped_ids) != tagged_ids:
+                raise ValueError(f"机制假设 {hypothesis_id} 与执行实验的双向映射不一致")
         if any(not item.get("predicted_observations") or not item.get("falsifier")
                for item in source.get("hypotheses", [])):
             raise ValueError("机制假设须含可观测预测和反驳条件")

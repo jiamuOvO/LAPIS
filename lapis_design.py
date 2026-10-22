@@ -236,6 +236,9 @@ def render_design(record: dict, request: dict | None = None) -> str:
                      f"设计 v{provenance.get('source_design_version')} "
                      f"sha256={provenance.get('source_design_sha256')}")
         lines.append(f"执行范围：{payload.get('execution_scope', '未指定')}；资源预算：{payload.get('budget', '未指定')}")
+        lines.append(f"候选比较对：{payload.get('comparison_pairs') or '无'}")
+        lines.append(f"筛选准则：{payload.get('screening_criteria') or '无'}")
+        lines.append(f"机制假设—检验实验映射：{payload.get('hypothesis_tests') or '无'}")
     if request:
         lines.append("请求来源：" + (request.get("original_intent") or "（原始意图未提供）"))
         lines.append("依据字段：" + ", ".join(f"{name}={field_value(name)}"
@@ -246,6 +249,18 @@ def render_design(record: dict, request: dict | None = None) -> str:
                      f"依据={sources(candidate)}")
     lines.append("实验：")
     for experiment in payload.get("experiments", []):
+        if payload.get("provenance"):
+            lines.append(
+                f"  - {experiment.get('id')}: 候选={experiment.get('candidate_id')}；来源实验={experiment.get('source_experiment_id')}；"
+                f"观察量={experiment.get('observable')} [{experiment.get('observable_unit')}]；"
+                f"条件={experiment.get('conditions')}；方法={experiment.get('method')} v{experiment.get('method_version')}；"
+                f"模型={experiment.get('model')} v{experiment.get('model_version')}；"
+                f"参数={experiment.get('parameters')}；质量规则={experiment.get('quality_rules')}；"
+                f"预期原始文件={experiment.get('expected_raw_files')}；"
+                f"单实验最长时限={experiment.get('max_walltime_minutes')} 分钟；"
+                f"机制假设={experiment.get('hypothesis_ids') or '无'}"
+            )
+            continue
         lines.append(f"  - {experiment.get('id')}: {experiment.get('question') or experiment.get('observable')}; "
                      f"候选={', '.join(experiment.get('candidate_ids', [experiment.get('candidate_id', '')]))}; "
                      f"指标={experiment.get('observable') or '未指定'} {experiment.get('unit') or experiment.get('observable_unit') or ''}; "
