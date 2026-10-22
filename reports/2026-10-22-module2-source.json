@@ -1,0 +1,15 @@
+{
+  "baseline_commit": "6d395742f21a0aafe6ac39e2f3761a2f67a24d07",
+  "verified_at": "2026-10-22 Asia/Shanghai",
+  "files_sha256": {
+    "README.md": "f3b8c8342da8029b795a7a3aa0170b49a19cb425367e6c2684090e5cec0b9ec0",
+    "lapis.py": "d834e2414ba2a1772f9ff6476edf7fbeac901a2946489382d36ae93c68132b5c",
+    "lapis_core.py": "411b4ae398717f4ff60914dda87203a13f97db3a3b5954b51b3e29487fb22de9",
+    "lapis_design.py": "e0a4878344ba8ee647aea0fd89b636fe4b3cdef32eac620f4c2e90b84788b813",
+    "lapis_store.py": "07bb14ea33d785f9ee6393b95d6f1b18621ad4a8677d0180110b9ea6b6cbfc78",
+    "test_lapis_design_review.py": "c548fe24d364f48442c42d241420f38224c152fa966c5d4682cbcd1e1c7629f0",
+    "test_lapis_store.py": "7db101a20f40209d5602786b6892c72d376d044bd4a1700bd470cee3644dd9b0",
+    "test_lapis_v3_contract.py": "9c0946188cd7c79dcdb2a99a650ec77fa13a5eebc019b78804050c6ff09acd3e"
+  },
+  "final_test_log": "2026-10-22-module2-final-release-tests.log"
+}

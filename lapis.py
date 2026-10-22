@@ -19,12 +19,16 @@ from openai import OpenAI
 
 from lapis_core import digest
 from lapis_contract import CONTRACT_VERSION
-from lapis_design import design_input_sha256, generate_design, saved_design_payload
+from lapis_design import (REVISION_PROMPT, design_input_sha256, generate_design,
+                          generate_design_revision, render_design, saved_design_payload)
 from lapis_intake import LABELS, PROPOSAL_PROMPT, SYSTEM_PROMPT, preview_intake
 from lapis_graph import run_intake_turn
 from lapis_store import (ROOT, approve_design, artifact_root, create_simulation_attempt, create_task,
                          db_config, freeze_execution, get_current_request, get_design, get_design_operation,
-                         get_task, get_intake_operation, initialize_schema, propose_design,
+                         get_request_version, get_task, get_intake_operation, initialize_schema, propose_design,
+                         design_edit_document, execution_plan_template, check_design, get_latest_design_version,
+                         preview_design_revision, propose_design_revision, propose_execution_plan,
+                         get_design_suggestion_operation, save_design_suggestion,
                          propose_generated_design, register_artifact, transition_attempt,
                          verify_artifacts)
 
@@ -103,6 +107,51 @@ def run_design_draft(task_id: str, actor: str, operation_id: str) -> dict:
     return {"version": version, "payload": saved, "reused": reused}
 
 
+def run_design_revision_suggestion(task_id: str, version: int, instruction: str,
+                                   operation_id: str, actor: str) -> dict:
+    request_version, request = get_current_request(task_id)
+    parent = get_design(task_id, version)
+    if parent["request_version"] != request_version:
+        raise ValueError("来源设计引用了过期研究请求")
+    if get_latest_design_version(task_id) != version:
+        raise ValueError("父设计已过期；请从最新版本生成修订建议")
+    model = os.getenv("LAPIS_MODEL", "deepseek-flash")
+    base_url = os.getenv("LAPIS_BASE_URL", "https://api.deepseek.com")
+    provider_sha256 = digest(base_url)
+    prompt_sha256 = digest(REVISION_PROMPT)
+    input_sha256 = digest({"request_sha256": digest(request), "parent_sha256": parent["payload_sha256"].strip(),
+                           "instruction": instruction, "model": model,
+                           "provider_sha256": provider_sha256, "prompt_sha256": prompt_sha256})
+    previous = get_design_suggestion_operation(task_id, operation_id)
+    if previous:
+        if previous.get("input_sha256") != input_sha256:
+            raise ValueError("相同操作标识已用于不同修订建议输入")
+        return previous["envelope"]
+    key = os.getenv("LAPIS_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
+    if not key:
+        raise ValueError("请先设置 LAPIS_API_KEY 或 DEEPSEEK_API_KEY")
+    client = instructor.from_openai(OpenAI(api_key=key, base_url=base_url, timeout=40, max_retries=0),
+                                    mode=instructor.Mode.JSON)
+    draft = generate_design_revision(client, model, request, parent["payload"], instruction)
+    payload = dict(parent["payload"])
+    payload.update({"paradigm": draft.paradigm, "rationale": draft.rationale,
+                    "candidates": [item.model_dump() for item in draft.candidates],
+                    "experiments": [item.model_dump() for item in draft.experiments],
+                    "hypotheses": [item.model_dump() for item in draft.hypotheses],
+                    "open_questions": [item.model_dump() for item in draft.open_questions],
+                    "limitations": draft.limitations})
+    from lapis_design import normalize_design_gaps
+    normalize_design_gaps(payload)
+    envelope = {"schema": "lapis.design-revision.v1", "task_id": task_id,
+                "parent_version": version, "parent_sha256": parent["payload_sha256"].strip(),
+                "request_version": request_version, "operation_id": operation_id,
+                "actor": actor, "reason": instruction, "proposal_origin": "model_suggestion",
+                "model": model, "provider_sha256": provider_sha256, "prompt_sha256": prompt_sha256,
+                "input_sha256": input_sha256, "payload": payload}
+    saved, _ = save_design_suggestion(task_id, envelope, actor)
+    return saved
+
+
 def field_text(field, value):
     entries = value if isinstance(value, list) else [value or {}]
     result = []
@@ -128,6 +177,26 @@ def field_text(field, value):
             text += "（场景变化后需重新核对）"
         result.append(text)
     return "；".join(result)
+
+
+def write_json_new(path: Path, value: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("x", encoding="utf-8") as output:
+        json.dump(value, output, ensure_ascii=False, indent=2)
+        output.write("\n")
+
+
+def read_json(path: Path) -> dict:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError("文件顶层必须是 JSON 对象")
+    return value
+
+
+def revision_preview_text(task_id: str, envelope: dict) -> str:
+    result = preview_design_revision(task_id, envelope)
+    return "修订预览（尚未采用）\n父版本：v{}\n变更字段：\n{}\n\n采用须另行运行 revise-design。".format(
+        result["parent_version"], "\n".join("  - " + path for path in result["changed_paths"]))
 
 
 def hydrate_review(result):
@@ -382,10 +451,43 @@ def main():
     show_design = sub.add_parser("show-design", help="查看已保存的研究设计版本")
     show_design.add_argument("task_id")
     show_design.add_argument("version", type=int)
+    show_design.add_argument("--debug", action="store_true", help="显示完整技术 JSON")
+    export_design = sub.add_parser("export-design", help="导出带父版本校验的可编辑修订文件")
+    export_design.add_argument("task_id")
+    export_design.add_argument("version", type=int)
+    export_design.add_argument("file", type=Path)
+    export_design.add_argument("--actor", default="researcher")
+    suggest_revision = sub.add_parser("suggest-design-revision", help="生成待审阅的自然语言修订建议（调用模型）")
+    suggest_revision.add_argument("task_id")
+    suggest_revision.add_argument("version", type=int)
+    suggest_revision.add_argument("instruction")
+    suggest_revision.add_argument("--output", type=Path, required=True)
+    suggest_revision.add_argument("--operation-id")
+    suggest_revision.add_argument("--actor", default="researcher")
+    preview_revision = sub.add_parser("preview-revision", help="预览结构化修订差异，不写数据库")
+    preview_revision.add_argument("task_id")
+    preview_revision.add_argument("file", type=Path)
+    revise = sub.add_parser("revise-design", help="明确采用修订文件并保存为新版本")
+    revise.add_argument("task_id")
+    revise.add_argument("file", type=Path)
+    revise.add_argument("--actor", default="researcher")
+    check = sub.add_parser("check-design", help="无模型检查设计来源、缺口和软件审批条件")
+    check.add_argument("task_id")
+    check.add_argument("version", type=int)
+    check.add_argument("--json", action="store_true", help="输出机器可读 JSON")
+    export_plan = sub.add_parser("export-plan", help="从来源设计导出待补全执行计划模板")
+    export_plan.add_argument("task_id")
+    export_plan.add_argument("version", type=int)
+    export_plan.add_argument("file", type=Path)
+    propose_plan = sub.add_parser("propose-plan", help="保存完整、来源绑定的执行计划新版本")
+    propose_plan.add_argument("task_id")
+    propose_plan.add_argument("file", type=Path)
+    propose_plan.add_argument("--actor", default="researcher")
     approve = sub.add_parser("approve-design")
     approve.add_argument("task_id")
     approve.add_argument("version", type=int)
     approve.add_argument("--reviewer", required=True)
+    approve.add_argument("--statement", required=True, help="说明已审核的具体范围和限制；不是身份认证")
     freeze = sub.add_parser("freeze")
     freeze.add_argument("task_id")
     freeze.add_argument("version", type=int)
@@ -450,9 +552,56 @@ def main():
             result = run_design_draft(args.task_id, args.actor, operation_id)
             print(json.dumps(result, ensure_ascii=False, indent=2))
         elif args.command == "show-design":
-            print(json.dumps(get_design(args.task_id, args.version), ensure_ascii=False, indent=2))
+            record = get_design(args.task_id, args.version)
+            if args.debug:
+                print(json.dumps(record, ensure_ascii=False, indent=2))
+            else:
+                request = get_request_version(args.task_id, record["request_version"])["payload"]
+                print(render_design(record, request))
+        elif args.command == "export-design":
+            write_json_new(args.file, design_edit_document(args.task_id, args.version, args.actor))
+            print(f"已导出可编辑修订文件：{args.file}")
+        elif args.command == "suggest-design-revision":
+            saved_file = read_json(args.output) if args.output.exists() else None
+            operation_id = args.operation_id or (saved_file or {}).get("operation_id") or str(uuid4())
+            if saved_file and saved_file.get("operation_id") != operation_id:
+                raise ValueError("输出文件属于其他 operation_id；请指定新路径")
+            print(f"operation_id={operation_id}", flush=True)
+            envelope = run_design_revision_suggestion(args.task_id, args.version, args.instruction,
+                                                      operation_id, args.actor)
+            if args.output.exists():
+                if read_json(args.output) != envelope:
+                    raise ValueError("输出文件已存在且内容不同；请指定新路径")
+            else:
+                write_json_new(args.output, envelope)
+            print(revision_preview_text(args.task_id, envelope))
+            print(f"建议文件：{args.output}；尚未采用，也未修改数据库。")
+        elif args.command == "preview-revision":
+            print(revision_preview_text(args.task_id, read_json(args.file)))
+        elif args.command == "revise-design":
+            version, payload, reused = propose_design_revision(args.task_id, read_json(args.file), args.actor)
+            print(json.dumps({"version": version, "reused": reused, "payload": payload},
+                             ensure_ascii=False, indent=2))
+        elif args.command == "check-design":
+            report = check_design(args.task_id, args.version)
+            if args.json:
+                print(json.dumps(report, ensure_ascii=False, indent=2))
+            else:
+                print(f"设计 v{args.version} 软件完整性：{'可进入人工审核' if report['approval_ready'] else '未通过'}")
+                print(f"科研适用性：{report['research_suitability']}")
+                for issue in report["issues"]:
+                    print("- " + issue)
+            if not report["approval_ready"]:
+                raise ValueError("设计未达到可审核条件；详见上述缺口")
+        elif args.command == "export-plan":
+            write_json_new(args.file, execution_plan_template(args.task_id, args.version))
+            print(f"已导出待补全模板：{args.file}；空字段、未定参数和未解决缺口会阻止保存或审批。")
+        elif args.command == "propose-plan":
+            version, payload, reused = propose_execution_plan(args.task_id, read_json(args.file), args.actor)
+            print(json.dumps({"version": version, "reused": reused, "payload": payload},
+                             ensure_ascii=False, indent=2))
         elif args.command == "approve-design":
-            approve_design(args.task_id, args.version, args.reviewer)
+            approve_design(args.task_id, args.version, args.reviewer, args.statement)
             print("研究设计已审核")
         elif args.command == "freeze":
             print(freeze_execution(args.task_id, args.version, args.actor))

@@ -1,0 +1,72 @@
+{
+  "source_commit": "6d395742f21a0aafe6ac39e2f3761a2f67a24d07",
+  "final_suite": {
+    "command": ".\\.conda-lapis\\python.exe -X utf8 -m unittest discover -s . -p 'test_*.py' -v",
+    "database": "temporary isolated PostgreSQL, database lapis_test",
+    "result": "passed",
+    "tests_run": 163,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "duration_seconds": 32.831,
+    "log": "2026-10-22-module2-final-release-tests.log"
+  },
+  "module2_scenarios": [
+    {
+      "test": "test_readable_check_export_and_revision_are_non_destructive_and_idempotent",
+      "result": "passed",
+      "checks": ["human-readable provenance", "stable gap IDs", "check-design has no writes", "preview does not mutate", "immutable parent", "replay returns persisted version", "stale parent blocked", "same operation with changed input rejected"]
+    },
+    {
+      "test": "test_supplied_fec_case_remains_unverified_and_all_open_science_items_block",
+      "result": "passed",
+      "checks": ["demo origin retained", "execution_allowed remains false", "scientific_result remains null", "formula, force-field, sampling and quality gaps block plan"]
+    },
+    {
+      "test": "test_cli_design_plan_review_freeze_and_simulation_path",
+      "result": "passed",
+      "checks": ["show-design", "export-plan", "propose-plan", "check-design", "explicit review statement", "freeze", "simulate", "artifact origin=simulation", "scientific_result=null"]
+    },
+    {
+      "test": "test_screening_and_mechanism_verification_contracts",
+      "result": "passed",
+      "checks": ["screening requires criteria", "mechanism hypotheses map to experiments", "comparison requires valid candidate relation"]
+    },
+    {
+      "test": "test_plan_tampering_units_missing_fields_and_budget_limits_are_rejected",
+      "result": "passed",
+      "checks": ["forged source hash", "unknown and conflicting units", "missing quality rule", "insufficient wall-time budget", "unknown source experiment", "duplicate candidate ID"]
+    },
+    {
+      "test": "test_bound_plan_temperature_observable_accepts_kelvin_and_rejects_unknown_units",
+      "result": "passed",
+      "checks": ["Kelvin accepted", "unknown temperature unit rejected", "bar rejected as temperature unit"]
+    },
+    {
+      "test": "test_bound_plan_temperature_observable_accepts_kelvin_and_rejects_unknown_units",
+      "result": "passed",
+      "checks": ["Kelvin allowed", "unknown temperature unit rejected", "pressure unit rejected for temperature"]
+    },
+    {
+      "test": "test_revision_of_approved_plan_requires_new_approval_and_old_freeze_is_blocked",
+      "result": "passed",
+      "checks": ["revised plan creates a new version", "old approved plan cannot freeze", "new version requires new review"]
+    },
+    {
+      "test": "test_model_revision_suggestion_is_not_saved_until_explicit_adoption",
+      "result": "passed",
+      "checks": ["model suggestion uses an offline mock", "suggestion does not change design version", "same operation replays without model call", "changed input conflicts"]
+    }
+  ],
+  "legacy_regressions": {
+    "baseline_tests": 153,
+    "baseline_result": "passed",
+    "round1_round2_probe_files": "left unchanged",
+    "covered_by_final_suite": ["execution unit gates", "temperature units", "design generation concurrency and canonical persisted result", "design operation replay", "request staleness", "legacy freeze protections"]
+  },
+  "external_calls": {
+    "paid_model_calls": 0,
+    "real_material_calculations": 0,
+    "research_conclusions": 0
+  }
+}

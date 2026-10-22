@@ -163,6 +163,15 @@ class Experiment(BaseModel):
     quality_rules: list[str] = Field(min_length=1)
     expected_raw_files: list[str] = Field(min_length=1)
     max_walltime_minutes: int = Field(gt=0)
+    source_experiment_id: str | None = None
+    hypothesis_ids: list[str] = Field(default_factory=list)
+
+
+class ExecutionBudget(BaseModel):
+    estimated_resources: dict[str, str] = Field(min_length=1)
+    total_runs: int = Field(gt=0)
+    max_walltime_minutes: int = Field(gt=0)
+    scope: str = Field(min_length=8)
 
 
 class ExecutionPlan(BaseModel):
@@ -173,6 +182,17 @@ class ExecutionPlan(BaseModel):
     candidates: list[Candidate] = Field(min_length=1)
     experiments: list[Experiment] = Field(min_length=1)
     source: Literal["researcher"] = "researcher"
+    execution_scope: Literal["research", "software_test"] | None = None
+    schema_version: str | None = Field(default=None, alias="schema")
+    paradigm: Literal["screening", "mechanism_verification", "comparison"] | None = None
+    source_design_version: int | None = None
+    source_design_sha256: str | None = None
+    request_sha256: str | None = None
+    budget: ExecutionBudget | None = None
+    comparison_pairs: list[list[str]] = Field(default_factory=list)
+    screening_criteria: list[str] = Field(default_factory=list)
+    hypothesis_tests: dict[str, list[str]] = Field(default_factory=dict)
+    gap_dispositions: list[dict] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def references_exist(self):

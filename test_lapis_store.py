@@ -88,7 +88,7 @@ class StoreGateTest(unittest.TestCase):
         self.assertEqual(get_design_operation(task, "design-operation-1")["version"], design_version)
         self.assertEqual(get_design(task, design_version)["payload"], payload)
         with self.assertRaisesRegex(ValueError, "不能直接审批"):
-            approve_design(task, design_version, "test-reviewer")
+            approve_design(task, design_version, "test-reviewer", "检查当前请求、设计内容和研究结论边界")
 
         with patch("lapis.get_current_request", return_value=(1, current)), \
              patch("lapis.get_design_operation", return_value={
@@ -175,8 +175,8 @@ class StoreGateTest(unittest.TestCase):
 
         for design in (plan(298, "bananas"), plan(-298, "K")):
             version = propose_design(task, design, "test")
-            with self.assertRaises(ValidationError):
-                approve_design(task, version, "test-reviewer")
+            with self.assertRaises(ValueError):
+                approve_design(task, version, "test-reviewer", "检查方法、条件、单位与质量规则")
             with self.assertRaisesRegex(ValueError, "经审核"):
                 freeze_execution(task, version, "test")
 
@@ -219,7 +219,7 @@ class StoreGateTest(unittest.TestCase):
                 "VALUES (%s,%s,%s,%s,%s,'frozen')",
                 (existing_id, task, version, payload_sha256, "legacy-reviewer"),
             )
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValueError):
             freeze_execution(task, version, "test")
         with connect() as db:
             count = db.execute("SELECT count(*) FROM execution_requests WHERE task_id=%s", (task,)).fetchone()[0]
@@ -247,7 +247,7 @@ class StoreGateTest(unittest.TestCase):
 
         incomplete = propose_design(task, {"request_version": 1}, "test")
         with self.assertRaises(ValueError):
-            approve_design(task, incomplete, "test-reviewer")
+            approve_design(task, incomplete, "test-reviewer", "检查方法、条件、单位与质量规则")
         with self.assertRaises(ValueError):
             freeze_execution(task, incomplete, "test")
         plan = {
@@ -262,18 +262,10 @@ class StoreGateTest(unittest.TestCase):
             }],
         }
         version = propose_design(task, plan, "test")
-        approve_design(task, version, "test-reviewer")
-        execution = freeze_execution(task, version, "test")
-        self.assertEqual(execution, freeze_execution(task, version, "test"))
-        with self.assertRaises(RuntimeError):
-            run_simulation(execution, "test-adapter", fail=True)
-        run_simulation(execution, "test-adapter", fail=False)
-        manifest = verify_artifacts(execution)
-        self.assertEqual(len(manifest), 1)
-        self.assertTrue(manifest[0]["valid"])
-        self.assertEqual(manifest[0]["origin"], "simulation")
+        with self.assertRaisesRegex(ValueError, "v2 来源契约"):
+            approve_design(task, version, "test-reviewer", "检查方法、条件、单位与质量规则")
         with self.assertRaises(ValueError):
-            run_simulation(execution, "test-adapter", fail=False)
+            freeze_execution(task, version, "test")
         with self.assertRaises(ValueError):
             save_turn(task, 0, state, result, "test", "fake")
 

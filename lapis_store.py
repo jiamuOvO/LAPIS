@@ -10,6 +10,7 @@ import re
 from uuid import uuid4
 
 import psycopg
+from pydantic import ValidationError
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
@@ -17,8 +18,8 @@ from lapis_core import (ExecutionPlan, check_attempt_transition, digest,
                         ensure_finite_numbers, intake_is_confirmed, validate_research_request_v2,
                         verify_artifact)
 from lapis_intake import new_state
-from lapis_design import design_input_sha256
-from lapis_contract import CONTRACT_VERSION, validate_current_request
+from lapis_design import DesignDraft, changed_paths, design_input_sha256, normalize_design_gaps
+from lapis_contract import CONTRACT_VERSION, FIELDS, validate_current_request
 
 
 ROOT = Path(__file__).resolve().parent
@@ -183,15 +184,232 @@ def get_design_operation(task_id: str, operation_id: str) -> dict | None:
             return row
 
 
+def get_design_suggestion_operation(task_id: str, operation_id: str) -> dict | None:
+    with connect() as db:
+        with db.cursor(row_factory=dict_row) as cursor:
+            row = cursor.execute("SELECT details FROM audit_events WHERE task_id=%s "
+                                 "AND action='design_revision_suggested' "
+                                 "AND details->>'operation_id'=%s ORDER BY id DESC LIMIT 1",
+                                 (task_id, operation_id)).fetchone()
+            return _json(row["details"]) if row else None
+
+
+def save_design_suggestion(task_id: str, envelope: dict, actor: str) -> tuple[dict, bool]:
+    operation_id = envelope.get("operation_id")
+    input_sha256 = envelope.get("input_sha256")
+    if not operation_id or not input_sha256:
+        raise ValueError("设计修订建议缺少 operation_id 或输入指纹")
+    with connect() as db:
+        with db.cursor(row_factory=dict_row) as cursor:
+            task = cursor.execute("SELECT status,active_request_version FROM research_tasks WHERE id=%s FOR UPDATE",
+                                  (task_id,)).fetchone()
+            if not task or task["status"] != "request_confirmed" or task["active_request_version"] != envelope.get("request_version"):
+                raise ValueError("生成建议期间研究请求已改变，请重新生成")
+            parent = cursor.execute("SELECT payload_sha256,request_version FROM design_versions "
+                                    "WHERE task_id=%s AND version=%s", (task_id, envelope.get("parent_version"))).fetchone()
+            if not parent or parent["request_version"] != envelope["request_version"] or \
+                    parent["payload_sha256"].strip() != envelope.get("parent_sha256"):
+                raise ValueError("生成建议期间父设计已改变")
+            previous = cursor.execute("SELECT details FROM audit_events WHERE task_id=%s "
+                                      "AND action='design_revision_suggested' AND details->>'operation_id'=%s "
+                                      "ORDER BY id DESC LIMIT 1", (task_id, operation_id)).fetchone()
+            if previous:
+                saved = _json(previous["details"])
+                if saved.get("input_sha256") != input_sha256:
+                    raise ValueError("相同操作标识已用于不同修订建议输入")
+                return saved["envelope"], True
+            _event(cursor, task_id, actor, "design_revision_suggested", {
+                "operation_id": operation_id, "input_sha256": input_sha256,
+                "parent_version": envelope["parent_version"], "parent_sha256": envelope["parent_sha256"],
+                "request_version": envelope["request_version"], "model": envelope.get("model"),
+                "prompt_sha256": envelope.get("prompt_sha256"), "envelope": envelope,
+                "adopted": False,
+            })
+        db.commit()
+    return envelope, False
+
+
 def get_design(task_id: str, version: int) -> dict:
     with connect() as db:
         with db.cursor(row_factory=dict_row) as cursor:
-            cursor.execute("SELECT payload,status,request_version FROM design_versions WHERE task_id=%s AND version=%s",
+            cursor.execute("SELECT payload,status,request_version,payload_sha256 "
+                           "FROM design_versions WHERE task_id=%s AND version=%s",
                            (task_id, version))
             row = cursor.fetchone()
             if row is None:
                 raise ValueError("研究设计版本不存在")
             return {"task_id": task_id, "version": version, **row, "payload": _json(row["payload"])}
+
+
+def get_latest_design_version(task_id: str) -> int | None:
+    with connect() as db:
+        with db.cursor() as cursor:
+            return cursor.execute("SELECT MAX(version) FROM design_versions WHERE task_id=%s",
+                                  (task_id,)).fetchone()[0]
+
+
+def get_request_version(task_id: str, version: int) -> dict:
+    with connect() as db:
+        with db.cursor(row_factory=dict_row) as cursor:
+            row = cursor.execute("SELECT payload,payload_sha256 FROM request_versions WHERE task_id=%s AND version=%s",
+                                 (task_id, version)).fetchone()
+            if row is None:
+                raise ValueError("研究请求版本不存在")
+            return {"payload": _json(row["payload"]), "payload_sha256": row["payload_sha256"].strip()}
+
+
+def _pointer_value(value: dict, pointer: str):
+    if not isinstance(pointer, str) or not pointer.startswith("/"):
+        raise ValueError("缺口依据须使用 JSON Pointer")
+    current = value
+    for token in pointer.split("/")[1:]:
+        token = token.replace("~1", "/").replace("~0", "~")
+        if isinstance(current, list) and token.isdigit() and int(token) < len(current):
+            current = current[int(token)]
+        elif isinstance(current, dict) and token in current:
+            current = current[token]
+        else:
+            return None
+    return current
+
+
+def _has_gap_evidence(value) -> bool:
+    if isinstance(value, str):
+        text = value.strip().casefold()
+        return bool(text) and not any(token in text for token in ("待定", "待确认", "tbd", "todo", "unknown"))
+    if isinstance(value, (int, float)):
+        return True
+    if isinstance(value, dict):
+        return bool(value) and all(_has_gap_evidence(item) for item in value.values())
+    if isinstance(value, list):
+        return bool(value) and all(_has_gap_evidence(item) for item in value)
+    return False
+
+
+def _check_bound_execution_plan(cursor, task_id: str, version: int, payload: dict, request_version: int):
+    if payload.get("schema") != "lapis.execution-plan.v2":
+        raise ValueError("执行计划缺少 v2 来源契约；须从已保存设计导出并补全")
+    provenance = payload.get("provenance") or {}
+    if payload.get("request_version") != request_version or provenance.get("request_version") != request_version:
+        raise ValueError("执行计划绑定的研究请求版本不一致")
+    current_request = _require_current_request(cursor, task_id, request_version)
+    request_sha = digest(current_request)
+    if provenance.get("request_sha256") != request_sha:
+        raise ValueError("执行计划研究请求来源哈希不一致")
+    source_version = provenance.get("source_design_version")
+    source_sha = provenance.get("source_design_sha256")
+    if not isinstance(source_version, int) or source_version >= version:
+        raise ValueError("执行计划必须引用更早的已保存设计版本")
+    source_row = cursor.execute(
+        "SELECT payload,payload_sha256,request_version FROM design_versions WHERE task_id=%s AND version=%s",
+        (task_id, source_version)).fetchone()
+    if source_row is None or source_row["request_version"] != request_version:
+        raise ValueError("执行计划引用的设计版本不存在或请求已过期")
+    source = normalize_design_gaps(_json(source_row["payload"]))
+    if source_sha != source_row["payload_sha256"].strip() or digest(source) != source_sha:
+        raise ValueError("执行计划来源设计哈希不一致")
+    dispositions = {item.get("gap_id"): item for item in payload.get("gap_dispositions", [])}
+    for gap in source.get("open_questions", []):
+        if not gap.get("blocks_execution", True):
+            continue
+        disposition = dispositions.get(gap.get("id")) or {}
+        status = disposition.get("status")
+        if status == "resolved":
+            value = _pointer_value(payload, disposition.get("plan_pointer", ""))
+            if not _has_gap_evidence(value):
+                raise ValueError(f"阻断缺口 {gap.get('id')} 的依据字段不存在或为空")
+            if len((disposition.get("reason") or "").strip()) < 12 or not disposition.get("basis_fields"):
+                raise ValueError(f"已解决缺口 {gap.get('id')} 须填写处置理由和请求依据字段")
+        elif status == "not_applicable":
+            if len((disposition.get("reason") or "").strip()) < 12 or not disposition.get("basis_fields"):
+                raise ValueError(f"不适用缺口 {gap.get('id')} 须填写具体理由和请求依据字段")
+        else:
+            raise ValueError(f"仍有未解决的执行阻断缺口：{gap.get('id')} — {gap.get('question')}")
+        if set(disposition.get("basis_fields", [])) - set(FIELDS):
+            raise ValueError(f"缺口 {gap.get('id')} 引用了不存在的研究请求依据字段")
+    plan = ExecutionPlan.model_validate(payload)
+    plan_data = plan.model_dump()
+    if plan.paradigm != source.get("paradigm"):
+        raise ValueError("执行计划范式必须与来源设计一致")
+    source_candidates = {item["id"] for item in source.get("candidates", [])}
+    plan_candidates = {item["id"] for item in plan_data["candidates"]}
+    if plan_candidates != source_candidates:
+        raise ValueError("执行计划候选 ID 必须与来源设计候选完全对应")
+    source_experiments = {item["id"] for item in source.get("experiments", [])}
+    if any(item.get("source_experiment_id") not in source_experiments for item in plan_data["experiments"]):
+        raise ValueError("每项执行实验都必须引用来源设计中的实验 ID")
+    hypothesis_ids = {item.get("id") for item in source.get("hypotheses", []) if item.get("id")}
+    for experiment in plan_data["experiments"]:
+        if not set(experiment.get("hypothesis_ids", [])) <= hypothesis_ids:
+            raise ValueError("执行实验引用了不存在的机制假设")
+    if plan.paradigm == "comparison":
+        if not plan.comparison_pairs or any(len(pair) != 2 or pair[0] == pair[1] or not set(pair) <= plan_candidates
+                                            for pair in plan.comparison_pairs):
+            raise ValueError("比较范式须明确至少一组有效候选比较关系")
+    if plan.paradigm == "screening" and not plan.screening_criteria:
+        raise ValueError("筛选范式须明确评价/筛选依据")
+    if plan.paradigm == "mechanism_verification":
+        if not hypothesis_ids or set(plan.hypothesis_tests) != hypothesis_ids:
+            raise ValueError("机制验证须为来源假设指定检验实验")
+        for hypothesis_id in hypothesis_ids:
+            if not plan.hypothesis_tests.get(hypothesis_id):
+                raise ValueError(f"机制假设 {hypothesis_id} 缺少检验实验")
+        experiment_ids = {item["id"] for item in plan_data["experiments"]}
+        if any(not set(ids) <= experiment_ids for ids in plan.hypothesis_tests.values()):
+            raise ValueError("机制假设检验引用了不存在的执行实验")
+        if any(not item.get("predicted_observations") or not item.get("falsifier")
+               for item in source.get("hypotheses", [])):
+            raise ValueError("机制假设须含可观测预测和反驳条件")
+    budget = plan.budget
+    if budget is None or not budget.scope.strip() or not budget.estimated_resources:
+        raise ValueError("执行计划须明确资源估算、总运行规模、最长总时限和批准范围")
+    if any(not key.strip() or not value.strip() for key, value in budget.estimated_resources.items()):
+        raise ValueError("资源估算名称与取值不得为空")
+    if budget.total_runs < len(plan_data["experiments"]):
+        raise ValueError("总运行规模不能少于执行实验数量")
+    if budget.max_walltime_minutes < sum(item["max_walltime_minutes"] for item in plan_data["experiments"]):
+        raise ValueError("总最长时限不能小于各执行实验时限之和")
+    if plan.execution_scope not in {"research", "software_test"}:
+        raise ValueError("执行计划须明确区分研究范围或软件测试范围")
+    return plan
+
+
+def check_design(task_id: str, version: int) -> dict:
+    record = get_design(task_id, version)
+    task = get_task(task_id)
+    with connect() as db:
+        with db.cursor() as cursor:
+            latest_design = cursor.execute("SELECT MAX(version) FROM design_versions WHERE task_id=%s",
+                                           (task_id,)).fetchone()[0]
+    report = {"task_id": task_id, "design_version": version,
+              "request_version": record["request_version"], "design_sha256": record["payload_sha256"].strip(),
+              "current_request": task["active_request_version"] == record["request_version"] and
+                                task["status"] == "request_confirmed",
+              "status": record["status"], "approval_ready": False,
+              "research_suitability": "requires_researcher_review", "issues": []}
+    if version != latest_design:
+        report["issues"].append(f"不是最新设计版本；当前最新为 v{latest_design}")
+    payload = record["payload"]
+    if digest(payload) != report["design_sha256"]:
+        report["issues"].append("保存内容与数据库哈希不一致")
+    if not report["current_request"]:
+        report["issues"].append("引用的研究请求不是当前已确认版本")
+    if payload.get("schema") == "lapis.execution-plan.v2":
+        try:
+            with connect() as db:
+                with db.cursor(row_factory=dict_row) as cursor:
+                    _check_bound_execution_plan(cursor, task_id, version, payload, record["request_version"])
+            report["approval_ready"] = not report["issues"] and record["status"] == "proposed"
+        except (ValueError, ValidationError) as error:
+            report["issues"].append(str(error))
+    else:
+        for gap in normalize_design_gaps(dict(payload)).get("open_questions", []):
+            if gap.get("blocks_execution", True):
+                report["issues"].append(f"未定项 {gap['id']} 阻断执行：{gap['question']}")
+        report["issues"].append("设计草案尚未转换为来源绑定的完整执行计划")
+    if record["status"] != "proposed":
+        report["issues"].append(f"当前设计状态为 {record['status']}，需新建版本后重新审核")
+    return report
 
 
 def get_intake_operation(operation_id: str) -> dict | None:
@@ -288,6 +506,7 @@ def _require_current_request(cursor, task_id: str, version: int) -> dict:
 def _store_design(task_id: str, payload: dict, actor: str, *, generated: bool) -> tuple[int, dict, bool]:
     if not isinstance(payload, dict):
         raise ValueError("研究设计必须是 JSON 对象")
+    normalize_design_gaps(payload)
     ensure_finite_numbers(payload)
     with connect() as db:
         with db.cursor(row_factory=dict_row) as cursor:
@@ -343,32 +562,262 @@ def propose_generated_design(task_id: str, payload: dict, actor: str) -> tuple[i
     return _store_design(task_id, payload, actor, generated=True)
 
 
-def approve_design(task_id: str, version: int, reviewer: str) -> None:
-    """Record a reviewer claim; CLI identity is not authenticated for real execution."""
+def design_edit_document(task_id: str, version: int, actor: str) -> dict:
+    record = get_design(task_id, version)
+    task = get_task(task_id)
+    if task["active_request_version"] != record["request_version"]:
+        raise ValueError("不能从过期请求的设计导出修订")
+    if get_latest_design_version(task_id) != version:
+        raise ValueError("父设计已过期；请基于最新版本重新导出")
+    return {"schema": "lapis.design-revision.v1", "task_id": task_id,
+            "parent_version": version, "parent_sha256": record["payload_sha256"].strip(),
+            "request_version": record["request_version"], "operation_id": "填写唯一操作标识",
+            "actor": actor, "reason": "填写修改理由", "payload": record["payload"]}
+
+
+def _validate_revision_envelope(cursor, task_id: str, envelope: dict, *, require_latest: bool = True) -> tuple[dict, dict, str]:
+    if envelope.get("schema") != "lapis.design-revision.v1" or envelope.get("task_id") != task_id:
+        raise ValueError("修订文件类型或任务 ID 不匹配")
+    parent_version = envelope.get("parent_version")
+    operation_id = envelope.get("operation_id")
+    reason = (envelope.get("reason") or "").strip()
+    if not isinstance(parent_version, int) or not operation_id or operation_id == "填写唯一操作标识" or len(reason) < 4:
+        raise ValueError("修订须指定父版本、唯一操作标识和修改理由")
+    current = cursor.execute("SELECT status,active_request_version FROM research_tasks WHERE id=%s FOR UPDATE",
+                             (task_id,)).fetchone()
+    if not current or current["status"] != "request_confirmed" or current["active_request_version"] is None:
+        raise ValueError("当前任务没有有效的已确认研究请求")
+    if envelope.get("request_version") != current["active_request_version"]:
+        raise ValueError("修订文件引用了过期请求版本")
+    parent = cursor.execute("SELECT payload,payload_sha256,request_version,status FROM design_versions "
+                            "WHERE task_id=%s AND version=%s FOR UPDATE", (task_id, parent_version)).fetchone()
+    if parent is None or parent["request_version"] != envelope["request_version"]:
+        raise ValueError("父设计不存在或请求版本已过期")
+    if envelope.get("parent_sha256") != parent["payload_sha256"].strip():
+        raise ValueError("父版本哈希变化；请重新导出并人工合并")
+    latest = cursor.execute("SELECT MAX(version) AS version FROM design_versions WHERE task_id=%s",
+                            (task_id,)).fetchone()["version"]
+    if require_latest and latest != parent_version:
+        raise ValueError(f"父版本已过期；当前最新设计为 v{latest}，不自动合并")
+    return _json(parent["payload"]), envelope.get("payload"), operation_id
+
+
+def preview_design_revision(task_id: str, envelope: dict) -> dict:
+    with connect() as db:
+        with db.cursor(row_factory=dict_row) as cursor:
+            parent, proposed, operation_id = _validate_revision_envelope(cursor, task_id, envelope)
+    if not isinstance(proposed, dict) or proposed.get("schema") != parent.get("schema"):
+        raise ValueError("修订内容必须保持父设计的契约类型")
+    if proposed.get("request_version") != parent.get("request_version") or proposed.get("generation") != parent.get("generation"):
+        raise ValueError("修订不能改写请求版本或最初生成来源")
+    if parent.get("schema") == "lapis.execution-plan.v2":
+        old_provenance = dict(parent.get("provenance") or {})
+        new_provenance = dict(proposed.get("provenance") or {})
+        old_provenance.pop("operation_id", None)
+        new_provenance.pop("operation_id", None)
+        if old_provenance != new_provenance:
+            raise ValueError("执行计划修订不能改写请求/来源设计版本或哈希")
+    if proposed.get("revision") != parent.get("revision"):
+        raise ValueError("修订文件不能伪造历史修订链")
+    if proposed.get("schema") == "lapis.design-draft.v1":
+        normalize_design_gaps(proposed)
+        DesignDraft.model_validate({key: proposed.get(key) for key in
+                                    ("paradigm", "rationale", "candidates", "experiments", "hypotheses",
+                                     "open_questions", "limitations")})
+    elif proposed.get("schema") == "lapis.execution-plan.v2":
+        ExecutionPlan.model_validate(proposed)
+    diff = changed_paths(parent, proposed)
+    if not diff:
+        raise ValueError("修订没有内容变化")
+    return {"parent_version": envelope["parent_version"], "operation_id": operation_id,
+            "changed_paths": diff, "proposal": proposed, "adopted": False}
+
+
+def propose_design_revision(task_id: str, envelope: dict, actor: str | None = None) -> tuple[int, dict, bool]:
+    operation_id = envelope.get("operation_id")
+    if operation_id:
+        with connect() as db:
+            with db.cursor(row_factory=dict_row) as cursor:
+                parent, proposed, _ = _validate_revision_envelope(cursor, task_id, envelope, require_latest=False)
+                input_hash = digest({"parent_sha256": envelope.get("parent_sha256"), "payload": proposed,
+                                     "reason": envelope.get("reason"),
+                                     "request_version": envelope.get("request_version")})
+                previous = cursor.execute("SELECT version,payload FROM design_versions WHERE task_id=%s "
+                                          "AND payload->'revision'->>'operation_id'=%s",
+                                          (task_id, operation_id)).fetchone()
+                if previous:
+                    saved = _json(previous["payload"])
+                    if saved.get("revision", {}).get("input_sha256") != input_hash:
+                        raise ValueError("相同操作标识已用于不同修订输入")
+                    return previous["version"], saved, True
+    preview = preview_design_revision(task_id, envelope)
+    parent_version = envelope["parent_version"]
+    operation_id = envelope["operation_id"]
+    payload = preview["proposal"]
+    revision_input = digest({"parent_sha256": envelope["parent_sha256"], "payload": payload,
+                             "reason": envelope["reason"], "request_version": envelope["request_version"]})
+    payload = dict(payload)
+    payload.pop("revision", None)
+    if payload.get("schema") == "lapis.execution-plan.v2":
+        payload["provenance"] = dict(payload["provenance"])
+        payload["provenance"]["operation_id"] = operation_id
+    payload["revision"] = {"parent_version": parent_version, "parent_sha256": envelope["parent_sha256"],
+                           "operation_id": operation_id, "actor": actor or envelope.get("actor", "researcher"),
+                           "reason": envelope["reason"].strip(), "changed_paths": preview["changed_paths"],
+                           "input_sha256": revision_input, "origin": "researcher_adopted"}
+    ensure_finite_numbers(payload)
     with connect() as db:
         with db.cursor(row_factory=dict_row) as cursor:
             cursor.execute("SELECT id FROM research_tasks WHERE id=%s FOR UPDATE", (task_id,))
             if cursor.fetchone() is None:
                 raise ValueError("任务不存在")
-            cursor.execute("SELECT MAX(version) AS version FROM request_versions WHERE task_id=%s", (task_id,))
-            current = cursor.fetchone()["version"]
+            current_parent, _, _ = _validate_revision_envelope(cursor, task_id, envelope, require_latest=False)
+            if digest(current_parent) != envelope["parent_sha256"]:
+                raise ValueError("父版本哈希变化；请重新导出并人工合并")
+            previous = cursor.execute("SELECT version,payload FROM design_versions WHERE task_id=%s "
+                                      "AND payload->'revision'->>'operation_id'=%s", (task_id, operation_id)).fetchone()
+            if previous:
+                saved = _json(previous["payload"])
+                if saved.get("revision", {}).get("input_sha256") != revision_input:
+                    raise ValueError("相同操作标识已用于不同修订输入")
+                return previous["version"], saved, True
+            _validate_revision_envelope(cursor, task_id, envelope)
+            version = cursor.execute("SELECT COALESCE(MAX(version),0)+1 AS version FROM design_versions "
+                                     "WHERE task_id=%s", (task_id,)).fetchone()["version"]
+            cursor.execute("INSERT INTO design_versions (task_id,version,request_version,payload,payload_sha256) "
+                           "VALUES (%s,%s,%s,%s,%s)",
+                           (task_id, version, envelope["request_version"], Jsonb(payload), digest(payload)))
+            _event(cursor, task_id, actor or envelope.get("actor", "researcher"), "design_revision_adopted",
+                   {"design_version": version, "parent_version": parent_version,
+                    "parent_sha256": envelope["parent_sha256"], "input_sha256": revision_input,
+                    "changed_paths": preview["changed_paths"]})
+        db.commit()
+    return version, payload, False
+
+
+def execution_plan_template(task_id: str, design_version: int) -> dict:
+    record = get_design(task_id, design_version)
+    task = get_task(task_id)
+    if task["active_request_version"] != record["request_version"]:
+        raise ValueError("来源设计引用的不是当前已确认请求")
+    if get_latest_design_version(task_id) != design_version:
+        raise ValueError("来源设计已过期；请从最新版本导出计划模板")
+    request = get_request_version(task_id, record["request_version"])
+    source = normalize_design_gaps(dict(record["payload"]))
+    candidates = [{"id": item["id"], "description": item.get("description", ""),
+                  "composition": dict(item.get("composition") or {})}
+                 for item in source.get("candidates", [])]
+    experiments = []
+    for item in source.get("experiments", []):
+        candidate_ids = item.get("candidate_ids") or ([candidates[0]["id"]] if candidates else [])
+        for candidate_id in candidate_ids:
+            experiments.append({"id": f"{item['id']}__{candidate_id}", "source_experiment_id": item["id"],
+                                "candidate_id": candidate_id, "observable": item.get("observable", ""),
+                                "observable_unit": item.get("unit") or "", "conditions": {}, "method": "",
+                                "method_version": "", "model": "", "model_version": "", "parameters": {},
+                                "quality_rules": [], "expected_raw_files": [], "max_walltime_minutes": 0,
+                                "hypothesis_ids": []})
+    paradigm = source.get("paradigm")
+    source_ids = [item["id"] for item in candidates]
+    pairs = [[source_ids[0], item] for item in source_ids[1:]] if paradigm == "comparison" and source_ids else []
+    questions = source.get("open_questions", [])
+    return {"schema": "lapis.execution-plan.v2", "request_version": record["request_version"],
+            "purpose": request["payload"].get("fields", {}).get("purpose", {}).get("value") or source.get("rationale", ""),
+            "paradigm": paradigm, "execution_scope": "research", "candidates": candidates, "experiments": experiments,
+            "comparison_pairs": pairs, "screening_criteria": [], "hypothesis_tests": {},
+            "budget": {"estimated_resources": {}, "total_runs": 0, "max_walltime_minutes": 0, "scope": ""},
+            "gap_dispositions": [{"gap_id": q["id"], "status": "unresolved", "reason": "",
+                                  "basis_fields": [], "plan_pointer": ""} for q in questions
+                                 if q.get("blocks_execution", True)],
+            "provenance": {"request_version": record["request_version"],
+                           "request_sha256": request["payload_sha256"],
+                           "source_design_version": design_version,
+                           "source_design_sha256": record["payload_sha256"].strip(),
+                           "operation_id": "填写唯一操作标识"}}
+
+
+def propose_execution_plan(task_id: str, payload: dict, actor: str) -> tuple[int, dict, bool]:
+    if payload.get("schema") != "lapis.execution-plan.v2":
+        raise ValueError("执行计划模板契约不正确")
+    provenance = payload.get("provenance") or {}
+    operation_id = provenance.get("operation_id")
+    if not operation_id or operation_id == "填写唯一操作标识":
+        raise ValueError("执行计划须设置唯一 operation_id")
+    ensure_finite_numbers(payload)
+    with connect() as db:
+        with db.cursor(row_factory=dict_row) as cursor:
+            cursor.execute("SELECT id FROM research_tasks WHERE id=%s FOR UPDATE", (task_id,))
+            if cursor.fetchone() is None:
+                raise ValueError("任务不存在")
+            current = payload.get("request_version")
+            _require_current_request(cursor, task_id, current)
+            existing = cursor.execute("SELECT version,payload FROM design_versions WHERE task_id=%s "
+                                      "AND payload->'provenance'->>'operation_id'=%s", (task_id, operation_id)).fetchone()
+            if existing:
+                saved = _json(existing["payload"])
+                if digest(saved) != digest(payload):
+                    raise ValueError("相同操作标识已用于不同执行计划")
+                return existing["version"], saved, True
+            source_version = provenance.get("source_design_version")
+            latest = cursor.execute("SELECT MAX(version) AS version FROM design_versions WHERE task_id=%s",
+                                    (task_id,)).fetchone()["version"]
+            if source_version != latest:
+                raise ValueError(f"来源设计已不是最新版本；当前为 v{latest}，请重新导出模板")
+            next_version = latest + 1
+            _check_bound_execution_plan(cursor, task_id, next_version, payload, current)
+            cursor.execute("INSERT INTO design_versions (task_id,version,request_version,payload,payload_sha256) "
+                           "VALUES (%s,%s,%s,%s,%s)",
+                           (task_id, next_version, current, Jsonb(payload), digest(payload)))
+            _event(cursor, task_id, actor, "execution_plan_proposed",
+                   {"design_version": next_version, "source_design_version": source_version,
+                    "payload_sha256": digest(payload), "operation_id": operation_id})
+        db.commit()
+    return next_version, payload, False
+
+
+def approve_design(task_id: str, version: int, reviewer: str, statement: str | None = None) -> None:
+    """Record a reviewer claim; CLI identity is not authenticated for real execution."""
+    if len((reviewer or "").strip()) < 2:
+        raise ValueError("审核人声明不能为空")
+    if len((statement or "").strip()) < 12:
+        raise ValueError("审核时须填写至少 12 个字符的审核声明")
+    with connect() as db:
+        with db.cursor(row_factory=dict_row) as cursor:
+            cursor.execute("SELECT id FROM research_tasks WHERE id=%s FOR UPDATE", (task_id,))
+            if cursor.fetchone() is None:
+                raise ValueError("任务不存在")
+            cursor.execute("SELECT active_request_version FROM research_tasks WHERE id=%s", (task_id,))
+            current = cursor.fetchone()["active_request_version"]
+            latest_design = cursor.execute("SELECT MAX(version) AS version FROM design_versions WHERE task_id=%s",
+                                           (task_id,)).fetchone()["version"]
+            if version != latest_design:
+                raise ValueError(f"存在更新的研究设计 v{latest_design}；旧版本不能新审核")
             cursor.execute(
-                "SELECT request_version,payload,status FROM design_versions WHERE task_id=%s AND version=%s FOR UPDATE",
+                "SELECT request_version,payload,payload_sha256,status FROM design_versions "
+                "WHERE task_id=%s AND version=%s FOR UPDATE",
                 (task_id, version),
             )
             row = cursor.fetchone()
-            if row is None or row["status"] != "proposed" or row["request_version"] != current:
-                raise ValueError("设计不存在、已审批，或引用了过期请求")
+            if row is None or row["status"] != "proposed":
+                raise ValueError("设计不存在或已审核；请创建新版本并重新审核")
+            if row["request_version"] != current or current is None:
+                raise ValueError("设计引用了过期研究请求；须重新确认当前请求")
             _require_current_request(cursor, task_id, row["request_version"])
             payload = _json(row["payload"])
+            if digest(payload) != row["payload_sha256"].strip():
+                raise ValueError("研究计划内容校验和不符，拒绝审核")
             if payload.get("schema") == "lapis.design-draft.v1":
                 raise ValueError("模型草案不能直接审批；请先补全为执行计划并另存新版本")
-            ExecutionPlan.model_validate(payload)
+            _check_bound_execution_plan(cursor, task_id, version, payload, row["request_version"])
             cursor.execute(
                 "UPDATE design_versions SET status='approved', reviewer=%s, reviewed_at=NOW() WHERE task_id=%s AND version=%s",
                 (reviewer, task_id, version),
             )
-            _event(cursor, task_id, reviewer, "design_approved", {"design_version": version})
+            _event(cursor, task_id, reviewer, "design_approved", {
+                "design_version": version, "payload_sha256": row["payload_sha256"].strip(),
+                "request_version": row["request_version"], "statement": statement.strip(),
+                "identity_authenticated": False,
+            })
         db.commit()
 
 
@@ -381,13 +830,19 @@ def freeze_execution(task_id: str, version: int, actor: str) -> str:
                 raise ValueError("任务不存在")
             cursor.execute("SELECT MAX(version) AS version FROM request_versions WHERE task_id=%s", (task_id,))
             current = cursor.fetchone()["version"]
+            active = cursor.execute("SELECT active_request_version FROM research_tasks WHERE id=%s",
+                                    (task_id,)).fetchone()["active_request_version"]
+            latest_design = cursor.execute("SELECT MAX(version) AS version FROM design_versions WHERE task_id=%s",
+                                           (task_id,)).fetchone()["version"]
+            if version != latest_design:
+                raise ValueError(f"已有更新的设计 v{latest_design}；须先审核最新版本")
             cursor.execute(
                 "SELECT request_version,payload,payload_sha256,status,reviewer "
                 "FROM design_versions WHERE task_id=%s AND version=%s FOR UPDATE",
                 (task_id, version),
             )
             design = cursor.fetchone()
-            if design is None or design["status"] != "approved" or design["request_version"] != current:
+            if design is None or design["status"] != "approved" or design["request_version"] != current or active != current:
                 raise ValueError("仅能冻结引用当前请求且经审核的研究设计")
             _require_current_request(cursor, task_id, design["request_version"])
             payload = _json(design["payload"])
@@ -395,7 +850,7 @@ def freeze_execution(task_id: str, version: int, actor: str) -> str:
                 raise ValueError("研究设计内容与保存时校验和不符，拒绝冻结")
             if payload.get("schema") == "lapis.design-draft.v1":
                 raise ValueError("模型草案不能冻结；请先补全为执行计划并另存新版本")
-            ExecutionPlan.model_validate(payload)
+            _check_bound_execution_plan(cursor, task_id, version, payload, design["request_version"])
             cursor.execute("SELECT id FROM execution_requests WHERE task_id=%s AND design_version=%s",
                            (task_id, version))
             existing = cursor.fetchone()
@@ -419,6 +874,11 @@ def create_simulation_attempt(execution_id: str, actor: str) -> str:
             execution = cursor.fetchone()
             if execution is None or execution["status"] != "frozen":
                 raise ValueError("执行请求不存在或不可运行")
+            design = cursor.execute("SELECT d.payload FROM design_versions d JOIN execution_requests e "
+                                    "ON e.task_id=d.task_id AND e.design_version=d.version WHERE e.id=%s",
+                                    (execution_id,)).fetchone()
+            if not design or _json(design["payload"]).get("execution_scope") != "software_test":
+                raise ValueError("模拟适配器只接受显式标记为 software_test 的执行计划")
             cursor.execute("SELECT attempt,status FROM job_attempts WHERE execution_id=%s ORDER BY attempt DESC LIMIT 1",
                            (execution_id,))
             previous = cursor.fetchone()

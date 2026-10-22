@@ -44,20 +44,34 @@ $py='F:\LAPIS\.conda-lapis\python.exe'
 # 若上一条命令未收到结果，复用它已打印的 operation_id 重试同一输入：
 & $py 'F:\LAPIS\lapis.py' turn <任务ID> '确认' --draft-id <上轮草稿ID> --operation-id <原操作标识>
 & $py 'F:\LAPIS\lapis.py' show <任务ID>
-& $py 'F:\LAPIS\lapis.py' propose-design <任务ID> '研究设计.json'
 & $py 'F:\LAPIS\lapis.py' draft-design <任务ID>
 & $py 'F:\LAPIS\lapis.py' show-design <任务ID> <设计版本>
-& $py 'F:\LAPIS\lapis.py' approve-design <任务ID> <设计版本> --reviewer '研究人员姓名'
+# 查看可读设计，或用 --debug 查看 JSON；导出编辑副本后再审阅修订：
+& $py 'F:\LAPIS\lapis.py' export-design <任务ID> <设计版本> '.\revision.json'
+# 编辑 payload，填写 operation_id 和 reason；先预览，再明确采用：
+& $py 'F:\LAPIS\lapis.py' preview-revision <任务ID> '.\revision.json'
+& $py 'F:\LAPIS\lapis.py' revise-design <任务ID> '.\revision.json' --actor '研究人员'
+# 可选：自然语言生成建议文件（会调用配置的模型）；建议仍需预览和明确采用：
+& $py 'F:\LAPIS\lapis.py' suggest-design-revision <任务ID> <设计版本> '修改要求' --output '.\suggestion.json'
+# 从当前设计导出计划模板，补全条件、方法、模型、质量规则、预算和缺口依据：
+& $py 'F:\LAPIS\lapis.py' export-plan <任务ID> <设计版本> '.\execution-plan.json'
+& $py 'F:\LAPIS\lapis.py' propose-plan <任务ID> '.\execution-plan.json' --actor '研究人员'
+& $py 'F:\LAPIS\lapis.py' check-design <任务ID> <完整计划版本>
+& $py 'F:\LAPIS\lapis.py' approve-design <任务ID> <完整计划版本> --reviewer '研究人员' --statement '已审核方案来源、方法、条件、质量规则和资源范围'
 & $py 'F:\LAPIS\lapis.py' freeze <任务ID> <设计版本>
 ```
 
 `turn` 使用现有 Instructor 进行结构化受理；设置 `LAPIS_API_KEY` 或 `DEEPSEEK_API_KEY`，可另设 `LAPIS_BASE_URL`、`LAPIS_MODEL`。LangGraph 仅编排受理中的**追问、人工确认、跨进程暂停和继续**，使用同一 PostgreSQL 实例保存 checkpoint。研究请求、审批、作业和审计以 LAPIS 表为准。单轮技术命令 `turn` 在调用 LLM 前打印 `operation_id`；`chat` 仅在失败定位时显示它；若响应丢失或进程失败，重试**同一输入**时传回原 ID。图节点重放会查操作记录，不重复写入已提交的轮次；同一 ID 用于不同输入或不同确认／推荐上下文会被拒绝，同一任务的并发输入也会被拒绝。若出现“已恢复上一轮受理”，先用上一轮 ID 查询/重试，再提交新输入。计算提交、质量判断和结论均由确定性代码及人工审核控制，不由图节点直接决定。
 
-受理草案分别呈现研究目的、研究对象、应用场景、工作条件、目标性能、约束条件、研究范围和材料功能，并保留来源与用户原话。未知条件保持未知；系统建议经用户确认后保留原建议出处。`ready_for_design` 只表示整份 v5 研究请求经用户确认，可进入研究设计；数据库任务状态仍为 `request_confirmed`。旧版 v1/v2/v3/v4 请求可读取；转换成草稿时指定字段标为待重新核对，进入新版设计前须重新核对并确认。修改当前请求立即清除 `active_request_version`，历史 `request_version` 仍可读取，不能用于新设计。设计草案可不完整，审批时必须符合 [执行计划契约](lapis_core.py)：候选、实验、条件与单位、方法和模型版本、参数、质量规则、预期原始文件与资源上限。冻结是幂等的，不启动真实计算。结构校验不能代替对模型适用性和质量阈值的科研审核。
+受理草案分别呈现研究目的、研究对象、应用场景、工作条件、目标性能、约束条件、研究范围和材料功能，并保留来源与用户原话。未知条件保持未知；系统建议经用户确认后保留原建议出处。`ready_for_design` 只表示整份 v5 研究请求经用户确认，可进入研究设计；数据库任务状态仍为 `request_confirmed`。旧版 v1/v2/v3/v4 请求可读取；转换成草稿时指定字段标为待重新核对，进入新版设计前须重新核对并确认。修改当前请求立即清除 `active_request_version`，历史 `request_version` 仍可读取，不能用于新设计。
 
-`draft-design` 将当前确认请求发送给已配置的模型，生成一个存入 `design_versions` 的 `lapis.design-draft.v1` 草案，记录请求摘要哈希、提示词哈希、模型和操作 ID。候选、实验、假设和缺口均标记为未核验建议；草案不得直接审批。用 `show-design` 查看 JSON 后，研究人员须补足并审核方法、模型、条件、单位、参数、质量规则、预期原始文件和资源上限，再通过 `propose-design` 保存符合执行计划契约的新版本。同一操作 ID 绑定请求、模型、提示词和提供方指纹；并发生成以首次持久化版本为准，所有调用返回该版本；若 ID 被不同输入复用则报错。响应丢失后用原 ID 重试可取回持久化结果，不会重复调用模型。模型建议不构成计算授权。
+`draft-design` 将当前确认请求发送给已配置模型，生成存入 `design_versions` 的 `lapis.design-draft.v1` 草案，记录请求、提示词、模型、提供方指纹与操作 ID。候选、实验、假设和稳定 ID 缺口均为未核验建议；草案不能审批。`show-design` 默认显示研究问题、候选、条件、指标、方法建议、质量检查、来源字段和未定项；`--debug` 保留 JSON。`check-design` 不调用模型，分别报告当前请求、来源、缺口、执行计划结构和科研审核状态。
 
-当前 `approve-design --reviewer` 只记录调用者填写的字符串，**没有身份认证**。这个记录可用于软件流程测试，不能单独作为真实高成本计算的可信授权。接入真实适配器前必须建立可验证的研究人员身份、审批权限和审批记录，并在提交点再次核验。
+`export-design` 导出含父版本号和 SHA-256 的编辑文件；`preview-revision` 只展示差异，不写数据库；`revise-design` 才将明确采用的修改保存为新版本。父版本已变化时拒绝写入并要求人工合并。`suggest-design-revision` 可选调用模型生成待审阅建议，建议文件及输入指纹存入审计事件，不修改设计版本；同 operation ID 和同输入重跑会取回保存的建议，不重复调用模型，复用 ID 提交不同输入会报错。用户须查看差异后再用 `revise-design` 明确采用。
+
+`export-plan` 从设计导出待补全的 `lapis.execution-plan.v2` 模板，保留请求与源设计版本/哈希，不重复生成独立候选来源。`propose-plan` 只接受完整契约；未知字段、未解决的阻断缺口、错误 JSON Pointer、范式引用错误、条件单位错误、空质量判据及不足预算都会阻止保存或审核。缺口标记为 `resolved` 时必须指向非空的真实计划字段；标记 `not_applicable` 时须写具体理由与请求依据。筛选、比较、机制验证分别检查筛选准则、候选比较关系、假设预测/反驳条件与检验实验引用。
+
+审核须填写 `--reviewer` 和 `--statement`，记录设计内容哈希、研究请求版本、声明及时间；命令行填写的身份仍**没有身份认证**，审批只代表软件记录中的审核声明。修改已审核计划会生成新版本，旧版本不能再冻结，新版本必须重新审核。`execution_scope=software_test` 只允许现有模拟器；`research` 不会启动真实计算。冻结是幂等的，不启动计算。结构校验与审核记录均不能代替力场适用性、采样充分性或质量阈值的科研判断。
 
 [FEC 研究设计草案](cases/fec_design_proposal.md) 仍待审查。EC/DMC 比例、盐浓度、FEC 质量基准、力场、采样和质量判据不是已获批准的计算输入。
 
@@ -72,7 +86,7 @@ Remove-Item Env:LAPIS_DB_NAME
 & 'F:\LAPIS\.conda-lapis\python.exe' 'F:\LAPIS\scripts\verify_backup_pg.py'
 ```
 
-测试库 `lapis_test` 和 `artifacts-test/` 与主库隔离。`lapis.py simulate <执行请求ID>` 仅演练失败、重试、状态与文件哈希；文件标记 `origin=simulation`、`scientific_result=null`。`verify-artifacts` 可重算哈希。备份脚本使用 `pg_dump` 自定义格式，恢复演练在临时数据库比对业务及 LangGraph checkpoint 表记录数后清理临时库。恢复演练应在备份后立即运行，避免其间新增任务导致记录数变化。
+测试库 `lapis_test` 和 `artifacts-test/` 与主库隔离。`lapis.py simulate <执行请求ID>` 仅接受 `execution_scope=software_test`，演练失败、状态与文件哈希；文件标记 `origin=simulation`、`scientific_result=null`。`research` 范围不调用模拟器，也没有已接入的真实计算适配器。`verify-artifacts` 可重算哈希。备份脚本使用 `pg_dump` 自定义格式，恢复演练在临时数据库比对业务及 LangGraph checkpoint 表记录数后清理临时库。恢复演练应在备份后立即运行，避免其间新增任务导致记录数变化。
 
 真实科研验收仍需获批的模型和力场、真实输入与原始轨迹、解析版本、质量检查、可追溯观察值和人工审核结论。
 
